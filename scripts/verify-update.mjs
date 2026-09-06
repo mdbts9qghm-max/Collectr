@@ -1,11 +1,15 @@
 /**
- * Proves the update path end to end.
+ * Proves the whole update path end to end.
  *
- * Loads version A, swaps the served files for version B behind the running
- * app (exactly what a Vercel deploy does), triggers a check, and asserts that
- * the banner appears and that tapping it actually brings the new version.
+ * Builds two versions, swaps the served files behind the running app — exactly
+ * what a deployment does — and checks each of the three ways a new version can
+ * reach the athlete:
  *
- * Builds both versions itself, so it runs standalone: npm run verify:update
+ *   1. "Neu laden" in the banner actually reloads into the new version.
+ *   2. "Später" dismisses without breaking anything.
+ *   3. Closing and reopening the app applies a pending version without a tap.
+ *
+ * Runs standalone: npm run verify:update
  */
 import { cpSync, rmSync, readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -16,9 +20,10 @@ import { startServer } from './serve-like-vercel.mjs';
 
 const PORT = 4190;
 const BASE = `http://localhost:${PORT}`;
+const COLD_START_WINDOW_MS = 11_000;
 const errors = [];
 
-/* ---------- Build the two versions this test needs ---------- */
+/* ---------- Build both versions ---------- */
 
 const work = mkdtempSync(join(tmpdir(), 'ha-update-'));
 const V1 = join(work, 'v1');
@@ -26,7 +31,6 @@ const V2 = join(work, 'v2');
 const SERVE = join(work, 'serve');
 const VERSION_FILE = 'src/app/version.ts';
 const original = readFileSync(VERSION_FILE, 'utf8');
-
 const build = () => execFileSync('npm', ['run', 'build'], { stdio: 'ignore' });
 
 console.log('… baue Version A');
@@ -43,85 +47,111 @@ try {
   build();
 }
 
-cpSync(V1, SERVE, { recursive: true });
+const serveVersion = (dir) => {
+  rmSync(SERVE, { recursive: true, force: true });
+  cpSync(dir, SERVE, { recursive: true });
+};
+serveVersion(V1);
 
 const server = await startServer(PORT, SERVE);
 const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-let page = await context.newPage();
-page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-page.on('console', (m) => {
-  if (m.type() === 'error') errors.push(`console: ${m.text()}`);
-});
 
-// --- Version A ---
-// The first load installs the worker but is not yet controlled by it. A reload
-// puts the page under the worker's control, which is the state a returning
-// user is always in — and the only state in which a new version waits instead
-// of activating straight away.
-await page.goto(BASE, { waitUntil: 'networkidle' });
-await page.waitForTimeout(800);
-await page.evaluate(() => navigator.serviceWorker.ready);
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForTimeout(600);
-const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
-if (!controlled) throw new Error('Seite wird nicht vom Service Worker kontrolliert');
+function watch(page) {
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(`console: ${m.text()}`);
+  });
+  return page;
+}
+
+/**
+ * Puts the browser back on version A with a controlling worker — the state a
+ * returning user is always in, and the only one where a new version waits
+ * instead of activating straight away.
+ */
+async function startOnVersionA(page) {
+  serveVersion(V1);
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.evaluate(async () => {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+  });
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(800);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
+  if (!controlled) throw new Error('Seite wird nicht vom Service Worker kontrolliert');
+}
+
+/** Deploys B and waits for the banner, past the cold-start window. */
+async function deployAndWaitForBanner(page) {
+  await page.waitForTimeout(COLD_START_WINDOW_MS);
+  serveVersion(V2);
+  await page.evaluate(async () => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    await reg?.update();
+  });
+  await page.waitForSelector('.update-bar', { timeout: 20000 });
+}
+
+async function runsVersionB(page) {
+  await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.app-main');
+  await page.waitForTimeout(400);
+  return /9\.9\.9/.test(await page.locator('.app-main').innerText());
+}
+
+/* ---------- 1. "Neu laden" ---------- */
+
+let page = watch(await context.newPage());
+await startOnVersionA(page);
 console.log('✓ Version A läuft, Seite vom Service Worker kontrolliert');
-
-const bannerBefore = await page.locator('.update-bar').count();
-if (bannerBefore !== 0) throw new Error('Update-Leiste ohne Update sichtbar');
+if ((await page.locator('.update-bar').count()) !== 0) {
+  throw new Error('Update-Leiste ohne Update sichtbar');
+}
 console.log('✓ keine Leiste, solange es nichts Neues gibt');
 
-// --- Deployment im laufenden Betrieb ---
-// Erst das Kaltstart-Fenster verstreichen lassen: hier wird der Fall geprüft,
-// in dem die App schon benutzt wird und ein stiller Reload Eingaben kosten
-// würde. Der Kaltstart-Fall kommt weiter unten.
-await page.waitForTimeout(11_000);
-rmSync(SERVE, { recursive: true, force: true });
-cpSync(V2, SERVE, { recursive: true });
-console.log('… Version B ausgerollt, App läuft weiter');
+await deployAndWaitForBanner(page);
+console.log('✓ Leiste erscheint während der Nutzung');
 
-// --- Die App muss das von selbst finden ---
-await page.evaluate(async () => {
-  const reg = await navigator.serviceWorker.getRegistration();
-  await reg?.update();
+let reloaded = false;
+page.on('framenavigated', (frame) => {
+  if (frame === page.mainFrame()) reloaded = true;
 });
+await page.getByRole('button', { name: 'Neu laden' }).click();
+await page.waitForTimeout(5000);
+if (!reloaded) throw new Error('"Neu laden" hat die Seite nicht neu geladen');
+if (!(await runsVersionB(page))) throw new Error('nach "Neu laden" läuft immer noch Version A');
+console.log('✓ "Neu laden" lädt neu und bringt die neue Version');
 
-await page.waitForSelector('.update-bar', { timeout: 20000 });
-const text = await page.locator('.update-bar').innerText();
-if (!/Neue Version/i.test(text)) throw new Error(`unerwarteter Text: ${text}`);
-console.log('✓ Leiste erscheint:', text.replace(/\n/g, ' '));
+/* ---------- 2. "Später" ---------- */
 
-// --- Später klicken darf nichts kaputt machen ---
+await page.close();
+page = watch(await context.newPage());
+await startOnVersionA(page);
+await deployAndWaitForBanner(page);
 await page.getByRole('button', { name: 'Später' }).click();
-await page.waitForTimeout(300);
-if ((await page.locator('.update-bar').count()) !== 0) throw new Error('"Später" hat die Leiste nicht geschlossen');
+await page.waitForTimeout(400);
+if ((await page.locator('.update-bar').count()) !== 0) {
+  throw new Error('"Später" hat die Leiste nicht geschlossen');
+}
 console.log('✓ "Später" schließt die Leiste, App läuft normal weiter');
 
-// --- Der eigentliche Test: App komplett schließen und neu öffnen ---
-// Ein Kaltstart muss die wartende Version ohne Zutun übernehmen. Alles andere
-// widerspricht dem, was ein frisch geöffnetes Programm bedeutet.
-await page.close();
-const fresh = await context.newPage();
-fresh.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-fresh.on('console', (m) => {
-  if (m.type() === 'error') errors.push(`console: ${m.text()}`);
-});
-await fresh.goto(BASE, { waitUntil: 'networkidle' });
-await fresh.waitForTimeout(4000);
-page = fresh;
-console.log('✓ App neu geöffnet');
+/* ---------- 3. Kaltstart ---------- */
 
-await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.app-main');
-await page.waitForTimeout(500);
-const profile = await page.locator('.app-main').innerText();
-if (!/9\.9\.9/.test(profile)) {
-  throw new Error(
-    `nach dem Neustart läuft immer noch die alte Version — genau der gemeldete Fehler:\n${profile.slice(0, 400)}`,
-  );
+await page.close();
+page = watch(await context.newPage());
+await page.goto(BASE, { waitUntil: 'networkidle' });
+await page.waitForTimeout(4000);
+if (!(await runsVersionB(page))) {
+  throw new Error('nach dem Neustart läuft immer noch die alte Version');
 }
-console.log('✓ nach dem Neustart läuft Version 9.9.9 — ohne Tap');
+console.log('✓ Kaltstart übernimmt die wartende Version ohne Tap');
 
 await browser.close();
 server.close();

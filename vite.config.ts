@@ -63,6 +63,16 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         cleanupOutdatedCaches: true,
         navigateFallback: 'index.html',
+        /*
+         * Required for the "Neu laden" button to work.
+         *
+         * After SKIP_WAITING the new worker activates, but without clientsClaim
+         * it does not take over the already-open page — so `controllerchange`
+         * never fires. Any update flow that waits for that event then hangs
+         * forever, and the button appears to do nothing. Safari is stricter
+         * about this than Chromium, which is why it passed local testing.
+         */
+        clientsClaim: true,
       },
     }),
   ],

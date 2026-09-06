@@ -92,7 +92,7 @@ export function initUpdates(onUpdateAvailable: () => void): UpdateController {
       if (isColdStart() && !applied && !recentlyAutoApplied()) {
         applied = true;
         markAutoApplied();
-        void updateSW(true);
+        void applyUpdate(updateSW, registration);
         return;
       }
       onUpdateAvailable();
@@ -113,7 +113,7 @@ export function initUpdates(onUpdateAvailable: () => void): UpdateController {
         if (isColdStart() && !applied && !recentlyAutoApplied()) {
           applied = true;
           markAutoApplied();
-          void updateSW(true);
+          void applyUpdate(updateSW, reg);
           return;
         }
         onUpdateAvailable();
@@ -141,9 +141,51 @@ export function initUpdates(onUpdateAvailable: () => void): UpdateController {
   });
 
   return {
-    apply: () => updateSW(true),
+    apply: () => applyUpdate(updateSW, registration),
     check: async () => {
       await registration?.update();
     },
   };
+}
+
+/** How long to wait for the new worker to take over before reloading anyway. */
+const TAKEOVER_TIMEOUT_MS = 2500;
+
+/**
+ * Applies a waiting version and reloads.
+ *
+ * The library's own helper waits for `controllerchange` before reloading. If
+ * that event never arrives — which happens when the activated worker does not
+ * claim the open page — the reload never runs and the button silently does
+ * nothing. So the wait is capped: after the timeout the page reloads regardless,
+ * because the worker has activated either way and a reload will pick it up.
+ */
+async function applyUpdate(
+  updateSW: (reload?: boolean) => Promise<void>,
+  registration: ServiceWorkerRegistration | undefined,
+): Promise<void> {
+  const reload = () => window.location.reload();
+
+  try {
+    const waiting = registration?.waiting;
+    if (waiting) {
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), {
+            once: true,
+          });
+          waiting.postMessage({ type: 'SKIP_WAITING' });
+        }),
+        new Promise<void>((resolve) => window.setTimeout(resolve, TAKEOVER_TIMEOUT_MS)),
+      ]);
+      reload();
+      return;
+    }
+    // No waiting worker to hand over to; let the library do its thing, and
+    // reload after the timeout in case it does not.
+    window.setTimeout(reload, TAKEOVER_TIMEOUT_MS);
+    await updateSW(true);
+  } catch {
+    reload();
+  }
 }
