@@ -402,6 +402,11 @@ export interface DailyCheckIn {
   stress?: number;
   /** 1 = no drive … 5 = very motivated. */
   motivation?: number;
+  /**
+   * Overall wellbeing on a 1–10 scale, asked in the morning check-in.
+   * The planner's recovery value uses it directly: (value − 7) × 5.
+   */
+  wellbeing?: number;
   restingHr?: number;
   hrvMs?: number;
   /** WHOOP recovery percentage, if entered or imported. */
