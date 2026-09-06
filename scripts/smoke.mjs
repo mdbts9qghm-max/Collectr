@@ -111,9 +111,21 @@ await page.waitForSelector('.plan-day');
 await page.waitForTimeout(400);
 const planDays = await page.locator('.plan-day').count();
 if (planDays !== 7) throw new Error(`week planner shows ${planDays} days, expected 7`);
-if ((await page.locator('.reco').count()) === 0) throw new Error('no recommendations rendered');
+// Only the top suggestion is on screen; alternatives sit behind a tap.
+const visibleRecos = await page.locator('.reco').count();
+if (visibleRecos === 0) throw new Error('no recommendation rendered');
+if (visibleRecos > 1) throw new Error(`${visibleRecos} recommendations visible, expected only the top one`);
 if ((await page.locator('.reco-body').count()) !== 0) {
   throw new Error('recommendations should start collapsed');
+}
+const altToggle = page.getByText('Alternativen', { exact: false }).first();
+if (await altToggle.count()) {
+  await altToggle.click();
+  await page.waitForTimeout(350);
+  if ((await page.locator('.reco').count()) <= 1) {
+    throw new Error('alternatives did not appear after tapping the field');
+  }
+  console.log('✓ alternatives appear only after tapping the field');
 }
 await page.locator('.reco').first().locator('button').first().click();
 await page.waitForTimeout(250);

@@ -247,15 +247,31 @@ export function Training() {
         </Card>
       )}
 
-      <SectionTitle title="Vorschläge" subtitle={view.recommendation.focus} />
+      <SectionTitle title="Vorschlag" subtitle={view.recommendation.focus} />
       <div className="col gap-2">
         {view.recommendation.recommended.map((rec) => (
           <CompactRecommendation key={rec.id} rec={rec} onPlan={plan} top />
         ))}
-        {view.recommendation.alternatives.map((rec) => (
-          <CompactRecommendation key={rec.id} rec={rec} onPlan={plan} />
-        ))}
       </div>
+
+      {view.recommendation.alternatives.length > 0 && (
+        <Card tight>
+          <Disclosure
+            summary={
+              <span className="row gap-2">
+                <span className="t-label">Alternativen</span>
+                <Pill>{view.recommendation.alternatives.length}</Pill>
+              </span>
+            }
+          >
+            <div className="col gap-2">
+              {view.recommendation.alternatives.map((rec) => (
+                <CompactRecommendation key={rec.id} rec={rec} onPlan={plan} />
+              ))}
+            </div>
+          </Disclosure>
+        </Card>
+      )}
 
       {view.recommendation.notRecommended.length > 0 && (
         <Card tight>

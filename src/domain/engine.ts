@@ -1092,17 +1092,19 @@ function focusText(ctx: EngineContext, facts: DayFacts): string {
   ) {
     return 'Letzte nutzbare Gelegenheit dieser Woche';
   }
-  if (
-    facts.weekStrengthSessions === 0 &&
-    ctx.target.strengthSessions > 0 &&
-    outlook.restOfWeekComplete &&
-    outlook.restOfWeekFreeMinutes < 120
-  ) {
-    return 'Krafteinheit der Woche sichern';
+  // The focus must name something this day can actually deliver. On a 12-hour
+  // day shift with a 20-minute window, "secure the week's strength session" is
+  // true about the week and useless about today.
+  const canDoStrength =
+    facts.availableMinutes >= 25 &&
+    isAtOrBelow('moderate', ctx.shift.type?.training.maxIntensity ?? 'max');
+  if (canDoStrength && facts.weekStrengthSessions === 0 && ctx.target.strengthSessions > 0) {
+    if (outlook.restOfWeekComplete && outlook.restOfWeekFreeMinutes < 120) {
+      return 'Krafteinheit der Woche sichern';
+    }
+    if (facts.remainingWeekDays <= 3) return 'Krafteinheit der Woche sichern';
   }
-  if (facts.weekStrengthSessions === 0 && ctx.target.strengthSessions > 0 && facts.remainingWeekDays <= 3) {
-    return 'Krafteinheit der Woche sichern';
-  }
+  if (facts.availableMinutes < 25) return 'Wenig Zeit — Struktur halten';
   if (outlook.sleepConstrainedAhead) return 'Vor schlafarmen Tagen konservativ bleiben';
   if (facts.daysSinceLongRun != null && facts.daysSinceLongRun >= 7 && ctx.shift.type?.training.rating === 'green') {
     return 'Long Run — Ermüdungswiderstand aufbauen';

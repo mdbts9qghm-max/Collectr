@@ -168,6 +168,20 @@ describe('recovery constraints', () => {
   });
 });
 
+describe('focus', () => {
+  it('does not name a focus the day cannot deliver', () => {
+    // A 12-hour day shift allows 20 minutes at recovery intensity. Telling the
+    // athlete to "secure the week's strength session" would be unactionable.
+    const result = build({ shift: 'shift_day' });
+    expect(result.focus).not.toMatch(/Krafteinheit/);
+  });
+
+  it('names the long run only on a day that can host it', () => {
+    const result = build({ shift: 'shift_v' });
+    expect(result.focus).not.toMatch(/Long Run/);
+  });
+});
+
 describe('transparency', () => {
   it('always explains the recommendation', () => {
     const result = build({ shift: 'shift_off', checkIns: [checkIn(TODAY, { sleepHours: 8 })] });
