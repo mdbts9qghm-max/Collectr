@@ -107,10 +107,10 @@ await shot('05-session-done');
 // The training tab is the week planner: seven days must always be on screen,
 // and the recommendations must start collapsed.
 await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.plan-day');
+await page.waitForSelector('.cal-day');
 await page.waitForTimeout(400);
-const planDays = await page.locator('.plan-day').count();
-if (planDays !== 7) throw new Error(`week planner shows ${planDays} days, expected 7`);
+const planDays = await page.locator('.cal-day').count();
+if (planDays !== 7) throw new Error(`week calendar shows ${planDays} columns, expected 7`);
 // Only the top suggestion is on screen; alternatives sit behind a tap.
 const visibleRecos = await page.locator('.reco').count();
 if (visibleRecos === 0) throw new Error('no recommendation rendered');
@@ -132,21 +132,21 @@ await page.waitForTimeout(250);
 if ((await page.locator('.reco-body').count()) === 0) {
   throw new Error('recommendation did not expand on tap');
 }
-console.log('✓ week planner shows 7 days with collapsed, expandable recommendations');
+console.log('✓ week calendar shows 7 columns with collapsed, expandable recommendations');
 
 // Planning into another day of the week must land on that day.
-const otherDay = page.locator('.plan-day').nth(2);
+const otherDay = page.locator('.cal-day').nth(2);
 await otherDay.click();
 await page.waitForTimeout(500);
-const addBefore = await page.locator('.plan-chip').count();
+const addBefore = await page.locator('.cal-block').count();
 const addButton = page.locator('.reco.top .reco-add');
 if (await addButton.count()) {
   await addButton.click();
   await page.waitForTimeout(600);
-  if ((await page.locator('.plan-chip').count()) <= addBefore) {
-    throw new Error('planning into the selected day did not appear in the week');
+  if ((await page.locator('.cal-block').count()) <= addBefore) {
+    throw new Error('planning into the selected day did not appear in the calendar');
   }
-  console.log('✓ planning into a selected day appears in the week plan');
+  console.log('✓ planning into a selected day appears as a calendar block');
 }
 await shot('06-week-planner');
 

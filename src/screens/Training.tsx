@@ -117,11 +117,11 @@ export function Training() {
         </Button>
       </div>
 
-      {/* ---------- The week ---------- */}
+      {/* ---------- The week as a calendar ---------- */}
       <Card tight>
-        <div className="col gap-1">
+        <div className="cal-week">
           {week.map((day) => (
-            <PlanDay
+            <CalendarDay
               key={day.date}
               day={day}
               selected={day.date === selected}
@@ -140,7 +140,7 @@ export function Training() {
           <span className="t-small t-num muted">Ziel {formatHours(target.minutes / 60)}</span>
         </div>
         <div className="mt-2">
-          <div className="plan-fill" style={{ height: 8 }}>
+          <div className="segmented-bar">
             <span
               style={{
                 width: `${Math.min(100, (doneMinutes / Math.max(target.minutes, 1)) * 100)}%`,
@@ -380,7 +380,15 @@ export function Training() {
  * One day in the week plan
  * ------------------------------------------------------------------ */
 
-function PlanDay({
+/** "45m" / "2:10" — short enough for a 50 px calendar column. */
+function compactDuration(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+function CalendarDay({
   day,
   selected,
   onSelect,
@@ -389,79 +397,83 @@ function PlanDay({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const capacity = Math.max(day.capacityMinutes, 1);
-  const donePct = Math.min(100, (day.completedMinutes / capacity) * 100);
-  const plannedPct = Math.min(100 - donePct, (day.plannedMinutes / capacity) * 100);
-  const noRoom = day.capacityMinutes < 25;
-  const booked = day.completedMinutes + day.plannedMinutes;
   const hasShift = !!day.shift;
+  const noRoom = day.capacityMinutes < 25;
 
-  // A day without a shift has no known capacity, and a day in the past has no
-  // capacity left to offer. Neither should advertise free training time.
-  const rightLabel = booked > 0
-    ? formatDuration(booked)
-    : !hasShift
-      ? '–'
-      : day.isPast || noRoom
-        ? '–'
-        : formatDuration(day.capacityMinutes);
-
-  const emptyLabel = !hasShift
-    ? 'Schicht eintragen'
-    : day.isPast
-      ? 'nichts erfasst'
-      : noRoom
-        ? 'kein Trainingsfenster'
-        : 'offen';
+  // Block height follows duration, so the week's shape is readable at a glance:
+  // a two-hour long run has to look bigger than a twenty-minute mobility block.
+  const blockHeight = (minutes: number) => Math.round(Math.min(56, Math.max(20, minutes * 0.42)));
 
   return (
     <button
       type="button"
-      className={`plan-day ${selected ? 'selected' : ''} ${day.isToday ? 'today' : ''} ${day.isPast ? 'past' : ''}`}
+      className={[
+        'cal-day',
+        selected ? 'selected' : '',
+        day.isToday ? 'today' : '',
+        day.isPast ? 'past' : '',
+        hasShift ? '' : 'unset',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       onClick={onSelect}
       aria-current={selected ? 'true' : undefined}
+      aria-label={`${weekdayShort(day.date)} ${formatDateShort(day.date)}${
+        day.shift ? `, ${day.shift.label}` : ', keine Schicht'
+      }`}
     >
-      <span className="plan-day-date">
-        <span className="plan-day-dow">{weekdayShort(day.date)}</span>
-        <span className="plan-day-num">{Number(day.date.slice(8))}.</span>
-      </span>
-
+      <span className="cal-dow">{weekdayShort(day.date)}</span>
+      <span className="cal-num">{Number(day.date.slice(8))}</span>
       <span
-        className="shift-tag"
+        className="cal-shift"
         style={{
           background: day.shift
-            ? `color-mix(in srgb, ${day.shift.color} 24%, transparent)`
-            : 'var(--surface-3)',
+            ? `color-mix(in srgb, ${day.shift.color} 26%, transparent)`
+            : 'transparent',
           color: day.shift ? 'var(--text)' : 'var(--text-muted)',
-          flex: 'none',
-          minWidth: 22,
-          textAlign: 'center',
         }}
       >
-        {day.shift?.short ?? '?'}
+        {day.shift?.short ?? '–'}
       </span>
 
-      <span className="plan-day-body">
-        <span className="plan-chips">
-          {day.sessions.length > 0 ? (
-            day.sessions.map((s) => (
-              <span key={s.id} className={`plan-chip ${s.status === 'completed' ? 'done' : ''}`}>
-                {SPORT_META[s.sport].icon} {s.title}
-              </span>
-            ))
-          ) : (
-            <span className={`t-caption ${hasShift ? 'muted' : 'warn'}`}>{emptyLabel}</span>
-          )}
-        </span>
-        {hasShift && (
-          <span className="plan-fill">
-            <span style={{ width: `${donePct}%`, background: 'var(--accent)' }} />
-            <span style={{ width: `${plannedPct}%`, background: 'var(--info)' }} />
-          </span>
-        )}
+      <span className="cal-blocks">
+        {day.sessions.map((session) => {
+          const minutes =
+            session.actualDurationMin ?? session.plannedDurationMin ?? 0;
+          const color = SPORT_META[session.sport].color;
+          return (
+            <span
+              key={session.id}
+              className={`cal-block ${session.status === 'completed' ? 'done' : 'planned'}`}
+              style={{
+                height: blockHeight(minutes),
+                background: `color-mix(in srgb, ${color} ${session.status === 'completed' ? 26 : 14}%, transparent)`,
+                color,
+              }}
+              title={`${session.title} · ${formatDuration(minutes)}`}
+            >
+              <span className="cal-block-icon">{SPORT_META[session.sport].icon}</span>
+              {minutes > 0 && (
+                <span className="cal-block-time" style={{ color: 'var(--text-secondary)' }}>
+                  {compactDuration(minutes)}
+                </span>
+              )}
+            </span>
+          );
+        })}
       </span>
 
-      <span className="plan-day-right">{rightLabel}</span>
+      <span className="cal-free">
+        {!hasShift
+          ? 'Schicht?'
+          : day.sessions.length > 0
+            ? formatDuration(day.completedMinutes + day.plannedMinutes)
+            : day.isPast
+              ? '–'
+              : noRoom
+                ? '–'
+                : formatDuration(day.freeMinutes)}
+      </span>
     </button>
   );
 }

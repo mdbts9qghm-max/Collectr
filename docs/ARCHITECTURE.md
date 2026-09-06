@@ -126,17 +126,20 @@ ein Statusblock aus Readiness-Ring, Schlaf- und Wochenbalken, dann die handlungs
 Listen: heutiges Training, Habits zum Abhaken, fällige Aufgaben. Keine Verläufe, keine
 Scores, keine Vorschauen — was heute nicht handlungsrelevant ist, steht hier nicht.
 
-**Training** — der Wochenplaner. Die ganze Woche steht permanent oben: sieben Zeilen mit
-Schichtkürzel, geplanten und erledigten Einheiten als Chips und einem Balken, der zeigt,
-wie viel des Tagesfensters schon vergeben ist. Ein Tag ist ausgewählt; darunter stehen
-seine Schicht, seine Einheiten und die Vorschläge.
+**Training** — der Wochenplaner als Kalender. Die Woche steht permanent oben als
+Sieben-Spalten-Raster: pro Tag Wochentag, Datum, Schichtkürzel und die Einheiten als
+Blöcke. Die Blockhöhe folgt der Dauer, sodass die Form der Woche ablesbar ist — ein
+Long Run sieht größer aus als eine Mobility-Einheit. Erledigtes ist gefüllt, Geplantes
+gestrichelt umrandet. Ein Tag ist ausgewählt; darunter stehen seine Schicht, seine
+Einheiten und die Vorschläge.
 
 Der Grund für die Wochenansicht: Wie viel ein Dienstag wert ist, ergibt sich erst neben dem
 freien Samstag. Eine Tagesansicht kann diese Frage nicht stellen.
 
-Vorschläge sind kompakte Zeilen und **starten eingeklappt** — Titel, Dauer, Zone und ein
-Plus zum Einplanen. Antippen zeigt die Begründung. Verteilung, Ausblick und Belastungsstatus
-liegen ebenfalls hinter Aufklappern, damit der Planer selbst der Inhalt bleibt.
+Sichtbar ist genau **ein** Vorschlag, als kompakte Zeile mit Titel, Dauer, Zone und einem
+Plus zum Einplanen; Antippen zeigt die Begründung. Alternativen, nicht empfohlene Optionen,
+Verteilung, Ausblick und Belastungsstatus liegen hinter Aufklappern, damit der Kalender
+selbst der Inhalt bleibt.
 
 Tage ohne eingetragene Schicht zeigen keine erfundene Kapazität, sondern "Schicht eintragen";
 vergangene Tage ohne Einheit zeigen "nichts erfasst" statt freier Zeit.

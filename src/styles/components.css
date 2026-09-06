@@ -1056,94 +1056,108 @@
   .update-bar { bottom: var(--s5); }
 }
 
-/* ---------- Week planner ---------- */
+/* ---------- Week calendar ---------- */
 
-.plan-day {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  width: 100%;
-  padding: 9px var(--s3);
-  border-radius: var(--r-md);
-  border: 1.5px solid transparent;
-  text-align: left;
-  transition: background var(--t-fast), border-color var(--t-fast);
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  align-items: stretch;
 }
-.plan-day:hover { background: var(--surface-2); }
-.plan-day.selected {
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px 5px;
+  border-radius: var(--r-md);
   background: var(--surface-2);
+  border: 1.5px solid transparent;
+  transition: background var(--t-fast), border-color var(--t-fast);
+  min-height: 132px;
+  text-align: center;
+}
+.cal-day:hover { background: var(--surface-hover); }
+.cal-day.selected {
+  background: var(--surface-3);
   border-color: var(--border-strong);
 }
-.plan-day.today { border-color: var(--accent); }
-.plan-day.past { opacity: 0.62; }
+.cal-day.today { border-color: var(--accent); }
+.cal-day.past { opacity: 0.55; }
+/* No shift means no known capacity — the column reads as unset, not empty. */
+.cal-day.unset { background: transparent; border-style: dashed; border-color: var(--border); }
 
-.plan-day-date {
-  width: 52px;
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-.plan-day-dow {
-  font-size: 11px;
-  font-weight: 680;
-  letter-spacing: 0.05em;
+.cal-dow {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
+  line-height: 1;
 }
-.plan-day-num {
+.cal-num {
   font-size: 14px;
-  font-weight: 640;
+  font-weight: 660;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.cal-shift {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  line-height: 1.4;
 }
 
-.plan-day-body {
+.cal-blocks {
   flex: 1;
-  min-width: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-}
-
-.plan-chips {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.plan-chip {
-  display: inline-flex;
-  align-items: center;
   gap: 3px;
-  padding: 2px 7px;
-  border-radius: var(--r-full);
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--surface-3);
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  justify-content: flex-start;
+  padding: 2px 1px 0;
 }
-.plan-chip.done { opacity: 0.62; text-decoration: line-through; }
 
-/* Capacity bar: how much of the day's window is already spoken for. */
-.plan-fill {
-  height: 4px;
-  border-radius: var(--r-full);
-  background: var(--surface-3);
-  overflow: hidden;
+/* Block height tracks duration, so a long run reads bigger than a mobility
+   session — the visual weight of the week matches its real load. */
+.cal-block {
+  border-radius: 4px;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 9px;
+  line-height: 1.1;
+  overflow: hidden;
+  border-left: 2px solid currentColor;
+  padding: 1px;
 }
-.plan-fill > span { height: 100%; transition: width var(--t-spring); }
-
-.plan-day-right {
-  flex: none;
-  width: 54px;
-  text-align: right;
-  font-size: 11.5px;
+.cal-block-icon { font-size: 11px; line-height: 1; }
+.cal-block-time {
+  font-size: 8.5px;
   font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+.cal-block.planned {
+  border-left-style: dashed;
+}
+.cal-block.done {
+  opacity: 0.95;
+}
+
+.cal-free {
+  font-size: 8.5px;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: auto;
+}
+
+@media (min-width: 560px) {
+  .cal-day { min-height: 150px; }
+  .cal-block { font-size: 10px; }
 }
 
 /* ---------- Compact recommendation ---------- */
