@@ -3,17 +3,30 @@ import { registerSW } from 'virtual:pwa-register';
 /**
  * Service-worker update handling.
  *
- * Deploys happen continuously, but an app installed on a phone can sit in the
- * background for days without ever noticing. So the registration is polled:
- * once an hour, and whenever the app returns to the foreground or regains a
- * connection — which is the moment that actually matters, because that is when
- * the athlete opens it in the morning.
+ * Two situations, two behaviours:
  *
- * The reload itself is never automatic. Losing a half-entered check-in to a
- * silent refresh would be worse than running yesterday's version for an hour.
+ * 1. **Cold start.** The app was just opened — from the home screen, after
+ *    being closed, in the morning. Nothing is entered, nothing can be lost, and
+ *    the athlete's expectation is simply that a freshly opened app is current.
+ *    A pending version is applied immediately, without asking.
+ *
+ * 2. **Mid-session.** A version appears while the app is already in use,
+ *    possibly with a half-filled check-in on screen. Reloading would throw that
+ *    away, so this case shows a banner and lets the tap decide.
+ *
+ * The registration is polled once an hour, when the app returns to the
+ * foreground, when a connection comes back, and shortly after start — an app
+ * on a phone can sit in the background for days without noticing anything.
  */
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
+/**
+ * How long after start an update still counts as part of the cold start.
+ * The post-start check runs after 1.5 s, so ten seconds covers it comfortably
+ * while keeping anything later — where the athlete is already using the app —
+ * in the "ask first" case.
+ */
+const COLD_START_WINDOW_MS = 10_000;
 
 export interface UpdateController {
   /** Applies the waiting version and reloads the page. */
@@ -24,30 +37,49 @@ export interface UpdateController {
 
 export function initUpdates(onUpdateAvailable: () => void): UpdateController {
   let registration: ServiceWorkerRegistration | undefined;
+  const startedAt = Date.now();
+  let applied = false;
+
+  const isColdStart = () => Date.now() - startedAt < COLD_START_WINDOW_MS;
 
   const updateSW = registerSW({
-    onNeedRefresh: onUpdateAvailable,
+    onNeedRefresh() {
+      // Guard against a reload loop: apply at most once per page session.
+      if (isColdStart() && !applied) {
+        applied = true;
+        void updateSW(true);
+        return;
+      }
+      onUpdateAvailable();
+    },
     onRegisteredSW(_swUrl, reg) {
       registration = reg;
       if (!reg) return;
 
       /*
-       * A version discovered in an earlier session is still sitting in
-       * `waiting` after a restart, and the browser does not fire `updatefound`
-       * a second time for it. Without this check, dismissing the banner once
-       * would hide that update forever.
+       * A version discovered in an earlier session sits in `waiting` after a
+       * restart, and the browser does not fire `updatefound` again for it. So
+       * it has to be picked up explicitly — otherwise closing and reopening the
+       * app would never bring it in, which is exactly what a user expects it to
+       * do.
        */
-      const notifyIfWaiting = () => {
-        if (reg.waiting && navigator.serviceWorker.controller) onUpdateAvailable();
+      const handleWaiting = () => {
+        if (!reg.waiting || !navigator.serviceWorker.controller) return;
+        if (isColdStart() && !applied) {
+          applied = true;
+          void updateSW(true);
+          return;
+        }
+        onUpdateAvailable();
       };
-      notifyIfWaiting();
+      handleWaiting();
 
       const check = () => {
         if (document.visibilityState !== 'visible') return;
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         void reg
           .update()
-          .then(notifyIfWaiting)
+          .then(handleWaiting)
           .catch(() => {
             // A failed check is not worth surfacing; the next one will retry.
           });
@@ -56,9 +88,9 @@ export function initUpdates(onUpdateAvailable: () => void): UpdateController {
       window.setInterval(check, CHECK_INTERVAL_MS);
       document.addEventListener('visibilitychange', check);
       window.addEventListener('online', check);
-      // One check shortly after start, so a version deployed overnight is
-      // found before the athlete has finished the morning check-in.
-      window.setTimeout(check, 5_000);
+      // Check shortly after start, so a version deployed overnight is found
+      // while the cold-start window is still open and applies without a tap.
+      window.setTimeout(check, 1_500);
     },
   });
 

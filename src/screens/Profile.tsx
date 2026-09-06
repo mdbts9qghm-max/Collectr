@@ -16,7 +16,7 @@ import {
 } from '../data/backup.ts';
 import { useStore } from '../data/store.ts';
 import { useData } from '../app/hooks.ts';
-import { APP_VERSION } from '../app/version.ts';
+import { APP_VERSION, BUILD_REV, formatBuildTime } from '../app/version.ts';
 import {
   Button,
   Card,
@@ -637,9 +637,20 @@ export function Profile() {
 
         <div className="divider mt-4" />
         <div className="t-label mb-3">App-Version</div>
+        <div className="col gap-2 mb-3">
+          <div className="row between">
+            <span className="t-small secondary">Stand dieser Version</span>
+            <span className="t-small t-num">{formatBuildTime()}</span>
+          </div>
+          <div className="row between">
+            <span className="t-small secondary">Build</span>
+            <span className="t-small t-num muted">{BUILD_REV}</span>
+          </div>
+        </div>
         <p className="t-caption muted mb-3">
-          Die App sucht im Hintergrund stündlich nach Updates und meldet sich, wenn eine neue
-          Version bereitsteht. Hier kannst du sofort nachsehen.
+          Beim Öffnen der App wird eine bereitstehende neue Version sofort übernommen. Findet die
+          App während der Nutzung eine, fragt sie erst nach — ein Neuladen mitten im Check-in würde
+          deine Eingaben verwerfen.
         </p>
         <Button
           block

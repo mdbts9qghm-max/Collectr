@@ -1,8 +1,31 @@
+import { execSync } from 'node:child_process';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * A build stamp shown in Settings. Without it there is no way to tell from the
+ * phone whether a deployment actually arrived — which turns "it doesn't update"
+ * into guesswork.
+ */
+function buildRevision(): string {
+  // Vercel provides the commit SHA; locally fall back to git, then to 'dev'.
+  const fromCi = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (fromCi) return fromCi.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return 'dev';
+  }
+}
+
 export default defineConfig({
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __BUILD_REV__: JSON.stringify(buildRevision()),
+  },
   // Relative base so the built app works from a subpath (GitHub Pages) as well
   // as from a domain root.
   base: './',

@@ -48,7 +48,7 @@ cpSync(V1, SERVE, { recursive: true });
 const server = await startServer(PORT, SERVE);
 const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-const page = await context.newPage();
+let page = await context.newPage();
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push(`console: ${m.text()}`);
@@ -73,6 +73,10 @@ if (bannerBefore !== 0) throw new Error('Update-Leiste ohne Update sichtbar');
 console.log('✓ keine Leiste, solange es nichts Neues gibt');
 
 // --- Deployment im laufenden Betrieb ---
+// Erst das Kaltstart-Fenster verstreichen lassen: hier wird der Fall geprüft,
+// in dem die App schon benutzt wird und ein stiller Reload Eingaben kosten
+// würde. Der Kaltstart-Fall kommt weiter unten.
+await page.waitForTimeout(11_000);
 rmSync(SERVE, { recursive: true, force: true });
 cpSync(V2, SERVE, { recursive: true });
 console.log('… Version B ausgerollt, App läuft weiter');
@@ -94,33 +98,30 @@ await page.waitForTimeout(300);
 if ((await page.locator('.update-bar').count()) !== 0) throw new Error('"Später" hat die Leiste nicht geschlossen');
 console.log('✓ "Später" schließt die Leiste, App läuft normal weiter');
 
-// --- Beim nächsten Start muss erneut gefragt werden ---
-// Ohne die Prüfung auf einen wartenden Worker bliebe die Version für immer
-// unsichtbar, sobald einmal "Später" getippt wurde.
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForTimeout(1200);
-const waiting = await page.evaluate(async () => {
-  const reg = await navigator.serviceWorker.getRegistration();
-  return !!reg?.waiting;
+// --- Der eigentliche Test: App komplett schließen und neu öffnen ---
+// Ein Kaltstart muss die wartende Version ohne Zutun übernehmen. Alles andere
+// widerspricht dem, was ein frisch geöffnetes Programm bedeutet.
+await page.close();
+const fresh = await context.newPage();
+fresh.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+fresh.on('console', (m) => {
+  if (m.type() === 'error') errors.push(`console: ${m.text()}`);
 });
-if (waiting) {
-  await page.waitForSelector('.update-bar', { timeout: 20000 });
-  console.log('✓ nach dem Neustart wird erneut auf die Version hingewiesen');
-  await page.getByRole('button', { name: 'Neu laden' }).click();
-  await page.waitForTimeout(2500);
-} else {
-  // Some browsers activate the waiting worker once the last client unloads.
-  // Then the new version is simply already live, which is also correct.
-  console.log('✓ Browser hat die wartende Version beim Neustart selbst aktiviert');
-}
+await fresh.goto(BASE, { waitUntil: 'networkidle' });
+await fresh.waitForTimeout(4000);
+page = fresh;
+console.log('✓ App neu geöffnet');
 
 await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
 await page.waitForSelector('.app-main');
+await page.waitForTimeout(500);
 const profile = await page.locator('.app-main').innerText();
 if (!/9\.9\.9/.test(profile)) {
-  throw new Error(`nach dem Reload läuft immer noch die alte Version:\n${profile.slice(0, 300)}`);
+  throw new Error(
+    `nach dem Neustart läuft immer noch die alte Version — genau der gemeldete Fehler:\n${profile.slice(0, 400)}`,
+  );
 }
-console.log('✓ nach "Neu laden" läuft Version 9.9.9');
+console.log('✓ nach dem Neustart läuft Version 9.9.9 — ohne Tap');
 
 await browser.close();
 server.close();
