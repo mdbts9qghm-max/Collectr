@@ -13,7 +13,8 @@
     "icons": "node scripts/make-icons.mjs",
     "serve:prod": "node scripts/serve-like-vercel.mjs",
     "verify:deploy": "npm run build && node scripts/verify-deploy.mjs --serve",
-    "verify:update": "node scripts/verify-update.mjs"
+    "verify:update": "node scripts/verify-update.mjs",
+    "verify:iphone": "node scripts/verify-iphone.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

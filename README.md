@@ -70,6 +70,7 @@ vom Telefon aus feststellen, welche Version tatsächlich läuft.
 ```bash
 npm run verify:deploy   # Build gegen die echten Vercel-Header, inkl. Offline-Test
 npm run verify:update   # baut zwei Versionen und prüft den kompletten Update-Pfad
+npm run verify:iphone   # Layout gegen echte iPhone-Maße samt Safe-Area-Insets
 ```
 
 `verify:deploy` prüft Start unter der strengen Content-Security-Policy, erreichbares
@@ -81,7 +82,13 @@ App aus — genau das, was ein Deployment tut — und prüft, dass die Leiste er
 *Später* sie schließt, dass beim nächsten Start erneut gefragt wird und dass *Neu laden*
 tatsächlich die neue Version bringt.
 
-Beide brauchen einmalig einen Browser: `npx playwright install chromium`.
+`verify:iphone` misst gegen iPhone SE, 15 Pro und 15 Pro Max — inklusive der Safe-Area-Insets,
+die es nur in der installierten App gibt. Drei Dinge brechen auf dem Telefon lautlos und fallen
+im Desktop-Browser nicht auf: Inhalt, der unter die Dynamic Island rutscht; iOS, das die Seite
+zoomt, sobald ein Eingabefeld kleiner als 16 px den Fokus bekommt; und Tap-Ziele, die zu klein
+zum blinden Treffen sind. Braucht einen laufenden `npm run preview`.
+
+Alle drei brauchen einmalig einen Browser: `npx playwright install chromium`.
 
 ### Wer kann darauf zugreifen?
 

@@ -12,6 +12,8 @@ body,
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* No blue flash on tap anywhere, not just on buttons. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -23,7 +25,20 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Stops the rubber-band bounce and pull-to-refresh in the installed app,
+     where an accidental swipe would otherwise reload the whole thing. */
   overscroll-behavior-y: none;
+}
+
+/* Text that is worth selecting: notes, coach answers, values. */
+input,
+textarea,
+select,
+.bubble,
+.reason,
+.t-num {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 h1, h2, h3, h4, h5, h6, p, figure, ul, ol, dl, dd {
@@ -46,6 +61,11 @@ button {
   border: none;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  /* Removes the 300 ms delay iOS keeps for double-tap-to-zoom. */
+  touch-action: manipulation;
+  /* A long press on a control should not select its label. */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 a {

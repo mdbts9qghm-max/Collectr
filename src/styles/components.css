@@ -27,7 +27,16 @@
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--s4) var(--s4) calc(var(--nav-height) + var(--safe-bottom) + var(--s7));
+  /*
+   * The app has no header bar, and the installed version draws under the status
+   * bar (viewport-fit=cover plus a translucent status bar). Without the top
+   * inset the date and title end up behind the notch or Dynamic Island. The
+   * side insets matter in landscape.
+   */
+  padding-top: calc(var(--safe-top) + var(--s4));
+  padding-right: max(var(--s4), env(safe-area-inset-right, 0px));
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + var(--s7));
+  padding-left: max(var(--s4), env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--s4);
@@ -42,7 +51,8 @@
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  padding: 6px 4px calc(6px + var(--safe-bottom));
+  padding: 6px max(4px, env(safe-area-inset-right, 0px)) calc(6px + var(--safe-bottom))
+    max(4px, env(safe-area-inset-left, 0px));
   background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -53,8 +63,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 3px;
   padding: 6px 2px;
+  min-height: 46px;
   border-radius: var(--r-sm);
   color: var(--text-muted);
   font-size: 10.5px;
@@ -353,8 +365,13 @@
 /* ---------- Checkbox ---------- */
 
 .check {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  /* The visual box stays small; the tappable area is padded out to a
+     comfortable size so it can be hit without looking. */
+  box-sizing: content-box;
+  padding: 8px;
+  margin: -8px;
   border-radius: var(--r-sm);
   border: 2px solid var(--border-strong);
   display: grid;
@@ -397,7 +414,9 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
-  font-size: 15px;
+  /* Must stay at 16px: iOS Safari zooms the whole page when a focused field
+     is smaller, and the layout never zooms back out on its own. */
+  font-size: 16px;
   transition: border-color var(--t-fast), background var(--t-fast);
   appearance: none;
 }
@@ -509,8 +528,8 @@
   padding: 3px;
 }
 .stepper > button {
-  width: 34px;
-  height: 32px;
+  width: 40px;
+  height: 38px;
   border-radius: var(--r-sm);
   display: grid;
   place-items: center;
@@ -544,7 +563,8 @@
 .sheet {
   width: 100%;
   max-width: 560px;
-  max-height: 92dvh;
+  /* Leaves the status bar visible so the sheet never looks like a stuck app. */
+  max-height: calc(100dvh - var(--safe-top) - 24px);
   background: var(--bg-elevated);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   border: 1px solid var(--border);
@@ -574,6 +594,7 @@
 .sheet-body {
   padding: var(--s4);
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--s4);
@@ -1192,8 +1213,8 @@
 }
 .reco-add {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--r-sm);
   display: grid;
   place-items: center;
