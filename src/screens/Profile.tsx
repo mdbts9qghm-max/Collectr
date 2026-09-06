@@ -590,6 +590,22 @@ export function Profile() {
         </div>
 
         <div className="divider mt-4" />
+        <div className="t-label mb-3">App-Version</div>
+        <p className="t-caption muted mb-3">
+          Die App sucht im Hintergrund stündlich nach Updates und meldet sich, wenn eine neue
+          Version bereitsteht. Hier kannst du sofort nachsehen.
+        </p>
+        <Button
+          block
+          onClick={async () => {
+            await window.__hybridCheckForUpdate?.();
+            toast('Nach Updates gesucht — falls eine neue Version da ist, meldet sie sich gleich');
+          }}
+        >
+          Jetzt nach Update suchen
+        </Button>
+
+        <div className="divider mt-4" />
         <Button
           variant="danger"
           block

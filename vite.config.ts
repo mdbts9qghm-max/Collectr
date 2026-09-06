@@ -9,7 +9,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' rather than 'autoUpdate': a silent reload would throw away a
+      // half-filled check-in or session log. The app checks in the background
+      // and offers the reload; the athlete decides when it happens.
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'icon-180.png'],
       manifest: {
         name: 'Hybrid Athlete OS',

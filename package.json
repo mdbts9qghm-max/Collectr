@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "icons": "node scripts/make-icons.mjs",
     "serve:prod": "node scripts/serve-like-vercel.mjs",
-    "verify:deploy": "npm run build && node scripts/verify-deploy.mjs --serve"
+    "verify:deploy": "npm run build && node scripts/verify-deploy.mjs --serve",
+    "verify:update": "node scripts/verify-update.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

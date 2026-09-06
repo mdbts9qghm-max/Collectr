@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 
-const ROOT = 'dist';
+const DEFAULT_ROOT = process.env.SERVE_ROOT ?? 'dist';
 const DEFAULT_PORT = Number(process.env.PORT ?? 4180);
 
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
@@ -45,7 +45,7 @@ function headersFor(pathname) {
   return out;
 }
 
-function createStaticServer(port) {
+function createStaticServer(port, root) {
   return createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
   let pathname = decodeURIComponent(url.pathname);
@@ -54,13 +54,13 @@ function createStaticServer(port) {
     return;
   }
 
-  let filePath = join(ROOT, pathname === '/' ? 'index.html' : pathname);
+  let filePath = join(root, pathname === '/' ? 'index.html' : pathname);
   try {
     const info = await stat(filePath);
     if (info.isDirectory()) filePath = join(filePath, 'index.html');
   } catch {
     // SPA fallback, same as Vercel's framework preset for Vite.
-    filePath = join(ROOT, 'index.html');
+    filePath = join(root, 'index.html');
     pathname = '/index.html';
   }
 
@@ -77,9 +77,13 @@ function createStaticServer(port) {
   });
 }
 
-/** Starts the server and resolves once it is accepting connections. */
-export function startServer(port = DEFAULT_PORT) {
-  const server = createStaticServer(Number(port));
+/**
+ * Starts the server and resolves once it is accepting connections.
+ * The root is a parameter rather than an environment read, because an importing
+ * module cannot set an env var before this module's top level has already run.
+ */
+export function startServer(port = DEFAULT_PORT, root = DEFAULT_ROOT) {
+  const server = createStaticServer(Number(port), root);
   return new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(Number(port), () => resolve(server));
@@ -89,5 +93,5 @@ export function startServer(port = DEFAULT_PORT) {
 // Only listen when run directly, so verify-deploy.mjs can import startServer.
 if (import.meta.url === `file://${process.argv[1]}`) {
   await startServer();
-  console.log(`serving ${ROOT} with vercel.json headers on :${DEFAULT_PORT}`);
+  console.log(`serving ${DEFAULT_ROOT} with vercel.json headers on :${DEFAULT_PORT}`);
 }
