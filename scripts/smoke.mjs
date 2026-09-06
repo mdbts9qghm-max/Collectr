@@ -104,6 +104,40 @@ if ((await page.locator('.list .check.checked').count()) === 0) {
 console.log('✓ session completed with one tap and persisted');
 await shot('05-session-done');
 
+// The training tab is the week planner: seven days must always be on screen,
+// and the recommendations must start collapsed.
+await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.plan-day');
+await page.waitForTimeout(400);
+const planDays = await page.locator('.plan-day').count();
+if (planDays !== 7) throw new Error(`week planner shows ${planDays} days, expected 7`);
+if ((await page.locator('.reco').count()) === 0) throw new Error('no recommendations rendered');
+if ((await page.locator('.reco-body').count()) !== 0) {
+  throw new Error('recommendations should start collapsed');
+}
+await page.locator('.reco').first().locator('button').first().click();
+await page.waitForTimeout(250);
+if ((await page.locator('.reco-body').count()) === 0) {
+  throw new Error('recommendation did not expand on tap');
+}
+console.log('✓ week planner shows 7 days with collapsed, expandable recommendations');
+
+// Planning into another day of the week must land on that day.
+const otherDay = page.locator('.plan-day').nth(2);
+await otherDay.click();
+await page.waitForTimeout(500);
+const addBefore = await page.locator('.plan-chip').count();
+const addButton = page.locator('.reco.top .reco-add');
+if (await addButton.count()) {
+  await addButton.click();
+  await page.waitForTimeout(600);
+  if ((await page.locator('.plan-chip').count()) <= addBefore) {
+    throw new Error('planning into the selected day did not appear in the week');
+  }
+  console.log('✓ planning into a selected day appears in the week plan');
+}
+await shot('06-week-planner');
+
 for (const [path, name] of [
   ['#/training', '05-training'],
   ['#/week', '06-week'],

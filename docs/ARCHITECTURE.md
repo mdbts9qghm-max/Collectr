@@ -126,9 +126,20 @@ ein Statusblock aus Readiness-Ring, Schlaf- und Wochenbalken, dann die handlungs
 Listen: heutiges Training, Habits zum Abhaken, fällige Aufgaben. Keine Verläufe, keine
 Scores, keine Vorschauen — was heute nicht handlungsrelevant ist, steht hier nicht.
 
-**Training** — Tagesnavigation, Schichtkapazität, geplante Einheiten, die Empfehlung mit
-Alternativen und einer aufklappbaren Liste der ausgeschlossenen Optionen samt Grund.
-Darunter Wochenumfang gegen Ziel, Verteilung nach Sportart und Intensität, Belastungsstatus.
+**Training** — der Wochenplaner. Die ganze Woche steht permanent oben: sieben Zeilen mit
+Schichtkürzel, geplanten und erledigten Einheiten als Chips und einem Balken, der zeigt,
+wie viel des Tagesfensters schon vergeben ist. Ein Tag ist ausgewählt; darunter stehen
+seine Schicht, seine Einheiten und die Vorschläge.
+
+Der Grund für die Wochenansicht: Wie viel ein Dienstag wert ist, ergibt sich erst neben dem
+freien Samstag. Eine Tagesansicht kann diese Frage nicht stellen.
+
+Vorschläge sind kompakte Zeilen und **starten eingeklappt** — Titel, Dauer, Zone und ein
+Plus zum Einplanen. Antippen zeigt die Begründung. Verteilung, Ausblick und Belastungsstatus
+liegen ebenfalls hinter Aufklappern, damit der Planer selbst der Inhalt bleibt.
+
+Tage ohne eingetragene Schicht zeigen keine erfundene Kapazität, sondern "Schicht eintragen";
+vergangene Tage ohne Einheit zeigen "nichts erfasst" statt freier Zeit.
 
 **Woche** — Sieben-Tage-Raster mit Schicht, Trainingspunkten und Auswahl; Tagesdetail;
 Balken der Tagesbelastung; automatisch generierter Wochenrückblick mit eigenem Notizfeld.

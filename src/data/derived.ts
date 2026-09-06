@@ -12,7 +12,7 @@ import type { AppData } from './store.ts';
 import type { DayContext } from '../domain/habits.ts';
 import type { MetricValue } from '../domain/metrics.ts';
 import { addDays, dateRange, lastNDays, startOfWeek, today as todayIso } from '../domain/date.ts';
-import { buildShiftContext } from '../domain/shifts.ts';
+import { adjustedTrainingMinutes, buildShiftContext } from '../domain/shifts.ts';
 import { computeReadiness } from '../domain/readiness.ts';
 import { weekTarget } from '../domain/phases.ts';
 import { recommendForDay } from '../domain/engine.ts';
@@ -223,6 +223,10 @@ export interface WeekDayCell {
   sessions: TrainingSession[];
   plannedMinutes: number;
   completedMinutes: number;
+  /** Training minutes the shift allows, after cross-day adjustments. */
+  capacityMinutes: number;
+  /** Capacity still unspent after what is already planned or done. */
+  freeMinutes: number;
   sleepHours: number | null;
   readinessScore: number | null;
   habitPct: number | null;
@@ -259,16 +263,22 @@ export function buildWeek(data: AppData, idx: Indexes, anyDate: ISODate): WeekDa
         ? computeReadiness(date, idx.checkIns, data.sessions, shift, data.settings.recovery).score
         : null;
 
+    const plannedMinutes = sessions
+      .filter((s) => s.status === 'planned')
+      .reduce((sum, s) => sum + effectiveDuration(s), 0);
+    const completedMinutes = sessions
+      .filter((s) => s.status === 'completed')
+      .reduce((sum, s) => sum + effectiveDuration(s), 0);
+    const capacityMinutes = adjustedTrainingMinutes(shift);
+
     return {
       date,
       shift: shift.type,
       sessions,
-      plannedMinutes: sessions
-        .filter((s) => s.status === 'planned')
-        .reduce((sum, s) => sum + effectiveDuration(s), 0),
-      completedMinutes: sessions
-        .filter((s) => s.status === 'completed')
-        .reduce((sum, s) => sum + effectiveDuration(s), 0),
+      plannedMinutes,
+      completedMinutes,
+      capacityMinutes,
+      freeMinutes: Math.max(0, capacityMinutes - plannedMinutes - completedMinutes),
       sleepHours: checkIn?.sleepHours ?? null,
       readinessScore: readiness,
       habitPct: habitTotal > 0 ? Math.round((habitDone / habitTotal) * 100) : null,
