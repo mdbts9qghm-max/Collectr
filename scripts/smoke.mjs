@@ -3,12 +3,12 @@
  * Walks every screen, logs a session, ticks a habit and creates a task,
  * failing on any console error or unhandled rejection.
  */
-import { chromium } from 'playwright';
+import { launchChromium } from './launch-browser.mjs';
 
 const BASE = process.env.SMOKE_URL ?? 'http://localhost:4173';
 const errors = [];
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page = await context.newPage();
 

@@ -10,11 +10,53 @@ Schichtdienst. Die App dokumentiert nicht nur, sie beantwortet jeden Tag eine Fr
 
 ```bash
 npm install
-npm run dev        # Entwicklungsserver
-npm run build      # Produktions-Build
-npm run preview    # Build lokal testen
-npm test           # Unit-Tests der Trainingslogik
+npm run dev            # Entwicklungsserver
+npm run build          # Produktions-Build
+npm run preview        # Build lokal testen
+npm test               # Unit-Tests der Trainingslogik
+npm run verify:deploy  # Produktions-Build gegen die echten Vercel-Header prüfen
 ```
+
+## Deployment auf Vercel
+
+Das Repo ist fertig konfiguriert (`vercel.json`) — Framework-Preset, Build-Befehl,
+Ausgabeverzeichnis, Cache- und Security-Header sind gesetzt. Es sind keine
+Umgebungsvariablen nötig, weil die App keinen Server und keine API-Schlüssel hat.
+
+1. Auf [vercel.com/new](https://vercel.com/new) das GitHub-Repo importieren.
+2. Branch `claude/hybrid-athlete-fitness-app-sgg4kk` auswählen (oder vorher in
+   `main` mergen).
+3. Alle Vorgaben bestätigen — Vercel erkennt Vite und liest `vercel.json`.
+4. **Deploy**.
+
+Alternativ per CLI:
+
+```bash
+npx vercel            # Vorschau-Deployment
+npx vercel --prod     # Produktion
+```
+
+### Vor dem Deploy lokal prüfen
+
+```bash
+npm run verify:deploy
+```
+
+Das baut die App, serviert sie mit **genau den Headern aus `vercel.json`** und prüft im
+Browser: Start unter der strengen Content-Security-Policy, erreichbares Manifest mit
+korrektem Content-Type, alle Icons, aktiver Service Worker, Funktion im Flugmodus und
+Deep-Links im Offline-Zustand. Dafür wird einmalig ein Browser gebraucht:
+`npx playwright install chromium`.
+
+### Wer kann darauf zugreifen?
+
+Ein Vercel-Deployment ist standardmäßig öffentlich erreichbar. Das ist hier weniger
+heikel als es klingt: Die App hat keinen Server und keine Datenbank — wer die URL
+aufruft, sieht eine leere App mit einer eigenen, lokalen Datenbank im eigenen Browser.
+Deine Trainingsdaten liegen ausschließlich auf deinem Gerät und werden nie übertragen.
+
+Wenn die URL trotzdem nicht auffindbar sein soll, aktiviere in den Vercel-Projekt­einstellungen
+unter *Deployment Protection* den Passwortschutz oder Vercel Authentication.
 
 ## Auf dem iPhone installieren
 
