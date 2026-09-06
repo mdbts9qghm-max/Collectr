@@ -1,0 +1,165 @@
+/* ============================================================
+   Design tokens
+   Dark is the primary theme; light is a fully specified peer.
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0a0b0d;
+  --bg-elevated: #101216;
+  --surface: #14171c;
+  --surface-2: #1a1e24;
+  --surface-3: #22272f;
+  --surface-hover: #1f242b;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --overlay: rgba(4, 5, 7, 0.72);
+
+  /* Text */
+  --text: #f2f4f7;
+  --text-secondary: #a8b0bd;
+  --text-muted: #6f7784;
+  --text-inverse: #0a0b0d;
+
+  /* Brand */
+  --accent: #d4ff3f;
+  --accent-strong: #c2f018;
+  --accent-soft: rgba(212, 255, 63, 0.12);
+  --accent-text: #d4ff3f;
+  --accent-ink: #0d1300;
+
+  /* Semantics */
+  --good: #35d99b;
+  --good-soft: rgba(53, 217, 155, 0.13);
+  --warn: #ffb648;
+  --warn-soft: rgba(255, 182, 72, 0.13);
+  --bad: #ff5f5f;
+  --bad-soft: rgba(255, 95, 95, 0.13);
+  --info: #55a6ff;
+  --info-soft: rgba(85, 166, 255, 0.13);
+
+  /* Sports */
+  --sport-run: #ff7a45;
+  --sport-bike: #55a6ff;
+  --sport-swim: #22d3ee;
+  --sport-strength: #a78bfa;
+  --sport-mobility: #35d99b;
+  --sport-recovery: #8b929e;
+  --sport-hike: #eab308;
+  --sport-other: #f472b6;
+
+  /* Intensity zones */
+  --zone-1: #64748b;
+  --zone-2: #35d99b;
+  --zone-3: #ffb648;
+  --zone-4: #ff7a45;
+  --zone-5: #ff5f5f;
+
+  /* Shift palette (defaults; each shift type stores its own) */
+  --shift-day: #55a6ff;
+  --shift-night: #a78bfa;
+  --shift-sleep: #6f7784;
+  --shift-off: #35d99b;
+  --shift-v: #22d3ee;
+
+  /* Radii */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  /* Spacing scale */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s7: 32px;
+  --s8: 40px;
+  --s9: 56px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* Type */
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  --t-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-spring: 380ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Layout */
+  --nav-height: 60px;
+  --header-height: 56px;
+  --content-max: 720px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f4f6f8;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --surface-3: #e4e8ed;
+  --surface-hover: #eaedf1;
+  --border: rgba(11, 18, 30, 0.09);
+  --border-strong: rgba(11, 18, 30, 0.18);
+  --overlay: rgba(20, 25, 33, 0.45);
+
+  --text: #0f1319;
+  --text-secondary: #4a535f;
+  --text-muted: #79828f;
+  --text-inverse: #ffffff;
+
+  --accent: #a6d900;
+  --accent-strong: #8fbe00;
+  --accent-soft: rgba(120, 158, 0, 0.14);
+  --accent-text: #55700a;
+  --accent-ink: #14200a;
+
+  --good: #12a870;
+  --good-soft: rgba(18, 168, 112, 0.12);
+  --warn: #c97a08;
+  --warn-soft: rgba(201, 122, 8, 0.13);
+  --bad: #d93a3a;
+  --bad-soft: rgba(217, 58, 58, 0.11);
+  --info: #1b74d8;
+  --info-soft: rgba(27, 116, 216, 0.11);
+
+  --sport-run: #e2570f;
+  --sport-bike: #1b74d8;
+  --sport-swim: #0891b2;
+  --sport-strength: #7c4ddb;
+  --sport-mobility: #12a870;
+  --sport-recovery: #6b7481;
+  --sport-hike: #b07d05;
+  --sport-other: #db2777;
+
+  --zone-1: #64748b;
+  --zone-2: #12a870;
+  --zone-3: #c97a08;
+  --zone-4: #e2570f;
+  --zone-5: #d93a3a;
+
+  --shift-day: #1b74d8;
+  --shift-night: #7c4ddb;
+  --shift-sleep: #6b7481;
+  --shift-off: #12a870;
+  --shift-v: #0891b2;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.07);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.14);
+}
