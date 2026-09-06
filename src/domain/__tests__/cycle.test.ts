@@ -32,6 +32,7 @@ interface PlanOptions {
   keyRotationIndex?: number;
   completed?: Record<ISODate, number>;
   checkIns?: DailyCheckIn[];
+  today?: ISODate;
 }
 
 function plan(options: PlanOptions = {}) {
@@ -52,6 +53,7 @@ function plan(options: PlanOptions = {}) {
     checkIns: new Map((options.checkIns ?? []).map((c) => [c.date, c])),
     settings: DEFAULT_PLANNER_SETTINGS,
     keyRotationIndex: options.keyRotationIndex ?? 0,
+    today: options.today,
   });
 }
 
@@ -232,5 +234,39 @@ describe('harte Regeln', () => {
     expect(units.length).toBe(1);
     expect(units[0].kind).not.toBe('intense_run');
     expect(units[0].downgradedFrom).toBe('intense_run');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Progression is measured on what was trained, not on a projection
+ * ------------------------------------------------------------------ */
+
+describe('Steigerungsregel', () => {
+  it('rotiert die Schlüsseleinheit über mehrere Zyklen', () => {
+    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 10, today: START });
+    const keyDays = [addDays(START, 3), addDays(START, 8)];
+    const kinds = keyDays.map((d) => unitsOn(p, d).map((u) => u.downgradedFrom ?? u.kind));
+    // The second cycle must not repeat the first cycle's key session.
+    expect(kinds[0][0]).not.toBe(kinds[1][0]);
+  });
+
+  it('drosselt einen künftigen Zyklus nicht wegen des davor geplanten', () => {
+    // With `today` at the start of the horizon every previous window lies in the
+    // future, where it is the planner's own projection. Throttling against it
+    // would ratchet the plan down instead of progressing it.
+    const p = plan({
+      keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE],
+      days: 15,
+      today: START,
+    });
+    const load = (cycle: number) =>
+      p.days
+        .filter((d) => d.shape.date >= addDays(START, cycle * 5) && d.shape.date < addDays(START, (cycle + 1) * 5))
+        .reduce((sum, d) => sum + d.load, 0);
+
+    expect(p.violations).toHaveLength(0);
+    // No cycle collapses to a fraction of the first one.
+    expect(load(1)).toBeGreaterThan(load(0) * 0.6);
+    expect(load(2)).toBeGreaterThan(load(0) * 0.6);
   });
 });

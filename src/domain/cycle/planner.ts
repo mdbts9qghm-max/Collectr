@@ -37,6 +37,12 @@ export interface PlanInput {
    * so all three get their turn.
    */
   keyRotationIndex: number;
+  /**
+   * The current date, when the caller knows it. Progression is measured against
+   * what was actually trained, so the growth rule only applies where the
+   * previous window lies in the past.
+   */
+  today?: ISODate;
 }
 
 const KEY_ROTATION: SessionKind[] = ['intense_run', 'long_run', 'heavy_strength'];
@@ -67,9 +73,23 @@ export function planCycle(input: PlanInput): CyclePlan {
   const loadByDate = new Map(input.completedLoadByDate);
   const warnings: string[] = [];
 
+  /*
+   * The 110 % growth rule needs a previous window worth comparing against.
+   *
+   * Two ways it can be worthless. It can reach back past the data, where the
+   * missing days read as zero and every plan looks like a jump. And it can lie
+   * in the future, where it is the planner's own projection — throttling a
+   * cycle because the projection before it came out light is a ratchet, not
+   * progression. Progression is measured on what was trained, so the rule only
+   * applies once the whole previous window is in the past.
+   */
   const horizonStart = shapes[0]?.date ?? '1970-01-01';
-  const previousWindowKnown = (date: ISODate) =>
-    addDays(date, -13) >= horizonStart || input.completedLoadByDate.has(addDays(date, -13));
+  const previousWindowKnown = (date: ISODate) => {
+    const oldest = addDays(date, -13);
+    const newest = addDays(date, -7);
+    if (input.today && newest > input.today) return false;
+    return oldest >= horizonStart || input.completedLoadByDate.has(oldest);
+  };
 
   const ctxFor = (shape: DayShape, excluding: PlannedUnit[] = []): PlacementContext => ({
     shape,
@@ -240,6 +260,7 @@ export function planCycle(input: PlanInput): CyclePlan {
 
   return {
     days,
+    settings,
     window: {
       from: addDays(anchor, -6),
       to: anchor,

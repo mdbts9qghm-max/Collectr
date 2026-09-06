@@ -58,7 +58,17 @@ src/
 │   ├── metrics.ts           Kennzahlen aus Rohdaten, PR-Erkennung
 │   ├── review.ts            Wochenrückblick mit generierter Bewertung
 │   ├── insights.ts          Inhalte für Benachrichtigungen und Briefing
-│   └── coach.ts             regelbasierte Antworten auf eigene Daten
+│   ├── coach.ts             regelbasierte Antworten auf eigene Daten
+│   └── cycle/               Zyklusplaner: plant den 5-Tage-Rhythmus statt der Woche
+│       ├── types.ts             Zyklustage, Fenster, Tagesform, Planereinstellungen
+│       ├── catalogue.ts         sieben Einheiten mit Last, Mindesterholung, Abstufung
+│       ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag
+│       ├── detect.ts            Zyklusposition aus den eingetragenen Schichten
+│       ├── recovery.ts          Erholungswert 0–100 samt Begründungen
+│       ├── rules.ts             die zwölf harten Regeln, rollierendes 7-Tage-Fenster
+│       ├── planner.ts           Platzierung, Reparaturlauf, Zielfunktion, lokale Suche
+│       ├── adjust.ts            Auf-/Abstufung bei abweichendem Befinden
+│       └── toSession.ts         Übersetzung einer geplanten Einheit in eine Session
 ├── data/            Persistenz und abgeleiteter Zustand
 │   ├── db.ts                IndexedDB-Wrapper
 │   ├── defaults.ts          Startkonfiguration aus dem Athletenprofil

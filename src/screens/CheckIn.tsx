@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import type { DailyCheckIn, ISODate, TrainingSession } from '../domain/types.ts';
 import { addDays, nowTimestamp } from '../domain/date.ts';
 import { formatDateLong, formatDuration, SPORT_META, weekdayLong, weekdayShort } from '../domain/format.ts';
-import { INTENSITY_META } from '../domain/format.ts';
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
 import { shiftSleepMinutes } from '../domain/shifts.ts';
+import { CATALOGUE } from '../domain/cycle/catalogue.ts';
+import { RECOVERY_BAND_META } from '../domain/cycle/recovery.ts';
+import { formatClock } from '../domain/cycle/windows.ts';
+import { suggestAdjustment, wellbeingBaseline } from '../domain/cycle/adjust.ts';
+import { sessionFromUnit, shapeOf } from '../domain/cycle/toSession.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
-import { useDayView, useToday } from '../app/hooks.ts';
+import { useCyclePlan, useDayView, useToday } from '../app/hooks.ts';
 import { Button, Card, Pill, ReasonList, TextInput } from '../ui/primitives.tsx';
 import { Ring } from '../ui/charts.tsx';
 import { IconChevronLeft, IconCheck, IconPlus } from '../ui/icons.tsx';
@@ -174,6 +178,24 @@ export function CheckIn() {
         {step === 'body' && (
           <>
             <h1 className="checkin-question">Wie fühlst du dich?</h1>
+            {/*
+              The overall number comes first: it is the one answer the cycle
+              planner acts on, and the only one worth having if the rest is
+              skipped. The four ratings below feed readiness.
+            */}
+            <Rate
+              label="Befinden gesamt"
+              value={draft.wellbeing}
+              onChange={(v) => patch({ wellbeing: v })}
+              low="mies"
+              high="top"
+              max={10}
+            />
+            <p className="t-caption muted">
+              Sieben ist dein Normalwert. Jeder Punkt darüber oder darunter verschiebt den
+              Erholungswert um fünf.
+            </p>
+            <div className="divider" />
             <Rate
               label="Müdigkeit"
               value={draft.fatigue}
@@ -247,7 +269,9 @@ export function CheckIn() {
           </>
         )}
 
-        {step === 'result' && <Result view={view} onPlan={saveSession} onDone={finish} today={today} />}
+        {step === 'result' && (
+          <Result view={view} draft={draft} onPlan={saveSession} onDone={finish} today={today} />
+        )}
       </div>
 
       <div className="checkin-foot">
@@ -280,18 +304,21 @@ function Rate({
   onChange,
   low,
   high,
+  max = 5,
 }: {
   label: string;
   value: number | undefined;
   onChange: (v: number) => void;
   low: string;
   high: string;
+  /** Highest step. Ten wraps onto two rows so the buttons stay tappable. */
+  max?: number;
 }) {
   return (
     <div className="rate">
       <div className="t-heading">{label}</div>
-      <div className="rate-row" role="group" aria-label={label}>
-        {[1, 2, 3, 4, 5].map((n) => (
+      <div className={`rate-row ${max > 5 ? 'wide' : ''}`} role="group" aria-label={label}>
+        {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
           <button
             key={n}
             type="button"
@@ -404,44 +431,63 @@ function UpcomingShifts({ today }: { today: ISODate }) {
 
 function Result({
   view,
+  draft,
   onPlan,
   onDone,
   today,
 }: {
   view: ReturnType<typeof useDayView>;
+  draft: DailyCheckIn;
   onPlan: (s: TrainingSession) => unknown;
   onDone: () => void;
   today: ISODate;
 }) {
   const toast = useStore((s) => s.toast);
+  const checkIns = useStore((s) => s.checkIns);
   const [planned, setPlanned] = useState(false);
-  const top = view.recommendation.recommended[0];
   const meta = READINESS_LEVEL_META[view.readiness.level];
 
+  // One cycle is enough here: the check-in only ever asks about today.
+  const cycle = useCyclePlan(today, 1);
+  const day = cycle.days.find((d) => d.shape.date === today) ?? null;
+  const unit = day?.units[0] ?? null;
+
+  // The draft holds what was just tapped in, which may not be saved yet, so the
+  // suggestion reacts to the answer rather than to the previous state.
+  const baseline = useMemo(
+    () => wellbeingBaseline(new Map(Object.entries(checkIns)), today),
+    [checkIns, today],
+  );
+  const adjustment = suggestAdjustment(unit, draft.wellbeing, baseline, day?.recovery.value);
+
+  // Null until the athlete answers: neither button is pre-selected, because the
+  // app proposes the change but does not decide it.
+  const [accepted, setAccepted] = useState<boolean | null>(null);
+  const shownKind = accepted === true && adjustment ? adjustment.to : unit?.kind;
+  const spec = shownKind ? CATALOGUE[shownKind] : null;
+
   const plan = () => {
-    if (!top || top.template.isRest) {
+    if (!unit || !shownKind) {
       onDone();
       return;
     }
-    onPlan({
-      id: makeId('ses'),
-      date: today,
-      sport: top.template.sport,
-      title: top.template.title,
-      status: 'planned',
-      plannedIntensity: top.template.intensity,
-      plannedDurationMin: top.template.durationMin,
-      plannedDistanceKm: top.template.distanceKm,
-      startTime: top.suggestedStart,
-      goal: top.template.goal,
-      muscleGroups: top.template.muscleGroups,
-      fromRecommendationId: top.id,
-      source: 'manual',
-      createdAt: nowTimestamp(),
-      updatedAt: nowTimestamp(),
-    });
+    // The adjusted session keeps the slot the planner found; only the kind and
+    // its duration change, so the day's windows still hold.
+    const target = CATALOGUE[shownKind];
+    const stamp = nowTimestamp();
+    onPlan(
+      sessionFromUnit(
+        {
+          ...unit,
+          kind: shownKind,
+          load: target.load,
+          durationMinutes: Math.min(unit.durationMinutes, target.maxMinutes),
+        },
+        { id: makeId('ses'), createdAt: stamp, updatedAt: stamp },
+      ),
+    );
     setPlanned(true);
-    toast(`${top.template.title} eingeplant`, 'good');
+    toast(`${target.label} eingeplant`, 'good');
   };
 
   return (
@@ -469,33 +515,74 @@ function Result({
         <div className="t-small muted mt-2">{meta.description}</div>
       </div>
 
-      {top && (
+      {day && (
         <Card hero accentEdge>
-          <div className="t-label">Dein Training heute</div>
-          <div className="row gap-3 mt-3">
-            <span style={{ fontSize: 28, lineHeight: 1 }}>{SPORT_META[top.template.sport].icon}</span>
-            <div className="grow">
-              <div className="t-title">{top.template.title}</div>
-              <div className="t-small secondary mt-2">
-                {top.template.isRest
-                  ? 'Kein Training — bewusst.'
-                  : [
-                      formatDuration(top.template.durationMin),
-                      top.template.distanceKm ? `≈ ${top.template.distanceKm.toFixed(1)} km` : null,
-                      INTENSITY_META[top.template.intensity].zone,
-                      top.suggestedStart ? `ab ${top.suggestedStart}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-              </div>
-            </div>
+          <div className="row between">
+            <div className="t-label">Dein Training heute</div>
+            <Pill tone={day.recovery.band === 'green' ? 'good' : day.recovery.band === 'amber' ? 'warn' : 'bad'}>
+              Erholung {day.recovery.value}
+            </Pill>
           </div>
 
-          <div className="divider mt-4" />
-          <div className="t-label mb-3">Warum</div>
-          <ReasonList reasons={top.reasons.slice(0, 3)} />
+          {spec ? (
+            <>
+              <div className="row gap-3 mt-3">
+                <span style={{ fontSize: 28, lineHeight: 1 }}>
+                  {SPORT_META[shapeOf(spec.kind).sport].icon}
+                </span>
+                <div className="grow">
+                  <div className="t-title">{spec.label}</div>
+                  <div className="t-small secondary mt-2">
+                    {[
+                      formatDuration(Math.min(unit!.durationMinutes, spec.maxMinutes)),
+                      spec.description,
+                      `ab ${formatClock(unit!.start)}`,
+                    ].join(' · ')}
+                  </div>
+                </div>
+              </div>
 
-          {!top.template.isRest && (
+              <div className="divider mt-4" />
+              <div className="t-label mb-3">Warum</div>
+              <ReasonList
+                reasons={unit!.reasons.slice(0, 3).map((text) => ({ text, impact: 'neutral' as const }))}
+              />
+            </>
+          ) : (
+            <div className="t-small secondary mt-3">
+              Heute steht keine Einheit an. {RECOVERY_BAND_META[day.recovery.band].advice}
+            </div>
+          )}
+
+          {adjustment && !planned && (
+            <div className={`callout mt-4 ${adjustment.direction === 'down' ? 'warn' : 'good'}`}>
+              <div className="t-heading">
+                {adjustment.direction === 'down' ? 'Abstufen?' : 'Aufstufen?'}
+              </div>
+              <div className="t-small secondary mt-2">
+                {adjustment.reason} Vorschlag: {CATALOGUE[adjustment.from].label} →{' '}
+                {CATALOGUE[adjustment.to].label}.
+              </div>
+              <div className="row gap-2 mt-3">
+                <Button
+                  variant={accepted === true ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setAccepted(true)}
+                >
+                  Übernehmen
+                </Button>
+                <Button
+                  variant={accepted === false ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setAccepted(false)}
+                >
+                  Beim Plan bleiben
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {spec && (
             <Button
               variant={planned ? 'outline' : 'primary'}
               block

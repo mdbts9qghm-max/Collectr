@@ -8,6 +8,7 @@ import {
   buildMetrics,
   buildScore,
   buildWeek,
+  buildCyclePlan,
   makeDayContextFn,
 } from '../data/derived.ts';
 import { today as todayIso } from '../domain/date.ts';
@@ -51,6 +52,13 @@ export function useWeek(anchor: ISODate) {
   const data = useData();
   const idx = useIndexes();
   return useMemo(() => buildWeek(data, idx, anchor), [data, idx, anchor]);
+}
+
+/** The cycle plan around a date: the current rotation plus the next two. */
+export function useCyclePlan(anchor: ISODate, cycles = 3) {
+  const data = useData();
+  const idx = useIndexes();
+  return useMemo(() => buildCyclePlan(data, idx, anchor, cycles), [data, idx, anchor, cycles]);
 }
 
 export function useMetrics(date: ISODate) {

@@ -21,7 +21,10 @@ import { learnPreferences } from '../domain/personalization.ts';
 import { currentMetrics } from '../domain/metrics.ts';
 import { computeHybridScore } from '../domain/score.ts';
 import { overallCompletion } from '../domain/habits.ts';
-import { effectiveDuration, loadStateOn, periodStats, weekStats } from '../domain/load.ts';
+import { effectiveDuration, loadStateOn, periodStats, sessionLoad, weekStats } from '../domain/load.ts';
+import { buildDayShapes, detectCycle } from '../domain/cycle/detect.ts';
+import { planCycle } from '../domain/cycle/planner.ts';
+import { cycleLoadFromSrpe } from '../domain/cycle/catalogue.ts';
 
 /** Indexes built once per render pass and shared by every derived computation. */
 export interface Indexes {
@@ -302,3 +305,64 @@ export function weeklySeries(data: AppData, endDate: ISODate, weeks: number) {
   }
   return out;
 }
+
+/* ------------------------------------------------------------------ *
+ * Cycle planner
+ * ------------------------------------------------------------------ */
+
+/**
+ * Everything the cycle planner needs, assembled from data the athlete already
+ * enters: the shift roster gives the cycle position and therefore the sleep and
+ * training windows, completed sessions give the load, and the morning check-in
+ * gives sleep and wellbeing. Nothing extra has to be logged for this to work.
+ */
+export function buildCyclePlan(data: AppData, idx: Indexes, anyDate: ISODate, cycles = 3) {
+  const settings = data.settings.planner;
+
+  // Walk back to the start of the cycle the date sits in, so the view always
+  // opens on a whole cycle rather than mid-rotation.
+  const probe = detectCycle(addDays(anyDate, -8), anyDate, idx.shiftAssignments, idx.shiftTypes);
+  let start = anyDate;
+  for (let i = probe.length - 1; i >= 0; i--) {
+    if (probe[i].cycleDay === 1) {
+      start = probe[i].date;
+      break;
+    }
+    if (probe[i].date <= addDays(anyDate, -6)) break;
+  }
+  const end = addDays(start, cycles * 5 - 1);
+
+  // One day past the end, because a day's sleep window depends on whether a day
+  // shift follows it.
+  const detected = detectCycle(start, addDays(end, 1), idx.shiftAssignments, idx.shiftTypes);
+  const byDate = new Map(detected.map((d) => [d.date, d]));
+  const shapes = buildDayShapes(
+    detected.filter((d) => d.date <= end),
+    settings,
+    (date) => byDate.get(addDays(date, 1)),
+  );
+
+  // The key session rotates per cycle. Counting the day shifts already behind
+  // us keeps the rotation continuous across app restarts without storing it.
+  const history = detectCycle(addDays(start, -60), addDays(start, -1), idx.shiftAssignments, idx.shiftTypes);
+  const keyRotationIndex = history.filter((d) => d.cycleDay === 1).length;
+
+  const completedLoadByDate = new Map<ISODate, number>();
+  for (const session of data.sessions) {
+    if (session.status !== 'completed') continue;
+    const load = cycleLoadFromSrpe(sessionLoad(session));
+    if (load <= 0) continue;
+    completedLoadByDate.set(session.date, (completedLoadByDate.get(session.date) ?? 0) + load);
+  }
+
+  return planCycle({
+    shapes,
+    completedLoadByDate,
+    checkIns: idx.checkIns,
+    settings,
+    keyRotationIndex,
+    today: todayIso(),
+  });
+}
+
+export type CyclePlanView = ReturnType<typeof buildCyclePlan>;

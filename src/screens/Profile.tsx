@@ -3,6 +3,7 @@ import type { ShiftType, TrainingPhase } from '../domain/types.ts';
 import { INTENSITIES } from '../domain/types.ts';
 import { INTENSITY_META, formatDuration, formatPace } from '../domain/format.ts';
 import { PHASE_META } from '../domain/phases.ts';
+import { clockToMinutes, minutesToClock } from '../domain/date.ts';
 import { storageEstimate } from '../data/db.ts';
 import {
   backupFilename,
@@ -55,6 +56,8 @@ export function Profile() {
 
   const { settings } = data;
   const set = updateSettings;
+  const setPlanner = (patch: Partial<typeof settings.planner>) =>
+    set({ planner: { ...settings.planner, ...patch } });
   const activePlan = data.plans.find((p) => p.active) ?? data.plans[0] ?? null;
 
   const handleImport = async (file: File) => {
@@ -331,6 +334,71 @@ export function Profile() {
             />
           </Field>
         </div>
+      </Card>
+
+      {/* ---------- Cycle planner ---------- */}
+      <SectionTitle
+        title="Zyklusplaner"
+        subtitle="Der Planer leitet alles aus Schichten, Schlaf und Befinden ab. Hier stehen nur die Werte, die er nicht wissen kann."
+      />
+      <Card>
+        <div className="grid-2">
+          <Field label="Aufstehen Tagschicht" hint="Bestimmt das Zeitfenster am Tagschichttag.">
+            <TextInput
+              type="time"
+              value={minutesToClock(settings.planner.dayShiftWakeMinutes)}
+              onChange={(e) => {
+                const minutes = clockToMinutes(e.target.value);
+                if (Number.isFinite(minutes)) setPlanner({ dayShiftWakeMinutes: minutes });
+              }}
+            />
+          </Field>
+          <Field label="V-Schicht-Fenster" hint="Vor der Schicht oder danach.">
+            <Select
+              value={settings.planner.vShiftWindow}
+              options={[
+                { value: 'morning', label: 'morgens' },
+                { value: 'evening', label: 'abends' },
+              ]}
+              onChange={(e) => setPlanner({ vShiftWindow: e.target.value as 'morning' | 'evening' })}
+            />
+          </Field>
+        </div>
+        <div className="grid-2 mt-4">
+          <Field
+            label="Lastobergrenze"
+            hint="Punkte im rollierenden 7-Tage-Fenster. Ein normaler Zyklus liegt bei rund 345."
+          >
+            <TextInput
+              type="number"
+              inputMode="numeric"
+              step="10"
+              value={settings.planner.weeklyLoadCap}
+              onChange={(e) => setPlanner({ weeklyLoadCap: Number(e.target.value) || 0 })}
+            />
+          </Field>
+          <Field label="Einheiten pro Woche" hint="Sollwert im rollierenden Fenster.">
+            <TextInput
+              type="number"
+              inputMode="numeric"
+              value={settings.planner.targetUnits}
+              onChange={(e) => setPlanner({ targetUnits: Number(e.target.value) || 0 })}
+            />
+          </Field>
+        </div>
+        <SettingRow
+          label="Steigerung pro Fenster"
+          hint="Wie viel mehr Last ein Fenster gegenüber dem vorigen tragen darf."
+        >
+          <TextInput
+            type="number"
+            inputMode="decimal"
+            step="0.05"
+            style={{ width: 92 }}
+            value={settings.planner.maxWindowGrowth}
+            onChange={(e) => setPlanner({ maxWindowGrowth: Number(e.target.value) || 1 })}
+          />
+        </SettingRow>
       </Card>
 
       {/* ---------- Shifts ---------- */}

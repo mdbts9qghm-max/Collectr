@@ -8,8 +8,9 @@ import type {
 } from '../domain/types.ts';
 import { addDays, nowTimestamp, today } from '../domain/date.ts';
 import { makeId } from '../domain/ids.ts';
+import { DEFAULT_PLANNER_SETTINGS } from '../domain/cycle/types.ts';
 
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 
 /**
  * Shift templates modelled on the user's rotation. Every field here is editable
@@ -195,7 +196,30 @@ export function defaultSettings(): AppSettings {
     locale: 'de',
     units: 'metric',
     shiftRotation: ['shift_day', 'shift_day', 'shift_night', 'shift_sleep_day', 'shift_off', 'shift_off'],
+    planner: { ...DEFAULT_PLANNER_SETTINGS },
     updatedAt: nowTimestamp(),
+  };
+}
+
+/**
+ * Fills in sections a stored settings record predates.
+ *
+ * Settings are saved as one document, so an install from before a new section
+ * existed would read it back as undefined and crash on first access. Merging
+ * against the defaults keeps every value the user has actually set and adds
+ * only what is missing — no data migration, no reset.
+ */
+export function migrateSettings(stored: AppSettings): AppSettings {
+  const base = defaultSettings();
+  return {
+    ...base,
+    ...stored,
+    profile: { ...base.profile, ...stored.profile },
+    training: { ...base.training, ...stored.training },
+    recovery: { ...base.recovery, ...stored.recovery },
+    notifications: { ...base.notifications, ...stored.notifications },
+    planner: { ...base.planner, ...stored.planner },
+    version: SETTINGS_VERSION,
   };
 }
 

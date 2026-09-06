@@ -25,6 +25,7 @@ import {
   defaultGoals,
   defaultHabits,
   defaultSettings,
+  migrateSettings,
   defaultShiftTypes,
   defaultTrainingPlan,
 } from './defaults.ts';
@@ -187,7 +188,7 @@ export const useStore = create<AppStore>()((set, get) => {
         const seededExercises = exercises.length ? exercises : defaultExercises();
         const seededGoals = goals.length || !firstRun ? goals : defaultGoals();
         const seededPlans = plans.length ? plans : [defaultTrainingPlan()];
-        const resolvedSettings = settings ?? defaultSettings();
+        const resolvedSettings = settings ? migrateSettings(settings) : defaultSettings();
 
         if (firstRun) {
           await Promise.all([

@@ -113,3 +113,29 @@ export function baseReasonFor(shape: DayShape): string {
   if (shape.cycleDay == null) return OUT_OF_ROTATION_BASE.why;
   return BASE_BY_CYCLE_DAY[shape.cycleDay].why;
 }
+
+/**
+ * How a recovery value reads on screen. The thresholds are the same ones
+ * `computeRecovery` bands on, kept in one place so the colour and the number
+ * can never disagree.
+ */
+export const RECOVERY_BAND_META: Record<
+  RecoveryValue['band'],
+  { label: string; color: string; advice: string }
+> = {
+  red: {
+    label: 'wenig erholt',
+    color: 'var(--bad)',
+    advice: 'Nur leichte Einheiten. Harte Reize kosten heute mehr, als sie bringen.',
+  },
+  amber: {
+    label: 'teilweise erholt',
+    color: 'var(--warn)',
+    advice: 'Mittlere Belastung geht. Alles Intensive besser auf den nächsten Tag.',
+  },
+  green: {
+    label: 'gut erholt',
+    color: 'var(--good)',
+    advice: 'Der Tag trägt die harte Einheit des Zyklus.',
+  },
+};

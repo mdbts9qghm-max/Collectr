@@ -7,6 +7,8 @@
  * importer can be added without a data migration.
  */
 
+import type { PlannerSettings } from './cycle/types.ts';
+
 /** 'YYYY-MM-DD' in local time. The primary key for everything day-shaped. */
 export type ISODate = string;
 /** Full ISO 8601 timestamp. */
@@ -497,6 +499,8 @@ export interface AppSettings {
   profile: UserProfile;
   training: TrainingSettings;
   recovery: RecoverySettings;
+  /** Tuning for the cycle planner. Type-only import, so no runtime cycle. */
+  planner: PlannerSettings;
   notifications: NotificationSettings;
   theme: 'dark' | 'light' | 'system';
   weekStartsOn: 0 | 1;

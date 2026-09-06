@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Recommendation, TrainingSession } from '../domain/types.ts';
+import type { PlannedUnit } from '../domain/cycle/types.ts';
+import { CATALOGUE } from '../domain/cycle/catalogue.ts';
 import type { WeekDayCell } from '../data/derived.ts';
 import { addDays, isoWeekNumber, nowTimestamp, startOfWeek } from '../domain/date.ts';
 import {
@@ -14,7 +16,7 @@ import {
 import { PHASE_META } from '../domain/phases.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
-import { useData, useDayView, useToday, useWeek } from '../app/hooks.ts';
+import { useCyclePlan, useData, useDayView, useToday, useWeek } from '../app/hooks.ts';
 import {
   Button,
   Card,
@@ -22,6 +24,7 @@ import {
   Pill,
   ReasonList,
   SectionTitle,
+  Segmented,
 } from '../ui/primitives.tsx';
 import { DistributionBar } from '../ui/charts.tsx';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '../ui/icons.tsx';
@@ -29,6 +32,8 @@ import { SessionSheet, emptySession } from '../ui/SessionSheet.tsx';
 import { SessionRow } from '../ui/SessionRow.tsx';
 import { ShiftSheet } from '../ui/ShiftSheet.tsx';
 import { OutlookCard } from '../ui/OutlookCard.tsx';
+import { CycleView } from '../ui/CycleView.tsx';
+import { sessionFromUnit } from '../domain/cycle/toSession.ts';
 
 /**
  * The week planner.
@@ -49,6 +54,17 @@ export function Training() {
 
   const [editing, setEditing] = useState<TrainingSession | null>(null);
   const [shiftDate, setShiftDate] = useState<string | null>(null);
+  // 'cycle' is the shift rotation the planner works in, 'week' the calendar the
+  // rest of the world runs on. Both are real; neither replaces the other.
+  const [mode, setMode] = useState<'cycle' | 'week'>('cycle');
+  const cyclePlan = useCyclePlan(selected, 3);
+
+  /** Turns a planned unit into a real session the athlete can log against. */
+  const takeUnit = (unit: PlannedUnit) => {
+    const stamp = nowTimestamp();
+    saveSession(sessionFromUnit(unit, { id: makeId('ses'), createdAt: stamp, updatedAt: stamp }));
+    toast(`${CATALOGUE[unit.kind].label} eingeplant`, 'good');
+  };
 
   const weekStart = startOfWeek(selected, data.settings.weekStartsOn);
   const target = view.target;
@@ -117,7 +133,28 @@ export function Training() {
         </Button>
       </div>
 
+      <Segmented
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'cycle', label: 'Zyklus' },
+          { value: 'week', label: 'Woche' },
+        ]}
+      />
+
+      {/* ---------- The cycle, which is what the planner reasons in ---------- */}
+      {mode === 'cycle' && (
+        <CycleView
+          plan={cyclePlan}
+          today={today}
+          selected={selected}
+          onSelect={setSelected}
+          onPlan={takeUnit}
+        />
+      )}
+
       {/* ---------- The week as a calendar ---------- */}
+      {mode === 'week' && (
       <Card tight>
         <div className="cal-week">
           {week.map((day) => (
@@ -168,6 +205,7 @@ export function Training() {
           </span>
         </div>
       </Card>
+      )}
 
       {/* ---------- Selected day ---------- */}
       <SectionTitle
@@ -237,7 +275,15 @@ export function Training() {
         )}
       </Card>
 
-      {/* ---------- Recommendations, compact ---------- */}
+      {/*
+        ---------- Recommendations, compact ----------
+        The day engine and the cycle planner answer the same question in two
+        different ways, and showing both at once would just be two apps arguing.
+        The cycle view is the plan; these stay with the week, where they are the
+        way to fill a single day that the rotation does not cover.
+      */}
+      {mode === 'week' && (
+        <>
       {view.recommendation.planReview && view.recommendation.planReview.verdict !== 'aligned' && (
         <Card tight style={{ background: 'var(--warn-soft)', borderColor: 'transparent' }}>
           <div className="row gap-3 row-top">
@@ -300,6 +346,9 @@ export function Training() {
             </div>
           </Disclosure>
         </Card>
+      )}
+
+        </>
       )}
 
       {/* ---------- Week detail, folded away ---------- */}

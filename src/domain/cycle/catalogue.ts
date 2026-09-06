@@ -141,3 +141,23 @@ export const WINDOW_TARGET: { kind: SessionKind; count: number }[] = [
 export function isFullBodyStrength(kind: SessionKind): boolean {
   return kind === 'heavy_strength' || kind === 'moderate_strength';
 }
+
+/**
+ * The catalogue's load figures and the sRPE model in load.ts measure the same
+ * thing on two scales. Comparing them on the sessions the catalogue itself
+ * describes fixes the ratio:
+ *
+ *   45 min easy run      25 vs. 35 sRPE   0.71
+ *   60 min intense run   80 vs. 120       0.67
+ *   90 min long run      60 vs.  70       0.86
+ *   60 min heavy lifting 70 vs. 100       0.70
+ *
+ * One constant of 0.7 is close enough for every one of them, and a single
+ * number is worth more here than a per-sport table nobody can check.
+ */
+export const SRPE_TO_CYCLE_LOAD = 0.7;
+
+/** Converts a completed session's sRPE load onto the catalogue's scale. */
+export function cycleLoadFromSrpe(srpeLoad: number): number {
+  return Math.round(srpeLoad * SRPE_TO_CYCLE_LOAD);
+}

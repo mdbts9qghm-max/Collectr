@@ -1008,6 +1008,11 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
+/* Ten steps still fit five to a row, so the buttons keep their tap size. */
+.rate-row.wide {
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: 1fr;
+}
 .rate-btn {
   padding: 14px 0;
   border-radius: var(--r-md);
@@ -1227,4 +1232,98 @@
 }
 .reco-body {
   padding: 0 var(--s3) var(--s3) 42px;
+}
+
+/*
+ * A bordered note inside a card: used where the app proposes a change and needs
+ * the athlete to decide. The left edge carries the tone so the meaning survives
+ * a glance without reading the heading.
+ */
+.callout {
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border-left: 3px solid var(--text-muted);
+}
+.callout.good { border-left-color: var(--good); }
+.callout.warn { border-left-color: var(--warn); }
+.callout.bad { border-left-color: var(--bad); }
+
+/* ------------------------------------------------------------------ *
+ * Cycle view
+ *
+ * One block per cycle day. The rotation is five days long, so nothing here
+ * lines up with a calendar week — the day is identified by its cycle badge and
+ * its date, never by its column.
+ * ------------------------------------------------------------------ */
+.cycle-day {
+  padding: var(--s3);
+  border-top: 1px solid var(--border);
+  transition: background var(--t-fast);
+}
+.cycle-day:first-child {
+  border-top: none;
+}
+.cycle-day.selected {
+  background: var(--surface-2);
+}
+.cycle-day.past {
+  opacity: 0.55;
+}
+.cycle-day-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 44px; /* Apples Richtwert für Tap-Ziele */
+  text-align: left;
+}
+.cycle-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* Sleep gets its own row: on a shift rotation it is the fixed point everything
+   else is planned around, not a detail of the session. */
+.cycle-sleep {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  padding: 6px var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cycle-day.selected .cycle-sleep {
+  background: var(--surface-3);
+}
+.cycle-unit {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  padding-left: 2px;
+}
+.cycle-warn {
+  margin-top: var(--s2);
+  color: var(--bad);
+}
+.cycle-explain {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.cycle-day.selected .cycle-explain {
+  background: var(--surface-3);
 }

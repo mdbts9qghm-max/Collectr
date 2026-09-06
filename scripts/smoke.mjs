@@ -104,9 +104,28 @@ if ((await page.locator('.list .check.checked').count()) === 0) {
 console.log('✓ session completed with one tap and persisted');
 await shot('05-session-done');
 
-// The training tab is the week planner: seven days must always be on screen,
-// and the recommendations must start collapsed.
+// The training tab opens on the cycle, because that is what the planner reasons
+// in: five shift days, each with its own sleep window and recovery value.
 await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.cycle-day');
+await page.waitForTimeout(400);
+const cycleDays = await page.locator('.cycle-day').count();
+if (cycleDays < 5) throw new Error(`cycle view shows ${cycleDays} days, expected at least one cycle`);
+if ((await page.locator('.cycle-sleep').count()) !== cycleDays) {
+  throw new Error('every cycle day must carry its sleep row');
+}
+if ((await page.locator('.cycle-explain').count()) !== 0) {
+  throw new Error('the explanation must stay closed until the day is tapped');
+}
+await page.locator('.cycle-day-head').first().click();
+await page.waitForTimeout(350);
+if ((await page.locator('.cycle-explain').count()) === 0) {
+  throw new Error('tapping a cycle day did not open its explanation');
+}
+console.log(`✓ cycle view: ${cycleDays} days with sleep rows and tap-to-explain`);
+
+// The week calendar is still there, one tap away.
+await page.getByRole('tab', { name: 'Woche' }).click();
 await page.waitForSelector('.cal-day');
 await page.waitForTimeout(400);
 const planDays = await page.locator('.cal-day').count();

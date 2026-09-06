@@ -173,6 +173,112 @@ umgesetzt werden, und verschiebt die Bewertung um maximal ±6 Punkte. Bewusst kl
 Vorliebe darf eine knappe Entscheidung kippen, aber niemals eine Erholungsregel
 überstimmen.
 
+## 4b. Zyklusplaner
+
+Der Empfehlungs-Engine aus Abschnitt 4 beantwortet die Frage "was heute?". Der
+Zyklusplaner beantwortet die Frage "was in diesem Zyklus?" — und das ist die Frage,
+die im Schichtdienst zählt. Die Rotation ist fünf Tage lang und wandert damit durch
+die Kalenderwoche: derselbe Wochentag bedeutet jedes Mal etwas anderes, ein
+Wochenplan schneidet jeden Zyklus an einer anderen Stelle durch.
+
+Der Planer bekommt **keine zusätzlichen Eingaben**. Alles leitet er aus dem ab, was
+ohnehin schon eingetragen wird: den Schichten, dem Schlaf und dem Befinden aus dem
+Morgen-Check-in sowie den abgeschlossenen Einheiten.
+
+### Die fünf Zyklustage
+
+| Tag | Schicht | Rolle | Fenster |
+| --- | --- | --- | --- |
+| 1 | Tagschicht | kein Training | keins |
+| 2 | Nachtschicht | mittlere Last vormittags | vor dem Vorschlaf |
+| 3 | Schlaftag | leichte bis mittlere Last | später Nachmittag |
+| 4 | frei | **Schlüsseleinheit** | ganzer Tag |
+| 5 | frei | zweiter Belastungstag | ganzer Tag |
+
+Eine V-Schicht ersetzt Tag 5, wo immer sie fällt. Die Schlaffenster folgen dem
+Ankerprinzip: eine feste Aufstehzeit, Schlafverlängerung vor der Nachtschicht,
+90 Minuten Puffer vor dem Vorschlaf um 15:00, Bettzeit nach dem Tagschlaf auf 22:45.
+
+### Erholungswert
+
+Eine Zahl von 0 bis 100 pro Tag, aus einem Basiswert je Zyklustag plus Zuschlägen:
+
+| Einfluss | Wirkung |
+| --- | --- |
+| Basis Tag 4 / 5 / 2 / 3 / V / 1 | 100 / 90 / 75 / 60 / 55 / 0 |
+| Vortag mit Last ≥ 60 | −12 |
+| Vortag war Ruhetag | +5 |
+| Belastungsstrecke ab 2 Tagen | −10 je weiterem Tag |
+| Befinden im Check-in | (Wert − 7) × 5 |
+| Schlaf ≥ 1 h unter dem Ziel | −10 |
+
+Rot unter 45, gelb bis 74, grün ab 75. Die Farbe im Zyklustab kommt genau aus diesen
+Schwellen, damit Zahl und Farbe nie auseinanderlaufen können.
+
+### Einheitenkatalog
+
+| Einheit | Last | braucht Erholung | stuft ab auf |
+| --- | --- | --- | --- |
+| Intensiver Lauf | 80 | 85 | Langer Lauf |
+| Schwere Kraft | 70 | 70 | Moderate Kraft |
+| Langer Lauf | 60 | 75 | Lockerer Lauf |
+| Moderate Kraft | 45 | 55 | Oberkörperkraft |
+| Oberkörperkraft | 30 | 45 | Regeneration |
+| Lockerer Lauf | 25 | 40 | Regeneration |
+| Regeneration | 5 | 0 | — |
+
+Ab 60 Punkten gilt eine Einheit als hart. Die Abstufungskette ist der Kern des
+Planers: **wenn eine Regel dagegensteht, wird abgeschwächt, nicht gestrichen.** Im
+Hybridtraining ist die Frequenz mehr wert als jede einzelne harte Einheit. Gestrichen
+wird nur, wenn selbst die Regeneration nicht mehr ins Fenster passt.
+
+### Zwei Skalen, ein Modell
+
+Der Katalog rechnet in eigenen Lastpunkten, das Belastungsmodell aus Abschnitt 1 in
+skalierter sRPE. Der Faktor zwischen beiden ist 0,7, gemessen an den Einheiten, die
+der Katalog selbst beschreibt (45 min locker: 25 zu 35; 60 min intensiv: 80 zu 120;
+60 min schwere Kraft: 70 zu 100). Der lange Lauf ist der Ausreißer — der Katalog
+bewertet ihn höher, als Dauer × RPE es tut, und das ist beabsichtigt: drei Stunden
+locker kosten trotzdem Tage an Frische.
+
+### Rollierendes Fenster
+
+Alle Lastregeln gelten auf sieben rollierenden Tagen, nicht auf der Kalenderwoche.
+Sollwert sind sechs Einheiten; ein normaler Zyklus liefert vier auf fünf Tage, also
+5,6 auf sieben — etwa jeder dritte Zyklus braucht deshalb eine Doppeleinheit. Die
+Lastobergrenze liegt bei 360 Punkten, knapp über den rund 345, die ein normaler
+Zyklus trägt: hoch genug, um den gewohnten Rhythmus nicht auszuhungern, niedrig
+genug, um echtes Übersteuern zu fangen.
+
+Die Steigerungsregel (höchstens 110 % des Vorfensters) greift **nur, wenn das
+Vorfenster in der Vergangenheit liegt**. Progression misst sich an dem, was
+trainiert wurde. Gegen die eigene Vorausplanung zu drosseln wäre eine Ratsche: ein
+zufällig leichter Zyklus würde jeden folgenden kleiner machen.
+
+### Ablauf
+
+1. Zyklus aus den Schichtarten erkennen
+2. Erholungswert für jeden Tag berechnen
+3. Schlaf- und Trainingsfenster je Tag aufspannen
+4. Schlüsseleinheit auf Tag 4 setzen, rotierend über intensiver Lauf → langer Lauf →
+   schwere Kraft
+5. Standardbelegung der übrigen Tage
+6. Doppeleinheit nur, wenn das Fenster wirklich unter Soll bleibt — und nie
+   spekulativ, also nur bei vollständig bekanntem Fenster
+7. Reparaturlauf: den fertigen Plan gegen alle zwölf harten Regeln prüfen und die
+   schwerste verletzende Einheit abstufen, bis er sauber ist
+8. Lokale Suche: Einheiten tauschen, solange die Zielfunktion besser wird
+   (höchstens 200 Schritte)
+9. Zusammensetzen samt Begründungen und verbleibenden Warnungen
+
+### Anpassung am Morgen
+
+Weicht das Befinden um zwei Punkte oder mehr vom eigenen Normalwert ab — dem Median
+der letzten vierzehn Tage, nicht von einer absoluten Zahl —, schlägt der Check-in
+eine Ab- oder Aufstufung vor. Übernommen wird sie nur auf Tippen. Eine Aufstufung,
+die der Erholungswert des Tages nicht trägt, wird gar nicht erst angeboten: ein guter
+Morgen erschafft keine Erholung, die nicht da ist.
+
 ## 5. Hybrid Score
 
 Sechs Säulen, jede 0–100:

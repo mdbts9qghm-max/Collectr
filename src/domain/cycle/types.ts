@@ -116,6 +116,8 @@ export interface RollingWindowState {
 export interface CyclePlan {
   days: DayPlan[];
   window: RollingWindowState;
+  /** The settings the plan was built with, so the UI can show the same limits. */
+  settings: PlannerSettings;
   /** Target sessions the window still lacks. */
   missing: SessionKind[];
   violations: RuleViolation[];

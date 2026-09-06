@@ -203,3 +203,16 @@ export function formatClock(minutes: number): string {
   const m = ((Math.round(minutes) % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
+
+/**
+ * What each cycle day is called and what it is for. The rotation walks through
+ * the calendar week, so the athlete never recognises a day by its weekday —
+ * these labels are the only handle the UI has.
+ */
+export const CYCLE_DAY_META: Record<number, { short: string; label: string; purpose: string }> = {
+  1: { short: 'T1', label: 'Tagschicht', purpose: 'Kein Training. Der Tag hat kein Fenster.' },
+  2: { short: 'T2', label: 'Nachtschicht', purpose: 'Mittlere Last am Vormittag, vor dem Vorschlaf.' },
+  3: { short: 'T3', label: 'Schlaftag', purpose: 'Leichte bis mittlere Last am späten Nachmittag.' },
+  4: { short: 'T4', label: 'Frei', purpose: 'Der erholteste Tag: hier steht die Schlüsseleinheit.' },
+  5: { short: 'T5', label: 'Frei', purpose: 'Zweiter Belastungstag, meist Kraft.' },
+};
