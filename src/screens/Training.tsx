@@ -27,7 +27,8 @@ import {
 } from '../ui/primitives.tsx';
 import { DistributionBar } from '../ui/charts.tsx';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '../ui/icons.tsx';
-import { SessionSheet, emptySession, sessionSubtitle } from '../ui/SessionSheet.tsx';
+import { SessionSheet, emptySession } from '../ui/SessionSheet.tsx';
+import { SessionRow } from '../ui/SessionRow.tsx';
 import { ShiftSheet } from '../ui/ShiftSheet.tsx';
 
 export function Training() {
@@ -151,27 +152,12 @@ export function Training() {
         <Card flush>
           <div className="list">
             {view.sessions.map((session) => (
-              <button
+              <SessionRow
                 key={session.id}
-                type="button"
-                className={`list-item clickable ${session.status === 'skipped' ? 'done' : ''}`}
-                onClick={() => setEditing(session)}
-              >
-                <span
-                  className="icon-badge"
-                  style={{ background: `color-mix(in srgb, ${SPORT_META[session.sport].color} 18%, transparent)` }}
-                >
-                  {SPORT_META[session.sport].icon}
-                </span>
-                <span className="grow">
-                  <span className="t-body truncate" style={{ fontWeight: 570, display: 'block' }}>
-                    {session.startTime ? `${session.startTime} · ` : ''}
-                    {session.title}
-                  </span>
-                  <span className="t-caption muted">{sessionSubtitle(session)}</span>
-                </span>
-                {session.status === 'completed' && <Pill tone="good">✓</Pill>}
-              </button>
+                session={session}
+                showTime
+                onOpen={() => setEditing(session)}
+              />
             ))}
           </div>
         </Card>

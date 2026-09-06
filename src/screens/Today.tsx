@@ -30,7 +30,8 @@ import {
 import { Ring } from '../ui/charts.tsx';
 import { IconChevronRight, IconPlus } from '../ui/icons.tsx';
 import { ShiftSheet } from '../ui/ShiftSheet.tsx';
-import { SessionSheet, emptySession, sessionSubtitle } from '../ui/SessionSheet.tsx';
+import { SessionSheet, emptySession } from '../ui/SessionSheet.tsx';
+import { SessionRow } from '../ui/SessionRow.tsx';
 
 /**
  * The daily screen.
@@ -252,32 +253,7 @@ export function Today() {
           <Card flush>
             <div className="list">
               {view.sessions.map((session) => (
-                <button
-                  key={session.id}
-                  type="button"
-                  className={`list-item clickable ${session.status === 'skipped' ? 'done' : ''}`}
-                  onClick={() => setEditing(session)}
-                >
-                  <span
-                    className="icon-badge"
-                    style={{ background: `color-mix(in srgb, ${SPORT_META[session.sport].color} 18%, transparent)` }}
-                  >
-                    {SPORT_META[session.sport].icon}
-                  </span>
-                  <span className="grow">
-                    <span className="t-body truncate" style={{ fontWeight: 570, display: 'block' }}>
-                      {session.title}
-                    </span>
-                    <span className="t-caption muted">{sessionSubtitle(session)}</span>
-                  </span>
-                  {session.status === 'completed' ? (
-                    <Pill tone="good">✓</Pill>
-                  ) : session.status === 'skipped' ? (
-                    <Pill>aus</Pill>
-                  ) : (
-                    <Pill tone="info">geplant</Pill>
-                  )}
-                </button>
+                <SessionRow key={session.id} session={session} onOpen={() => setEditing(session)} />
               ))}
             </div>
           </Card>

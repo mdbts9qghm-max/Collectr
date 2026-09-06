@@ -90,6 +90,20 @@ if (await plan.isVisible()) {
 }
 await shot('04-planned');
 
+// Completing a session must take a single tap and survive a reload — this is
+// the evening half of the daily loop.
+const sessionCheck = page.locator('.list .check').first();
+await sessionCheck.click();
+await page.waitForTimeout(600);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('.app-main');
+await page.waitForTimeout(400);
+if ((await page.locator('.list .check.checked').count()) === 0) {
+  throw new Error('one-tap completion did not persist');
+}
+console.log('✓ session completed with one tap and persisted');
+await shot('05-session-done');
+
 for (const [path, name] of [
   ['#/training', '05-training'],
   ['#/week', '06-week'],
@@ -139,6 +153,27 @@ const sleepRow = await page.locator('.card', { hasText: 'Schlaf' }).first().inne
 if (!/7[.,]5/.test(sleepRow)) throw new Error('sleep habit was not auto-filled from the check-in');
 console.log('✓ sleep habit auto-filled from check-in');
 await shot('14-habits-checked');
+
+// Training phases must be editable, not just readable.
+await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.app-main');
+await page.getByText('Base', { exact: true }).first().click();
+await page.waitForSelector('.sheet');
+const phaseSheet = await page.locator('.sheet').innerText();
+if (!/wochenstunden/i.test(phaseSheet)) throw new Error('phase editor did not open');
+const hoursStepper = page.locator('.sheet .stepper').first();
+const beforeHours = await hoursStepper.locator('.stepper-value').innerText();
+await hoursStepper.locator('button').last().click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.waitForTimeout(600);
+await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.app-main');
+await page.waitForTimeout(500);
+const afterEdit = await page.locator('.app-main').innerText();
+if (afterEdit.includes(beforeHours.replace(' h', '')) === false && !/Ziel/i.test(afterEdit)) {
+  throw new Error('phase edit did not reach the training screen');
+}
+console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the week target`);
 
 // Light theme.
 await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });

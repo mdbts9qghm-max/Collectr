@@ -69,6 +69,8 @@ interface AppStore extends AppData {
 
   saveSession: (session: TrainingSession) => PersonalRecord[];
   deleteSession: (id: string) => void;
+  /** One-tap completion: planned values become the actual ones. */
+  toggleSessionDone: (id: string) => PersonalRecord[];
 
   saveExercise: (exercise: Exercise) => void;
 
@@ -310,6 +312,28 @@ export const useStore = create<AppStore>()((set, get) => {
     deleteSession(id) {
       set((s) => ({ sessions: s.sessions.filter((x) => x.id !== id) }));
       write(db.remove(db.STORES.sessions, id));
+    },
+
+    toggleSessionDone(id) {
+      const session = get().sessions.find((s) => s.id === id);
+      if (!session) return [];
+
+      if (session.status === 'completed') {
+        // Back to planned. The logged actuals are kept: reopening a session by
+        // accident must not silently discard what was already entered.
+        return get().saveSession({ ...session, status: 'planned' });
+      }
+
+      // Completing without opening the editor assumes the plan was followed.
+      // Anything more precise — real duration, distance, RPE — is a tap away in
+      // the session sheet, and overwrites these defaults.
+      return get().saveSession({
+        ...session,
+        status: 'completed',
+        actualDurationMin: session.actualDurationMin ?? session.plannedDurationMin,
+        actualDistanceKm: session.actualDistanceKm ?? session.plannedDistanceKm,
+        actualIntensity: session.actualIntensity ?? session.plannedIntensity,
+      });
     },
 
     saveExercise(exercise) {

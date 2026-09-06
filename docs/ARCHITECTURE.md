@@ -138,5 +138,8 @@ Aufschlüsselung jeder Säule und Komponente,
 Wochenumfang, Fitness-/Ermüdungsverlauf, Detailansicht je Sportart, Kraftbestwerte,
 Personal Records, Konstanz-Heatmap.
 
-**Profil** — jeder Wert aus Abschnitt 34 der Anforderung ist hier änderbar, inklusive der
-Trainingsregeln pro Schichtart.
+**Profil** — jeder Wert aus Abschnitt 34 der Anforderung ist hier änderbar: Profildaten,
+Trainingswerte, Erholungsschwellen, die Trainingsregeln jeder Schichtart sowie der komplette
+Trainingsplan mit seinen Phasen (Zeitraum, Wochenstunden, Sportverteilung,
+Intensitätsverteilung, Kraftfrequenz, Schwerpunkte). Änderungen wirken sofort auf das
+Wochenziel und damit auf die tägliche Empfehlung.

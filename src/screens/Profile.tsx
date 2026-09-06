@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ShiftType } from '../domain/types.ts';
+import type { ShiftType, TrainingPhase } from '../domain/types.ts';
 import { INTENSITIES } from '../domain/types.ts';
 import { INTENSITY_META, formatDuration, formatPace } from '../domain/format.ts';
 import { PHASE_META } from '../domain/phases.ts';
@@ -30,7 +30,8 @@ import {
   Switch,
   TextInput,
 } from '../ui/primitives.tsx';
-import { IconDownload, IconUpload } from '../ui/icons.tsx';
+import { IconDownload, IconPlus, IconUpload } from '../ui/icons.tsx';
+import { PhaseSheet, PlanSheet, newPhase } from '../ui/PhaseSheet.tsx';
 
 export function Profile() {
   const data = useData();
@@ -42,6 +43,8 @@ export function Profile() {
   const toast = useStore((s) => s.toast);
 
   const [editingShift, setEditingShift] = useState<ShiftType | null>(null);
+  const [editingPhase, setEditingPhase] = useState<TrainingPhase | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +54,7 @@ export function Profile() {
 
   const { settings } = data;
   const set = updateSettings;
+  const activePlan = data.plans.find((p) => p.active) ?? data.plans[0] ?? null;
 
   const handleImport = async (file: File) => {
     const text = await file.text();
@@ -393,29 +397,71 @@ export function Profile() {
       </Card>
 
       {/* ---------- Training plan ---------- */}
-      <SectionTitle title="Trainingsphasen" />
-      <Card flush>
-        <div className="list">
-          {(data.plans.find((p) => p.active)?.phases ?? []).map((phase) => (
-            <div className="list-item" key={phase.id}>
-              <span className="dot" style={{ background: PHASE_META[phase.kind].color }} />
-              <span className="grow">
-                <span className="t-body" style={{ fontWeight: 560, display: 'block' }}>
-                  {phase.label}
-                </span>
-                <span className="t-caption muted">
-                  {phase.startDate} – {phase.endDate} · {phase.weeklyHoursTarget} h/Woche
-                </span>
-              </span>
-              <Pill>{phase.strengthSessionsPerWeek}× Kraft</Pill>
+      {activePlan && (
+        <>
+          <SectionTitle
+            title="Trainingsplan"
+            action={
+              <Button size="sm" variant="ghost" onClick={() => setPlanOpen(true)}>
+                Bearbeiten
+              </Button>
+            }
+          />
+          <Card tight>
+            <div className="row between">
+              <div className="grow">
+                <div className="t-body" style={{ fontWeight: 570 }}>
+                  {activePlan.name}
+                </div>
+                <div className="t-caption muted mt-2">
+                  {activePlan.startDate} – {activePlan.targetDate} · Blöcke à{' '}
+                  {activePlan.mesocycleWeeks} Wochen
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      </Card>
-      <p className="t-caption muted">
-        Phasen werden aktuell über den Import/Export oder die Standardvorlage gepflegt. Die
-        Wochenziele leiten sich daraus samt 3:1-Deload-Rhythmus automatisch ab.
-      </p>
+          </Card>
+
+          <SectionTitle
+            title="Phasen"
+            action={
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditingPhase(newPhase(activePlan))}
+              >
+                <IconPlus size={15} /> Phase
+              </Button>
+            }
+          />
+          <Card flush>
+            <div className="list">
+              {activePlan.phases.map((phase) => (
+                <button
+                  key={phase.id}
+                  type="button"
+                  className="list-item clickable"
+                  onClick={() => setEditingPhase(phase)}
+                >
+                  <span className="dot" style={{ background: PHASE_META[phase.kind].color }} />
+                  <span className="grow">
+                    <span className="t-body" style={{ fontWeight: 560, display: 'block' }}>
+                      {phase.label}
+                    </span>
+                    <span className="t-caption muted">
+                      {phase.startDate} – {phase.endDate} · {phase.weeklyHoursTarget} h/Woche
+                    </span>
+                  </span>
+                  <Pill>{phase.strengthSessionsPerWeek}× Kraft</Pill>
+                </button>
+              ))}
+            </div>
+          </Card>
+          <p className="t-caption muted">
+            Aus Phase und Blocklänge ergibt sich das Wochenziel, samt automatischer
+            Entlastungswoche am Blockende.
+          </p>
+        </>
+      )}
 
       {/* ---------- Appearance ---------- */}
       <SectionTitle title="Darstellung" />
@@ -655,6 +701,10 @@ export function Profile() {
       </p>
 
       <ShiftTypeSheet type={editingShift} onClose={() => setEditingShift(null)} />
+      {activePlan && editingPhase && (
+        <PhaseSheet plan={activePlan} phase={editingPhase} onClose={() => setEditingPhase(null)} />
+      )}
+      {activePlan && planOpen && <PlanSheet plan={activePlan} onClose={() => setPlanOpen(false)} />}
     </>
   );
 }

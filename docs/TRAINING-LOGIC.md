@@ -67,7 +67,10 @@ lockere Stunde ein Reiz, den er nicht verarbeiten kann.
 ## 3. Periodisierung
 
 Vier Phasen (Base → Build → Peak → Taper) mit eigenem Wochenumfang, eigener
-Sportverteilung, eigener Intensitätsverteilung und eigener Kraftfrequenz.
+Sportverteilung, eigener Intensitätsverteilung und eigener Kraftfrequenz. Alle vier
+Größen sind im Profil pro Phase editierbar; die Sportanteile werden als freie Zahlen
+eingegeben und ins Verhältnis gesetzt, sodass sie sich beim Tippen nie exakt auf 100
+addieren müssen.
 
 Innerhalb jeder Phase läuft eine **3:1-Welle**: 100 %, 107 %, 114 %, 68 %. Die
 Entlastungswoche kommt automatisch, weil konstant hoher Wochenumfang der häufigste Weg
