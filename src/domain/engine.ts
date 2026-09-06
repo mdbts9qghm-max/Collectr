@@ -15,11 +15,12 @@ import type { ShiftContext } from './shifts.ts';
 import type { Readiness } from './readiness.ts';
 import type { WeekTarget } from './phases.ts';
 import type { Preferences } from './personalization.ts';
+import type { Outlook } from './outlook.ts';
 import { ENDURANCE_SPORTS } from './types.ts';
 import { addDays, diffDays, startOfWeek } from './date.ts';
 import { adjustedTrainingMinutes, suggestStartTime } from './shifts.ts';
 import { preferenceBonus } from './personalization.ts';
-import { SPORT_META, formatDuration } from './format.ts';
+import { SPORT_META, formatDuration, weekdayLong } from './format.ts';
 import {
   INTENSITY_RPE,
   LOAD_SCALE,
@@ -50,6 +51,8 @@ export interface EngineContext {
   sessions: TrainingSession[];
   goals: Goal[];
   preferences: Preferences;
+  /** What the next days offer: capacity, sleep and already-committed load. */
+  outlook: Outlook;
 }
 
 interface DayFacts {
@@ -475,6 +478,38 @@ function evaluate(a: Archetype, ctx: EngineContext, facts: DayFacts): Scored {
       restScore += 15;
       restReasons.push({ text: 'Wochenziel bereits erreicht', impact: 'positive', points: 15 });
     }
+    // A rest day is worth more right before a day that can actually be used.
+    const nextGreen = ctx.outlook.nextGreenDay;
+    if (nextGreen && nextGreen.daysAhead <= 2) {
+      const points = nextGreen.daysAhead === 1 ? 16 : 10;
+      restScore += points;
+      restReasons.push({
+        text: `${weekdayLong(nextGreen.date)} ist ${nextGreen.shift?.label ?? 'frei'} — heute erholen macht diesen Tag wertvoller`,
+        impact: 'positive',
+        points,
+      });
+    }
+    if (ctx.outlook.sleepConstrainedAhead) {
+      restScore += 12;
+      restReasons.push({
+        text: `Die nächsten Tage lassen im Schnitt nur ${ctx.outlook.expectedSleepAhead} h Schlaf zu`,
+        impact: 'positive',
+        points: 12,
+      });
+    }
+    // Conversely: if the coming days offer almost nothing, today is the chance.
+    if (
+      ctx.outlook.restOfWeekComplete &&
+      ctx.outlook.restOfWeekFreeMinutes < 60 &&
+      facts.weekMinutesDone < target.minutes * 0.7
+    ) {
+      restScore -= 20;
+      restReasons.push({
+        text: `Rest der Woche bietet nur noch ${formatDuration(ctx.outlook.restOfWeekFreeMinutes)} — heute ist die Gelegenheit`,
+        impact: 'negative',
+        points: -20,
+      });
+    }
     if (restReasons.length === 0) {
       restReasons.push({
         text: 'Immer verfügbar — ein geplanter Ruhetag kostet keine Streak',
@@ -599,6 +634,23 @@ function evaluate(a: Archetype, ctx: EngineContext, facts: DayFacts): Scored {
         },
       ],
       blockedBy: 'Noch keine Belastungsbasis',
+    };
+  }
+
+  // A long session already committed within two days makes a second one today
+  // a scheduling error, not a training decision.
+  const committedLong = ctx.outlook.nextLongPlanned;
+  if (a.isLong && committedLong && committedLong.daysAhead <= 2) {
+    return {
+      template,
+      score: 0,
+      reasons: [
+        {
+          text: `Für ${weekdayLong(committedLong.date)} ist bereits eine lange Einheit geplant`,
+          impact: 'negative',
+        },
+      ],
+      blockedBy: 'Lange Einheit steht schon im Plan',
     };
   }
 
@@ -840,6 +892,74 @@ function evaluate(a: Archetype, ctx: EngineContext, facts: DayFacts): Scored {
     add(`Auf ${formatDuration(duration)} gekürzt, damit es in den Tag passt`, -4, 'neutral');
   }
 
+  /* ---------- Forward horizon ---------- */
+
+  const outlook = ctx.outlook;
+
+  // 16. Placement of key sessions. A long run belongs on the day that can carry
+  // it, not on the first day the athlete happens to open the app.
+  if (a.isLong) {
+    const todayFree = Math.max(0, budget);
+    const better = outlook.bestLongDay;
+    if (rating !== 'green' && better && better.daysAhead <= 3) {
+      add(
+        `${weekdayLong(better.date)} ist ${better.shift?.label ?? 'frei'} — die lange Einheit passt dort deutlich besser`,
+        -20,
+      );
+    } else if (rating === 'green' && better && better.freeMinutes > todayFree * 1.4) {
+      add(`${weekdayLong(better.date)} bietet mehr Zeit für die lange Einheit`, -9);
+    } else if (rating === 'green' && outlook.complete && outlook.longCapableDays === 0) {
+      add('Einziger Tag der nächsten Woche mit Zeit für eine lange Einheit', 20);
+    }
+  }
+
+  // 17. Weekly capacity, measured in usable minutes rather than calendar days.
+  // This applies to every real training session — including the long run, which
+  // is low in intensity but is precisely the session that needs a free day.
+  if (!isRegenerative) {
+    const gap = target.minutes - facts.weekMinutesDone - facts.weekMinutesPlanned;
+    if (outlook.restOfWeekComplete && gap > 0) {
+      if (outlook.isLastDayOfWeek) {
+        add('Letzter Tag dieser Trainingswoche — danach beginnt die Zählung neu', 14);
+      } else if (outlook.restOfWeekFreeMinutes < gap * 0.5) {
+        add(
+          `Der Rest der Woche bietet nur ${formatDuration(outlook.restOfWeekFreeMinutes)} — das Wochenziel entscheidet sich heute`,
+          16,
+        );
+      } else if (outlook.restOfWeekFreeMinutes > gap * 2.5) {
+        add('Die Restwoche hat reichlich Zeit — heute muss nichts erzwungen werden', -7);
+      }
+    }
+  }
+
+  // 18. Sleep outlook. A hard stimulus needs the nights after it, and the shift
+  // plan already says whether those nights exist.
+  if (isHardCandidate) {
+    if (outlook.sleepConstrainedAhead) {
+      add(
+        `Die nächsten Tage lassen nur ${outlook.expectedSleepAhead} h Schlaf zu — ein harter Reiz würde nicht verarbeitet`,
+        -16,
+      );
+    } else if (
+      outlook.expectedSleepAhead != null &&
+      outlook.expectedSleepAhead >= settings.recovery.sleepHoursTarget
+    ) {
+      add('Die kommenden Nächte lassen gute Erholung zu', 9);
+    }
+  }
+
+  // 19. Load already committed to the coming days.
+  const hardAhead = outlook.nextHardPlanned;
+  if (isHardCandidate && hardAhead && hardAhead.daysAhead <= 2) {
+    add(
+      `${weekdayLong(hardAhead.date)} ist bereits eine intensive Einheit geplant`,
+      hardAhead.daysAhead === 1 ? -20 : -12,
+    );
+  }
+  if (isEasyish && hardAhead && hardAhead.daysAhead === 1) {
+    add(`Morgen steht eine intensive Einheit an — heute locker hält sie qualitativ`, 11);
+  }
+
   return { template, score, reasons };
 }
 
@@ -872,15 +992,28 @@ export function recommendForDay(ctx: EngineContext): DailyRecommendation {
   });
 
   const recommended = viable.slice(0, 1).map((s) => toRec(s, 'recommended'));
-  // Alternatives should not be near-duplicates of the recommendation.
+
+  // Alternatives should not be near-duplicates. A rest day is bucketed on its
+  // own: "Ruhetag" and "lockerer Spaziergang" are different decisions, even
+  // though both live under the recovery sport.
+  const bucketOf = (t: SessionTemplate) => (t.isRest ? 'rest' : t.sport);
   const alternatives: Recommendation[] = [];
   for (const s of viable.slice(1)) {
     if (alternatives.length >= 3) break;
-    const sameSportAsTop = recommended[0]?.template.sport === s.template.sport;
-    const sameSportAsAlt = alternatives.some((a) => a.template.sport === s.template.sport);
-    if (sameSportAsTop && alternatives.length < 2) continue;
-    if (sameSportAsAlt) continue;
+    const bucket = bucketOf(s.template);
+    const sameAsTop = recommended[0] && bucketOf(recommended[0].template) === bucket;
+    const sameAsAlt = alternatives.some((a) => bucketOf(a.template) === bucket);
+    if (sameAsTop && alternatives.length < 2) continue;
+    if (sameAsAlt) continue;
     alternatives.push(toRec(s, 'alternative'));
+  }
+
+  // Resting is always a legitimate answer, so it is always on the table —
+  // with its own reasoning, not as the absence of a choice.
+  const restOffered = [...recommended, ...alternatives].some((r) => r.template.isRest);
+  if (!restOffered) {
+    const rest = viable.find((s) => s.template.isRest);
+    if (rest) alternatives.push(toRec(rest, 'alternative'));
   }
 
   return {
@@ -946,11 +1079,36 @@ function reviewPlan(
 function focusText(ctx: EngineContext, facts: DayFacts): string {
   if (ctx.readiness.level === 'recovery') return 'Erholung wiederherstellen';
   if (ctx.target.deload) return 'Deload — Belastung bewusst reduzieren';
+
+  // The focus follows the constraint that binds soonest, and the shift plan
+  // often makes that constraint a future one.
+  const outlook = ctx.outlook;
+  const gap = ctx.target.minutes - facts.weekMinutesDone - facts.weekMinutesPlanned;
+  if (
+    outlook.restOfWeekComplete &&
+    gap > 0 &&
+    !outlook.isLastDayOfWeek &&
+    outlook.restOfWeekFreeMinutes < gap * 0.5
+  ) {
+    return 'Letzte nutzbare Gelegenheit dieser Woche';
+  }
+  if (
+    facts.weekStrengthSessions === 0 &&
+    ctx.target.strengthSessions > 0 &&
+    outlook.restOfWeekComplete &&
+    outlook.restOfWeekFreeMinutes < 120
+  ) {
+    return 'Krafteinheit der Woche sichern';
+  }
   if (facts.weekStrengthSessions === 0 && ctx.target.strengthSessions > 0 && facts.remainingWeekDays <= 3) {
     return 'Krafteinheit der Woche sichern';
   }
+  if (outlook.sleepConstrainedAhead) return 'Vor schlafarmen Tagen konservativ bleiben';
   if (facts.daysSinceLongRun != null && facts.daysSinceLongRun >= 7 && ctx.shift.type?.training.rating === 'green') {
     return 'Long Run — Ermüdungswiderstand aufbauen';
+  }
+  if (outlook.nextGreenDay?.daysAhead === 1 && ctx.shift.type?.training.rating !== 'green') {
+    return 'Heute vorbereiten, morgen den freien Tag nutzen';
   }
   const phaseFocus = ctx.target.phase?.focus[0];
   if (phaseFocus) return phaseFocus;

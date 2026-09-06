@@ -48,6 +48,7 @@ src/
 │   ├── shifts.ts            Schichtkontext, Trainingsfenster, Rotation
 │   ├── readiness.ts         Erholungsbewertung aus vorhandenen Inputs
 │   ├── phases.ts            Periodisierung, 3:1-Welle, Wochenziele
+│   ├── outlook.ts           7-Tage-Horizont: Kapazität, Schlaf, geplante Last
 │   ├── engine.ts            Kandidatengenerierung, harte Gates, Scoring
 │   ├── personalization.ts   gelernte Präferenzen aus dem Verhalten
 │   ├── score.ts             Hybrid Score, sechs Säulen, transparent

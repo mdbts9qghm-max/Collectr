@@ -5,6 +5,7 @@ import { computeReadiness } from '../readiness.ts';
 import { buildShiftContext } from '../shifts.ts';
 import { weekTarget } from '../phases.ts';
 import { learnPreferences } from '../personalization.ts';
+import { buildOutlook } from '../outlook.ts';
 import { defaultTrainingPlan } from '../../data/defaults.ts';
 import { checkIn, session, settings, shiftMaps } from './helpers.ts';
 
@@ -38,6 +39,7 @@ function build(opts: {
     sessions,
     goals: [],
     preferences: learnPreferences(sessions, TODAY),
+    outlook: buildOutlook(TODAY, assignments, types, sessions, settings),
   });
 }
 

@@ -178,12 +178,22 @@ function answerToday(data: AppData, idx: Indexes, today: ISODate): CoachAnswer {
     .join('\n');
 
   const alt = view.recommendation.alternatives[0];
+  const outlook = view.outlook;
+  const ahead =
+    outlook.restOfWeekComplete && outlook.restOfWeekFreeMinutes >= 0
+      ? `\n\nRestwoche: ${formatDuration(outlook.restOfWeekFreeMinutes)} nutzbare Trainingszeit` +
+        (outlook.bestLongDay
+          ? `, bester Tag für eine lange Einheit ist ${weekdayLong(outlook.bestLongDay.date)}.`
+          : ', kein Tag mit Platz für eine lange Einheit.')
+      : '';
+
   return {
     text:
       `${SPORT_META[top.template.sport].icon} ${top.template.title}` +
       (top.template.durationMin > 0 ? ` · ${formatDuration(top.template.durationMin)}` : '') +
       `\n\nWarum:\n${reasonLines || '• Passt zu Schicht und Erholung'}` +
       (alt ? `\n\nAlternative: ${alt.template.title}.` : '') +
+      ahead +
       `\n\nFokus heute: ${view.recommendation.focus}.`,
     facts: [
       { label: 'Schicht', value: view.shift.type?.label ?? 'nicht gesetzt' },

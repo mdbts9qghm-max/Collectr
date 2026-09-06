@@ -16,6 +16,7 @@ import { buildShiftContext } from '../domain/shifts.ts';
 import { computeReadiness } from '../domain/readiness.ts';
 import { weekTarget } from '../domain/phases.ts';
 import { recommendForDay } from '../domain/engine.ts';
+import { buildOutlook } from '../domain/outlook.ts';
 import { learnPreferences } from '../domain/personalization.ts';
 import { currentMetrics } from '../domain/metrics.ts';
 import { computeHybridScore } from '../domain/score.ts';
@@ -110,6 +111,13 @@ export function buildDayView(data: AppData, idx: Indexes, date: ISODate) {
     data.settings.weekStartsOn,
   );
   const preferences = learnPreferences(data.sessions, date);
+  const outlook = buildOutlook(
+    date,
+    idx.shiftAssignments,
+    idx.shiftTypes,
+    data.sessions,
+    data.settings,
+  );
   const recommendation = recommendForDay({
     date,
     shift,
@@ -119,6 +127,7 @@ export function buildDayView(data: AppData, idx: Indexes, date: ISODate) {
     sessions: data.sessions,
     goals: data.goals,
     preferences,
+    outlook,
   });
 
   return {
@@ -127,6 +136,7 @@ export function buildDayView(data: AppData, idx: Indexes, date: ISODate) {
     shift,
     readiness,
     target,
+    outlook,
     recommendation,
     sessions: (idx.sessionsByDate.get(date) ?? []).slice().sort((a, b) =>
       (a.startTime ?? '99:99').localeCompare(b.startTime ?? '99:99'),

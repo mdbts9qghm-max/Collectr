@@ -105,7 +105,7 @@ optimistische.
 
 ### Weiche Bewertung
 
-Jeder überlebende Kandidat startet bei 50 Punkten. Fünfzehn Faktoren addieren oder
+Jeder überlebende Kandidat startet bei 50 Punkten. Neunzehn Faktoren addieren oder
 subtrahieren, **jeder mit einem Satz Begründung**, der in der UI landet:
 
 Wochenlücke der Sportart · Gesamtumfang der Woche · Tage seit dieser Sportart ·
@@ -113,10 +113,49 @@ Intensitätsverteilung gegen das Phasenziel · Passung zur Readiness · Passung 
 morgen Nachtschicht · gestern Nachtschicht · Long-Run-Abstand · Kraftfrequenz ·
 Mobility-Basis · Zielausrichtung · Phasenschwerpunkt · Trainingstage in Folge ·
 Laufumfang gegen Zielkilometer · Cross-Training-Entlastung · gelernte Präferenzen ·
-Kürzung wegen Zeitmangel.
+Kürzung wegen Zeitmangel · **Platzierung von Schlüsseleinheiten · Restkapazität der Woche ·
+Schlafausblick · bereits geplante Belastung.**
+
+### Der Blick nach vorn
+
+Die letzten vier Faktoren stammen aus `outlook.ts`, das einen **7-Tage-Horizont** aus dem
+Schichtplan ableitet: nutzbare Trainingsminuten pro Tag (abzüglich dessen, was schon
+geplant ist), erwarteter Schlaf aus dem Schlaffenster der Schicht, und die bereits
+festgelegte Belastung.
+
+Daraus entstehen vier Entscheidungen:
+
+* **Schlüsseleinheiten werden platziert, nicht verteilt.** Steht der Long Run heute auf
+  einer Schicht mit wenig Zeit, während in drei Tagen eine Freischicht kommt, verliert er
+  20 Punkte — mit dem Hinweis, welcher Tag besser passt. Gibt es umgekehrt in den
+  nächsten sieben Tagen keinen Tag mit Platz für eine lange Einheit, gewinnt er 20 Punkte.
+* **Wochenkapazität statt Kalendertage.** Vorher zählte die App „noch 4 Tage übrig", egal
+  ob das vier Freischichten (16 h) oder vier Tagschichten (80 min) waren. Jetzt zählt sie
+  die tatsächlich nutzbaren Minuten und erkennt, wenn sich das Wochenziel heute entscheidet.
+* **Schlafausblick.** Ein harter Reiz braucht die Nächte danach. Zeigt der Schichtplan für
+  die nächsten Tage im Schnitt mehr als eine Stunde unter dem Schlafziel — etwa eine Serie
+  Nachtschichten mit 3 h Vorschlaf — verliert jede intensive Einheit 16 Punkte.
+* **Bereits geplante Belastung.** Eine zweite lange Einheit wird hart blockiert, wenn
+  innerhalb von zwei Tagen schon eine im Kalender steht. Vor einer geplanten intensiven
+  Einheit verliert Intensität Punkte und lockeres Training gewinnt welche.
+
+Ein Beispiel mit identischer Vergangenheit und identischer Readiness, nur unterschiedlicher
+Zukunft:
+
+| Rest der Woche | Empfehlung | Score |
+| --- | --- | --- |
+| 4× Freischicht | Long Run | 162 |
+| 4× Tagschicht | Long Run | **169** — letzte Gelegenheit |
+| 4× Nachtschicht | Long Run | **143** — Schlafausblick zieht ab |
+
+**Leere Tage erzeugen keine Schlüsse.** Tage ohne eingetragene Schicht sind als
+`known: false` markiert und werden aus jeder Aussage herausgehalten. Ein leerer Kalender
+bedeutet nicht, dass keine guten Tage kommen — die App tut nicht so, als wüsste sie es.
 
 Der höchste Wert ist die Empfehlung, die nächsten drei aus *anderen* Sportarten sind
-Alternativen. Ein Ruhetag steht immer zur Verfügung und gewinnt, wenn er verdient ist.
+Alternativen. Der Ruhetag hat dabei einen eigenen Platz: Er konkurriert nicht mit dem
+lockeren Spaziergang um denselben Slot und wird immer angeboten, auch wenn er nicht
+gewinnt — „nichts tun" muss eine sichtbare, begründete Option sein, keine Lücke.
 
 ### Bewertung des eigenen Plans
 
