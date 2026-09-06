@@ -22,34 +22,64 @@ async function shot(name) {
 }
 
 await page.goto(BASE, { waitUntil: 'networkidle' });
-await page.waitForSelector('.app-main', { timeout: 10000 });
-console.log('✓ app booted');
-await shot('01-today');
+await page.waitForTimeout(900);
 
-// The dashboard must answer "what should I do today" without any setup.
+// First launch of the day must land on the guided check-in.
+if (!page.url().includes('/checkin')) {
+  throw new Error(`expected the morning check-in on first launch, got ${page.url()}`);
+}
+console.log('✓ app booted into the morning check-in');
+await shot('01-checkin');
+
+// Step 1: today's shift.
+await page.getByText('Freischicht').click();
+await page.getByRole('button', { name: 'Weiter' }).click();
+await page.waitForTimeout(250);
+
+// Step 2: sleep.
+await page.getByText('7,5 h', { exact: true }).click();
+await page.locator('.rate-btn').nth(3).click();
+await page.getByRole('button', { name: 'Weiter' }).click();
+await page.waitForTimeout(250);
+
+// Step 3: how the body feels — one answer per scale.
+const scales = await page.locator('.rate').count();
+for (let i = 0; i < scales; i++) {
+  await page.locator('.rate').nth(i).locator('.rate-btn').nth(1).click();
+}
+await page.getByRole('button', { name: 'Weiter' }).click();
+await page.waitForTimeout(250);
+
+// Step 4: optional device values are skipped.
+await page.getByRole('button', { name: 'Weiter' }).click();
+await page.waitForTimeout(500);
+
+const result = await page.locator('.checkin-body').innerText();
+if (!/READY|MODERATE|RECOVERY/.test(result)) throw new Error('check-in did not produce a readiness level');
+if (!/dein training heute/i.test(result)) throw new Error('check-in did not produce a recommendation');
+console.log('✓ check-in produced readiness and a session');
+await shot('02-checkin-result');
+
+await page.getByRole('button', { name: 'Fertig' }).click();
+await page.waitForTimeout(500);
+await page.waitForSelector('.app-main', { timeout: 10000 });
+console.log('✓ finished into the daily screen');
+
+// The daily screen must answer "what should I do today" straight away.
 const heroText = await page.locator('.card-hero').first().innerText();
 if (!/heute/i.test(heroText)) throw new Error('Today card missing');
 console.log('✓ today card:', heroText.split('\n').slice(0, 3).join(' | '));
+await shot('03-today');
 
-// Set today's shift.
-await page.locator('.app-header, h1').first().waitFor();
-await page.getByText('Schicht eintragen').click();
-await page.getByText('Freischicht').click();
-await page.waitForTimeout(400);
-console.log('✓ shift set');
-await shot('02-today-shift');
+// Reopening the same day must not show the check-in again.
+await page.goto(BASE, { waitUntil: 'networkidle' });
+await page.waitForTimeout(800);
+if (page.url().includes('/checkin')) throw new Error('check-in reappeared on the same day');
+console.log('✓ second launch on the same day goes straight to the daily screen');
 
-// Daily check-in drives readiness.
-await page.getByText('Readiness').first().click();
-await page.waitForSelector('.sheet');
-await page.locator('input[type="number"]').first().fill('7.5');
-await page.getByRole('button', { name: 'Speichern' }).click();
-await page.waitForTimeout(400);
 const readiness = await page.locator('.card', { hasText: 'Readiness' }).first().innerText();
-if (readiness.includes('KEINE DATEN')) throw new Error('readiness did not update after check-in');
 if (!/READY|MODERATE|RECOVERY/.test(readiness)) throw new Error('readiness level missing');
-console.log('✓ check-in →', readiness.replace(/\n/g, ' '));
-await shot('03-readiness');
+console.log('✓ readiness on the daily screen →', readiness.split('\n').slice(0, 2).join(' '));
 
 // Accept the recommendation.
 const plan = page.getByRole('button', { name: /Einplanen/ }).first();

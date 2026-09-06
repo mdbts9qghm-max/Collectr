@@ -66,7 +66,7 @@ src/
 │   ├── derived.ts           Indizes und zusammengesetzte Sichten
 │   └── backup.ts            JSON-Backup, CSV-Export, Import-Validierung
 ├── ui/              Designsystem: Primitives, Charts, Sheets, Icons
-├── screens/         ein Modul pro Route
+├── screens/         ein Modul pro Route (inkl. CheckIn als Vollbild-Flow)
 └── app/             Shell, Navigation, Hooks, Theme
 ```
 
@@ -101,21 +101,30 @@ gekennzeichnet — es gibt keine Schaltfläche, die nichts tut.
 
 ## 6. Navigation
 
-Mobile: feste Tableiste mit **Today · Training · Woche · Habits · Tasks · Mehr**.
-Analytics, Ziele, Coach und Profil liegen unter *Mehr* — sieben gleichrangige Tabs sind
-auf einem iPhone nicht mit dem Daumen bedienbar.
+Mobile: feste Tableiste mit **Heute · Training · Habits · Tasks · Statistik · Mehr**.
+Woche, Ziele, Coach und Profil liegen unter *Mehr* — neun gleichrangige Tabs sind auf
+einem iPhone nicht mit dem Daumen bedienbar.
 
-Ab 860 px wird die Tableiste durch eine Seitenleiste mit allen neun Zielen ersetzt.
+Ab 860 px wird die Tableiste durch eine Seitenleiste mit allen Zielen ersetzt.
 
-Die Reihenfolge folgt der Priorisierung der Anforderung: Was täglich gebraucht wird, ist
-einen Tap entfernt; was wöchentlich oder monatlich gebraucht wird, zwei.
+Die Trennung folgt einer einzigen Regel: **Was heute handlungsrelevant ist, gehört auf
+Heute. Alles, was eine Zahl über die Vergangenheit ist, gehört in Statistik.** Deshalb
+liegen Hybrid Score, Verläufe, Records und Hinweise im Statistik-Tab und nicht auf dem
+Tagesbildschirm.
 
 ## 7. Wichtigste Screens
 
-**Today** — die Antwort zuerst: Datum, Schicht, Phase, dann eine große Karte mit der
-Empfehlung und aufgeklapptem „Warum?". Darunter Readiness und Hybrid Score als Ringe,
-der Tagesstatus als vier Fortschrittsbalken, dann heutiges Training, Habits, Aufgaben,
-Hinweise und eine Vorschau der nächsten Tage.
+**Check-in** — der erste Bildschirm des Tages. Öffnet sich beim ersten Start automatisch
+und führt in fünf Schritten durch Schicht, Schlaf, Befinden, optionale Gerätewerte und
+endet mit dem Ergebnis: Readiness plus die daraus errechnete Einheit, direkt einplanbar.
+Jede Antwort ist ein Tap, nichts braucht die Tastatur außer den optionalen Gerätewerten,
+und der Flow lässt sich jederzeit überspringen. Er erscheint pro Tag genau einmal —
+Überspringen darf nicht zu Nörgeln werden.
+
+**Heute** — bewusst schmal: Datum und Schicht, die Empfehlung mit ausklappbarem „Warum?",
+ein Statusblock aus Readiness-Ring, Schlaf- und Wochenbalken, dann die handlungsrelevanten
+Listen: heutiges Training, Habits zum Abhaken, fällige Aufgaben. Keine Verläufe, keine
+Scores, keine Vorschauen — was heute nicht handlungsrelevant ist, steht hier nicht.
 
 **Training** — Tagesnavigation, Schichtkapazität, geplante Einheiten, die Empfehlung mit
 Alternativen und einer aufklappbaren Liste der ausgeschlossenen Optionen samt Grund.
@@ -124,7 +133,8 @@ Darunter Wochenumfang gegen Ziel, Verteilung nach Sportart und Intensität, Bela
 **Woche** — Sieben-Tage-Raster mit Schicht, Trainingspunkten und Auswahl; Tagesdetail;
 Balken der Tagesbelastung; automatisch generierter Wochenrückblick mit eigenem Notizfeld.
 
-**Analytics** — Hybrid Score mit vollständiger Aufschlüsselung jeder Säule und Komponente,
+**Statistik** — alles Numerische an einem Ort: Hinweise, Hybrid Score mit vollständiger
+Aufschlüsselung jeder Säule und Komponente,
 Wochenumfang, Fitness-/Ermüdungsverlauf, Detailansicht je Sportart, Kraftbestwerte,
 Personal Records, Konstanz-Heatmap.
 

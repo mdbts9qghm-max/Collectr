@@ -22,12 +22,13 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/today', label: 'Today', shortLabel: 'Today', icon: IconToday, primary: true },
+  { to: '/today', label: 'Heute', shortLabel: 'Heute', icon: IconToday, primary: true },
   { to: '/training', label: 'Training', shortLabel: 'Training', icon: IconTraining, primary: true },
-  { to: '/week', label: 'Woche', shortLabel: 'Woche', icon: IconCalendar, primary: true },
   { to: '/habits', label: 'Habits', shortLabel: 'Habits', icon: IconHabits, primary: true },
   { to: '/tasks', label: 'Aufgaben', shortLabel: 'Tasks', icon: IconTasks, primary: true },
-  { to: '/analytics', label: 'Analytics', shortLabel: 'Analytics', icon: IconAnalytics, primary: false },
+  // Everything numeric lives here, off the daily screen.
+  { to: '/analytics', label: 'Statistik', shortLabel: 'Statistik', icon: IconAnalytics, primary: true },
+  { to: '/week', label: 'Woche', shortLabel: 'Woche', icon: IconCalendar, primary: false },
   { to: '/goals', label: 'Ziele', shortLabel: 'Ziele', icon: IconGoal, primary: false },
   { to: '/coach', label: 'Coach', shortLabel: 'Coach', icon: IconCoach, primary: false },
   { to: '/profile', label: 'Profil & Einstellungen', shortLabel: 'Profil', icon: IconProfile, primary: false },

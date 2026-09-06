@@ -862,3 +862,165 @@
 @media (min-width: 1200px) {
   :root { --content-max: 1040px; }
 }
+
+/* ---------- Check-in flow ---------- */
+
+.checkin {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.checkin-top {
+  padding: calc(var(--safe-top) + 14px) var(--s4) var(--s3);
+  flex: none;
+}
+
+.checkin-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--s4);
+}
+.checkin-progress > span {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  transition: background var(--t-base);
+}
+.checkin-progress > span.done {
+  background: var(--accent);
+}
+
+.checkin-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--s4) var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+
+.checkin-foot {
+  flex: none;
+  padding: var(--s3) var(--s4) calc(var(--s4) + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: var(--s3);
+  background: var(--bg-elevated);
+}
+
+.checkin-question {
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+/* Big, thumb-friendly option grid for the morning. */
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--s2);
+}
+.pick {
+  padding: var(--s4) var(--s2);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1.5px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--t-fast);
+  min-height: 84px;
+  justify-content: center;
+}
+.pick:active { transform: scale(0.97); }
+.pick.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pick-icon { font-size: 22px; line-height: 1; }
+.pick-label { font-size: 13px; font-weight: 620; text-align: center; line-height: 1.25; }
+.pick-sub { font-size: 11px; color: var(--text-muted); text-align: center; }
+
+/* Horizontal quick values, e.g. sleep hours. */
+.quick-row {
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.quick-row::-webkit-scrollbar { display: none; }
+.quick {
+  flex: none;
+  min-width: 58px;
+  padding: 12px 6px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1.5px solid transparent;
+  font-size: 15px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transition: all var(--t-fast);
+}
+.quick.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* 1-5 scale with meaning at both ends. */
+.rate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.rate-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.rate-btn {
+  padding: 14px 0;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1.5px solid transparent;
+  font-size: 16px;
+  font-weight: 660;
+  color: var(--text-secondary);
+  transition: all var(--t-fast);
+}
+.rate-btn.active {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+.rate-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.checkin-result {
+  text-align: center;
+  padding: var(--s5) 0 var(--s3);
+}
+
+/* Denser rows for the daily screen, where a ten-item habit list must not
+   push everything else below the fold. */
+.list.dense .list-item {
+  padding: 9px var(--s4);
+  gap: var(--s3);
+}
+.list.dense .check {
+  width: 22px;
+  height: 22px;
+}

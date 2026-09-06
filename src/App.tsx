@@ -4,6 +4,7 @@ import { Layout } from './app/Layout.tsx';
 import { useStore } from './data/store.ts';
 import { useTheme } from './app/hooks.ts';
 import { Today } from './screens/Today.tsx';
+import { CheckIn } from './screens/CheckIn.tsx';
 import { Training } from './screens/Training.tsx';
 import { Week } from './screens/Week.tsx';
 import { Habits } from './screens/Habits.tsx';
@@ -49,6 +50,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Navigate to="/today" replace />} />
           <Route path="/today" element={<Today />} />
+          <Route path="/checkin" element={<CheckIn />} />
           <Route path="/training" element={<Training />} />
           <Route path="/week" element={<Week />} />
           <Route path="/habits" element={<Habits />} />

@@ -13,7 +13,8 @@ import { loadSeries, periodStats } from '../domain/load.ts';
 import { PILLAR_META } from '../domain/score.ts';
 import { bestWeek, describeRecord, strengthRecords } from '../domain/metrics.ts';
 import { weeklySeries } from '../data/derived.ts';
-import { useData, useHybridScore, useMetrics, useToday } from '../app/hooks.ts';
+import { buildInsights } from '../domain/insights.ts';
+import { useData, useHybridScore, useIndexes, useMetrics, useToday } from '../app/hooks.ts';
 import { useLocalState } from '../app/hooks.ts';
 import { Card, Disclosure, Empty, Pill, ProgressBar, SectionTitle, Segmented } from '../ui/primitives.tsx';
 import { BarChart, DistributionBar, LineChart, MultiRing, Ring } from '../ui/charts.tsx';
@@ -23,8 +24,11 @@ type Range = '4' | '12' | '26';
 export function Analytics() {
   const today = useToday();
   const data = useData();
+  const idx = useIndexes();
   const metrics = useMetrics(today);
   const score = useHybridScore(today);
+  // The daily screen stays free of advisory text; it lives here instead.
+  const insights = useMemo(() => buildInsights(data, idx, today), [data, idx, today]);
   const [range, setRange] = useLocalState<Range>('analytics-range', '12');
   const [sport, setSport] = useState<SportKey | 'all'>('all');
 
@@ -61,7 +65,25 @@ export function Analytics() {
 
   return (
     <>
-      <h1 className="t-title">Analytics</h1>
+      <h1 className="t-title">Statistik</h1>
+
+      {insights.length > 0 && (
+        <div className="col gap-3">
+          {insights.slice(0, 3).map((insight) => (
+            <Card key={insight.id} tight>
+              <div className="row gap-3 row-top">
+                <span style={{ fontSize: 18 }}>{insight.icon}</span>
+                <div className="grow">
+                  <div className="t-body" style={{ fontWeight: 570 }}>
+                    {insight.title}
+                  </div>
+                  <div className="t-small muted mt-2">{insight.body}</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Segmented
         value={range}
