@@ -35,6 +35,51 @@ export interface UpdateController {
   check: () => Promise<void>;
 }
 
+const AUTO_APPLY_KEY = 'ha:auto-applied-at';
+
+/**
+ * Guards against a reload loop. If applying an update did not actually take —
+ * the worker failed to activate, the server kept serving the old files — then
+ * without this the app would reload on every single launch.
+ */
+function recentlyAutoApplied(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(AUTO_APPLY_KEY) ?? '0');
+    return Date.now() - last < 60_000;
+  } catch {
+    return false;
+  }
+}
+
+function markAutoApplied(): void {
+  try {
+    sessionStorage.setItem(AUTO_APPLY_KEY, String(Date.now()));
+  } catch {
+    // Storage blocked; the worst case is one extra reload.
+  }
+}
+
+/**
+ * Last resort when an install is stuck on an old version: drop every cache and
+ * service worker, then reload from the network.
+ *
+ * IndexedDB is deliberately untouched — training data, habits and check-ins all
+ * live there and must survive this.
+ */
+export async function forceRefresh(): Promise<void> {
+  try {
+    if (typeof caches !== 'undefined') {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+    const registrations = (await navigator.serviceWorker?.getRegistrations?.()) ?? [];
+    await Promise.all(registrations.map((r) => r.unregister()));
+  } catch {
+    // Even a partial cleanup is worth reloading after.
+  }
+  window.location.reload();
+}
+
 export function initUpdates(onUpdateAvailable: () => void): UpdateController {
   let registration: ServiceWorkerRegistration | undefined;
   const startedAt = Date.now();
@@ -44,9 +89,9 @@ export function initUpdates(onUpdateAvailable: () => void): UpdateController {
 
   const updateSW = registerSW({
     onNeedRefresh() {
-      // Guard against a reload loop: apply at most once per page session.
-      if (isColdStart() && !applied) {
+      if (isColdStart() && !applied && !recentlyAutoApplied()) {
         applied = true;
+        markAutoApplied();
         void updateSW(true);
         return;
       }
@@ -65,8 +110,9 @@ export function initUpdates(onUpdateAvailable: () => void): UpdateController {
        */
       const handleWaiting = () => {
         if (!reg.waiting || !navigator.serviceWorker.controller) return;
-        if (isColdStart() && !applied) {
+        if (isColdStart() && !applied && !recentlyAutoApplied()) {
           applied = true;
+          markAutoApplied();
           void updateSW(true);
           return;
         }

@@ -49,10 +49,21 @@ sie im Hintergrund liegt. Deshalb prüft die App selbst: stündlich, beim Zurüc
 Vordergrund und bei wiederhergestellter Verbindung. Findet sie eine neue Version, erscheint
 unten eine Leiste — *Neue Version verfügbar · Später · Neu laden*.
 
-Der Neustart passiert nie von allein. Ein stiller Reload mitten im Check-in würde die
-Eingaben verwerfen, deshalb entscheidet der Tap. *Später* gilt für die laufende Sitzung;
-beim nächsten Öffnen wird erneut gefragt. In den Einstellungen gibt es zusätzlich
-**Jetzt nach Update suchen**.
+Zwei Fälle werden unterschieden:
+
+* **Kaltstart** — die App wurde gerade geöffnet. Eine bereitstehende Version wird sofort
+  übernommen, ohne Rückfrage. Wer die App komplett schließt und neu öffnet, bekommt eine
+  aktuelle App.
+* **Während der Nutzung** — die Leiste fragt, weil ein stiller Reload mitten im Check-in
+  die Eingaben verwerfen würde. *Später* gilt für die laufende Sitzung.
+
+In den Einstellungen stehen zusätzlich **Jetzt nach Update suchen** und, falls eine
+Installation doch auf einer alten Version festhängt, **Aktualisierung erzwingen**. Letzteres
+verwirft Zwischenspeicher und Service Worker und lädt neu — die Datenbank mit Trainings,
+Habits und Check-ins bleibt unangetastet.
+
+Unter **Profil → App-Version** stehen Build-Zeitpunkt und Commit-Kürzel. Damit lässt sich
+vom Telefon aus feststellen, welche Version tatsächlich läuft.
 
 ### Vor dem Deploy lokal prüfen
 

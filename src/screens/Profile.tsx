@@ -17,6 +17,7 @@ import {
 import { useStore } from '../data/store.ts';
 import { useData } from '../app/hooks.ts';
 import { APP_VERSION, BUILD_REV, formatBuildTime } from '../app/version.ts';
+import { forceRefresh } from '../app/updates.ts';
 import {
   Button,
   Card,
@@ -652,15 +653,37 @@ export function Profile() {
           App während der Nutzung eine, fragt sie erst nach — ein Neuladen mitten im Check-in würde
           deine Eingaben verwerfen.
         </p>
-        <Button
-          block
-          onClick={async () => {
-            await window.__hybridCheckForUpdate?.();
-            toast('Nach Updates gesucht — falls eine neue Version da ist, meldet sie sich gleich');
-          }}
-        >
-          Jetzt nach Update suchen
-        </Button>
+        <div className="col gap-2">
+          <Button
+            block
+            onClick={async () => {
+              await window.__hybridCheckForUpdate?.();
+              toast('Nach Updates gesucht — falls eine neue Version da ist, meldet sie sich gleich');
+            }}
+          >
+            Jetzt nach Update suchen
+          </Button>
+          <Button
+            block
+            variant="outline"
+            onClick={() => {
+              if (
+                !confirm(
+                  'App-Zwischenspeicher leeren und neu laden?\n\nDeine Daten bleiben erhalten — Trainings, Habits und Check-ins liegen in der Datenbank, nicht im Zwischenspeicher.',
+                )
+              ) {
+                return;
+              }
+              void forceRefresh();
+            }}
+          >
+            Aktualisierung erzwingen
+          </Button>
+        </div>
+        <p className="t-caption muted mt-2">
+          Erzwingen hilft, wenn die App auf einer alten Version festhängt. Sie verwirft nur den
+          Zwischenspeicher und lädt neu — Trainings, Habits und Check-ins bleiben unangetastet.
+        </p>
 
         <div className="divider mt-4" />
         <Button
