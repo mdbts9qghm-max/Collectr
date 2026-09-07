@@ -851,9 +851,13 @@ function evaluate(a: Archetype, ctx: EngineContext, facts: DayFacts): Scored {
   if (target.phase) {
     const share = target.phase.sportFocus[a.sport] ?? 0;
     if (share >= 0.25) add(`${target.phase.label}-Phase betont ${SPORT_META[a.sport].label}`, 8);
-    if (target.deload && isHardCandidate) add('Deload-Woche — Intensität bewusst zurücknehmen', -20);
-    if (target.deload && isEasyish) add('Deload-Woche — lockere Einheiten sind genau richtig', 10);
   }
+
+  // The deload stands on its own, outside the phase check: once a plan runs out
+  // there is no phase, and gating the deload on one meant the week that needed
+  // it most was the week it stopped being applied.
+  if (target.deload && isHardCandidate) add('Deload-Woche — Intensität bewusst zurücknehmen', -20);
+  if (target.deload && isEasyish) add('Deload-Woche — lockere Einheiten sind genau richtig', 10);
 
   // 12. Consecutive-day fatigue. Easy work is cheaper but not free — five days
   // of easy running still leaves no day for the adaptation to land.

@@ -290,6 +290,22 @@ export function defaultTrainingPlan(): TrainingPlan {
         focus: ['Umfang senken', 'Intensität kurz halten', 'Schlaf maximieren'],
         notes: 'Umfang um ~40 % reduzieren, Häufigkeit und kurze Reize beibehalten.',
       },
+      {
+        id: 'phase_recovery',
+        kind: 'recovery',
+        label: 'Nach dem Ziel',
+        startDate: addDays(w(52), 1),
+        endDate: w(58),
+        weeklyHoursTarget: 5,
+        sportFocus: { run: 0.25, bike: 0.3, swim: 0.12, strength: 0.18, mobility: 0.15 },
+        intensityDistribution: { easy: 0.95, moderate: 0.05, hard: 0 },
+        strengthSessionsPerWeek: 1,
+        focus: ['Erholen', 'Sehnen und Bänder entlasten', 'Lust am Sport zurückholen'],
+        notes:
+          '100 km kosten Wochen, nicht Tage. Die ersten beiden Wochen bewusst wenig, danach ' +
+          'langsam zurück — und wenig Laufen: das Rad und das Wasser tragen die Grundlage, ' +
+          'während der Aufprall aus den Beinen raus ist. Danach beginnt der nächste Block.',
+      },
     ],
   };
 }

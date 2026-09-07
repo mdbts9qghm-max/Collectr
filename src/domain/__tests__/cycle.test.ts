@@ -270,3 +270,27 @@ describe('Steigerungsregel', () => {
     expect(load(2)).toBeGreaterThan(load(0) * 0.6);
   });
 });
+
+describe('Tage ohne eingetragene Schicht', () => {
+  it('behauptet keinen Erholungswert', () => {
+    // Nothing is entered for these days, so the app knows nothing about what
+    // they did to sleep. A confident number here would be invented.
+    const p = plan({ keys: [], days: 3 });
+    for (const day of p.days) {
+      expect(day.recovery.known).toBe(false);
+    }
+  });
+
+  it('verplant sie auch nicht', () => {
+    const p = plan({ keys: [], days: 3 });
+    expect(allUnits(p)).toHaveLength(0);
+  });
+
+  it('unterscheidet Urlaub von fehlender Angabe', () => {
+    const p = plan({ keys: ['vacation', 'vacation'], days: 2 });
+    for (const day of p.days) {
+      expect(day.recovery.known).toBe(true);
+      expect(day.recovery.base).toBe(85);
+    }
+  });
+});

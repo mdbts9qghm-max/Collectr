@@ -66,9 +66,9 @@ lockere Stunde ein Reiz, den er nicht verarbeiten kann.
 
 ## 3. Periodisierung
 
-Vier Phasen (Base → Build → Peak → Taper) mit eigenem Wochenumfang, eigener
-Sportverteilung, eigener Intensitätsverteilung und eigener Kraftfrequenz. Alle vier
-Größen sind im Profil pro Phase editierbar; die Sportanteile werden als freie Zahlen
+Fünf Phasen (Base → Build → Peak → Taper → **Nach dem Ziel**) mit eigenem Wochenumfang,
+eigener Sportverteilung, eigener Intensitätsverteilung und eigener Kraftfrequenz. Alle
+vier Größen sind im Profil pro Phase editierbar; die Sportanteile werden als freie Zahlen
 eingegeben und ins Verhältnis gesetzt, sodass sie sich beim Tippen nie exakt auf 100
 addieren müssen.
 
@@ -79,6 +79,30 @@ ist, sich in ein Loch zu trainieren.
 Der Standardplan ist bewusst konservativ: 16 Wochen Base. Von 25 Minuten auf 5 km zu 100
 km führt kein schneller Weg, und der begrenzende Faktor ist nicht die Lunge, sondern
 Sehnen, Bänder und Knochen.
+
+### Was nach dem Taper kommt
+
+Nach dem Ziel steht keine Lücke, sondern eine eigene Phase. 100 km kosten Wochen, nicht
+Tage — und die Belastung, die am längsten nachwirkt, ist nicht die Ausdauer, sondern der
+Aufprall. Die Phase läuft deshalb sechs Wochen mit fünf Stunden Grundumfang, ohne
+Intensität, und mit dem niedrigsten Laufanteil aller Phasen: Rad und Wasser halten die
+Grundlage, während die Beine den Stoß nicht mehr abbekommen.
+
+In dieser Phase läuft die Welle **umgekehrt**: 55 %, 70 %, 85 %, 100 %. Es gibt keine
+Entlastungswoche, weil die ganze Phase eine ist. Nach einem Wettkampf aufzubauen wäre
+genau die falsche Richtung.
+
+### Wenn der Plan ausläuft
+
+Ein zu Ende gelaufener Plan war vorher nicht von „gar kein Plan" zu unterscheiden: beides
+ergab keine aktive Phase, und keine aktive Phase hieß stillschweigend *Woche eins der
+Welle, voller Umfang, für immer* — die Entlastungswoche kam nie wieder.
+
+Jetzt zählt die Welle nach dem Planende weiter, gemessen an den Wochen seit dem letzten
+Plantag. Die Entlastungswoche kommt also weiter, und die Empfehlungs-Engine zieht ihre
+Punkte auch dann ab, wenn keine Phase mehr läuft. Sichtbar ist der Zustand ebenfalls: im
+Trainings- und im Wochentab steht, seit wie vielen Wochen der Plan aus ist und dass ohne
+Phase kein Schwerpunkt mehr gesetzt wird.
 
 ## 4. Empfehlungs-Engine
 
@@ -214,6 +238,11 @@ Eine Zahl von 0 bis 100 pro Tag, aus einem Basiswert je Zyklustag plus Zuschläg
 
 Rot unter 45, gelb bis 74, grün ab 75. Die Farbe im Zyklustab kommt genau aus diesen
 Schwellen, damit Zahl und Farbe nie auseinanderlaufen können.
+
+Für einen Tag **ohne eingetragene Schicht** gibt es keinen Erholungswert. Die App weiß
+dann nicht, was der Tag mit dem Schlaf gemacht hat; der Planer überspringt ihn, und im
+Zyklustab steht grau „Erholung unbekannt" statt einer grünen Zahl. Urlaub ist etwas
+anderes — der ist bekannt und startet bei 85.
 
 ### Einheitenkatalog
 

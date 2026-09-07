@@ -99,6 +99,11 @@ export interface RecoveryValue {
   adjustments: { label: string; delta: number }[];
   /** Red below 45, amber to 74, green from 75. */
   band: 'red' | 'amber' | 'green';
+  /**
+   * False on days whose shift was never entered. The value is then a
+   * placeholder the planner ignores — it must never be shown as a fact.
+   */
+  known: boolean;
 }
 
 export interface RollingWindowState {

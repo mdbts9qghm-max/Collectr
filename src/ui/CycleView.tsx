@@ -125,7 +125,13 @@ function CycleDayRow({
 }) {
   const [open, setOpen] = useState(false);
   const meta = day.shape.cycleDay ? CYCLE_DAY_META[day.shape.cycleDay] : null;
-  const band = RECOVERY_BAND_META[day.recovery.band];
+  // A day without a shift has no recovery value worth showing. Its number is a
+  // placeholder the planner ignores, so the row stays grey and says so rather
+  // than putting a confident green figure on a blank day.
+  const known = day.recovery.known;
+  const band = known
+    ? RECOVERY_BAND_META[day.recovery.band]
+    : { label: 'unbekannt', color: 'var(--text-muted)', advice: 'Trag die Schicht ein, dann plant die App diesen Tag mit.' };
   const isToday = day.shape.date === today;
   const isPast = day.shape.date < today;
 
@@ -152,8 +158,10 @@ function CycleDayRow({
             {isToday && <Pill tone="accent">heute</Pill>}
           </span>
           <span className="t-caption muted" style={{ display: 'block' }}>
-            {day.shape.isVShift ? 'V-Schicht' : (meta?.label ?? 'unbekannt')} ·{' '}
-            <span style={{ color: band.color }}>Erholung {day.recovery.value}</span>
+            {day.shape.isVShift ? 'V-Schicht' : (meta?.label ?? 'keine Schicht')} ·{' '}
+            <span style={{ color: band.color }}>
+              {known ? `Erholung ${day.recovery.value}` : 'Erholung unbekannt'}
+            </span>
           </span>
         </span>
 
@@ -194,7 +202,11 @@ function CycleDayRow({
 
       {day.units.length === 0 && (
         <div className="cycle-unit muted t-caption">
-          {day.shape.trainingWindow ? 'Kein Training vorgesehen' : 'Kein Trainingsfenster'}
+          {!known
+            ? 'Keine Schicht eingetragen — dieser Tag wird nicht verplant'
+            : day.shape.trainingWindow
+              ? 'Kein Training vorgesehen'
+              : 'Kein Trainingsfenster'}
         </div>
       )}
 
@@ -206,12 +218,16 @@ function CycleDayRow({
 
       {open && (
         <div className="cycle-explain">
-          <div className="t-caption muted">{meta?.purpose}</div>
+          {meta && <div className="t-caption muted">{meta.purpose}</div>}
           <div className="t-caption mt-2">{band.advice}</div>
-          <div className="divider mt-3 mb-3" />
-          <div className="t-label mb-2">Erholungswert {day.recovery.value}</div>
-          <div className="t-caption muted">Basis {day.recovery.base}</div>
-          {day.recovery.adjustments.map((a) => (
+          {known && (
+            <>
+              <div className="divider mt-3 mb-3" />
+              <div className="t-label mb-2">Erholungswert {day.recovery.value}</div>
+              <div className="t-caption muted">Basis {day.recovery.base}</div>
+            </>
+          )}
+          {known && day.recovery.adjustments.map((a) => (
             <div key={a.label} className="row between t-caption">
               <span className="muted">{a.label}</span>
               <span className={a.delta >= 0 ? 'good t-num' : 'bad t-num'}>

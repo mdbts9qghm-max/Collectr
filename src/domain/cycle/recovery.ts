@@ -23,7 +23,16 @@ const BASE_BY_CYCLE_DAY: Record<number, { value: number; why: string }> = {
 };
 
 const V_SHIFT_BASE = { value: 55, why: 'V-Schicht: enges Fenster, 12 h Dienst' };
-const OUT_OF_ROTATION_BASE = { value: 85, why: 'Außerhalb der Rotation' };
+const VACATION_BASE = { value: 85, why: 'Urlaub: kein Dienst, freier Schlaf' };
+/**
+ * A day whose shift was never entered.
+ *
+ * The number is a placeholder, not an estimate: without the shift the app does
+ * not know what the day did to sleep. The planner skips these days entirely and
+ * the UI shows them as unknown — putting a confident green 85 on a blank day
+ * would be inventing exactly the kind of certainty this app refuses.
+ */
+const UNKNOWN_BASE = { value: 50, why: 'Keine Schicht eingetragen — Erholung unbekannt' };
 
 export interface RecoveryInputs {
   /** Total load per day, from what was actually completed. */
@@ -38,14 +47,18 @@ export function computeRecovery(shape: DayShape, inputs: RecoveryInputs): Recove
       base: 0,
       adjustments: [{ label: 'Krank gemeldet', delta: 0 }],
       band: 'red',
+      known: true,
     };
   }
 
+  const known = shape.outOfRotation !== 'unknown';
   const baseEntry = shape.isVShift
     ? V_SHIFT_BASE
     : shape.cycleDay != null
       ? BASE_BY_CYCLE_DAY[shape.cycleDay]
-      : OUT_OF_ROTATION_BASE;
+      : shape.outOfRotation === 'vacation'
+        ? VACATION_BASE
+        : UNKNOWN_BASE;
 
   const adjustments: { label: string; delta: number }[] = [];
   let value = baseEntry.value;
@@ -93,6 +106,7 @@ export function computeRecovery(shape: DayShape, inputs: RecoveryInputs): Recove
     base: baseEntry.value,
     adjustments,
     band: clamped < 45 ? 'red' : clamped < 75 ? 'amber' : 'green',
+    known,
   };
 }
 
@@ -110,7 +124,9 @@ function consecutiveTrainingDays(date: ISODate, loadByDate: Map<ISODate, number>
 export function baseReasonFor(shape: DayShape): string {
   if (shape.outOfRotation === 'sick') return 'Krank gemeldet';
   if (shape.isVShift) return V_SHIFT_BASE.why;
-  if (shape.cycleDay == null) return OUT_OF_ROTATION_BASE.why;
+  if (shape.cycleDay == null) {
+    return shape.outOfRotation === 'vacation' ? VACATION_BASE.why : UNKNOWN_BASE.why;
+  }
   return BASE_BY_CYCLE_DAY[shape.cycleDay].why;
 }
 

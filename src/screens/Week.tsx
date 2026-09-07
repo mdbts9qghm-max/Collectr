@@ -112,7 +112,11 @@ export function Week() {
             {formatHours(summary.totalMinutes / 60)} von {formatHours(target.minutes / 60)}
           </span>
           <span className="t-caption muted">
-            {target.phase ? `${target.phase.label}-Phase` : 'keine Phase'}
+            {target.phase
+              ? `${target.phase.label}-Phase`
+              : target.status === 'ended'
+                ? `Plan ausgelaufen · Woche ${target.weeksPastPlan} danach`
+                : 'keine Phase'}
             {target.deload ? ' · Deload' : ''}
           </span>
         </div>

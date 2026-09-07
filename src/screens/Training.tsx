@@ -133,6 +133,30 @@ export function Training() {
         </Button>
       </div>
 
+      {/*
+        A plan that has run out used to be indistinguishable from no plan at
+        all — the app just carried on prescribing full weeks. Now it says so.
+      */}
+      {(target.status === 'ended' || target.status === 'none') && (
+        <Card tight style={{ background: 'var(--warn-soft)', borderColor: 'transparent' }}>
+          <div className="row gap-3 row-top">
+            <span style={{ fontSize: 15 }}>🏁</span>
+            <span className="t-small grow">
+              {target.status === 'ended' ? (
+                <>
+                  Dein Plan ist ausgelaufen — seit {target.weeksPastPlan}{' '}
+                  {target.weeksPastPlan === 1 ? 'Woche' : 'Wochen'}. Die App hält den Umfang auf
+                  deinem Wochenziel und legt die Entlastungswoche weiter ein, aber ohne Phase gibt
+                  es keinen Schwerpunkt mehr. Leg im Profil einen neuen Block an.
+                </>
+              ) : (
+                <>Kein Trainingsplan aktiv. Ohne Phasen gibt es keinen Schwerpunkt und keine Periodisierung.</>
+              )}
+            </span>
+          </div>
+        </Card>
+      )}
+
       <Segmented
         value={mode}
         onChange={setMode}
@@ -200,7 +224,11 @@ export function Training() {
               : ` · ${missingShifts} ${missingShifts === 1 ? 'Tag' : 'Tage'} ohne Schicht`}
           </span>
           <span>
-            {target.phase ? `${target.phase.label}` : 'keine Phase'}
+            {target.phase
+              ? target.phase.label
+              : target.status === 'ended'
+                ? 'Plan ausgelaufen'
+                : 'keine Phase'}
             {target.deload ? ' · Deload' : ''}
           </span>
         </div>
