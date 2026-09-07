@@ -270,6 +270,16 @@ der Katalog selbst beschreibt (45 min locker: 25 zu 35; 60 min intensiv: 80 zu 1
 bewertet ihn höher, als Dauer × RPE es tut, und das ist beabsichtigt: drei Stunden
 locker kosten trotzdem Tage an Frische.
 
+### Doppeleinheiten
+
+Zwei Einheiten an einem Tag sind **genau eine Kraft- und eine Ausdauereinheit**, nie zwei
+vom selben Typ. Zwei Läufe an einem Tag sind ein längerer Lauf in zwei Hälften: dasselbe
+Gewebe, derselbe Aufprall, kein zweiter Reiz — und dazwischen keine Pause für die Beine.
+Eine Regeneration zählt ebenfalls nicht als zweite Einheit: sie würde den Frequenzsollwert
+abhaken, ohne etwas zu trainieren.
+
+Dazu kommen sechs Stunden Abstand und Kraft vor Lauf, und beides nur an freien Tagen.
+
 ### Rollierendes Fenster
 
 Alle Lastregeln gelten auf sieben rollierenden Tagen, nicht auf der Kalenderwoche.
@@ -283,6 +293,12 @@ Die Steigerungsregel (höchstens 110 % des Vorfensters) greift **nur, wenn das
 Vorfenster in der Vergangenheit liegt**. Progression misst sich an dem, was
 trainiert wurde. Gegen die eigene Vorausplanung zu drosseln wäre eine Ratsche: ein
 zufällig leichter Zyklus würde jeden folgenden kleiner machen.
+
+Sie wird außerdem erst am **fertigen** Plan geprüft, nicht beim Platzieren. Mitten im
+Aufbau enthält das Vorfenster nur, was zufällig schon gesetzt wurde — es meldet zu wenig,
+und die Regel blockiert dann Einheiten, die am Ende problemlos passen. Die Lastobergrenze
+hat den umgekehrten Fehler und darf durchgehend gelten: ein halber Plan kann nur zu
+großzügig sein, und der Reparaturlauf fängt den Überhang danach ab.
 
 ### Ablauf
 
@@ -298,7 +314,26 @@ zufällig leichter Zyklus würde jeden folgenden kleiner machen.
    schwerste verletzende Einheit abstufen, bis er sauber ist
 8. Lokale Suche: Einheiten tauschen, solange die Zielfunktion besser wird
    (höchstens 200 Schritte)
+
+Der Reparaturlauf stuft dabei **den am wenigsten erholten Tag zuerst** ab. Wenn zwei
+Einheiten kollidieren, muss eine weichen, und diese Wahl ist nicht beliebig: der Tag, der
+am wenigsten tragen kann, verliert am meisten. Nur nach Last zu sortieren hat den
+Schlüsseltag ausgeweidet — zwei gleich schwere Krafteinheiten an aufeinanderfolgenden
+Tagen, und ausgerechnet die am frischesten Tag wurde bis auf einen Zwanzig-Minuten-
+Spaziergang heruntergestuft.
 9. Zusammensetzen samt Begründungen und verbleibenden Warnungen
+
+### Eine Quelle für alle Ansichten
+
+Zyklustab, Wochentab, Tagesbildschirm und Morgen-Check-in lesen **denselben Plan**. Vorher
+haben Wochen- und Zyklusansicht zwei verschiedene Engines gefragt und für denselben
+Dienstag zwei verschiedene Einheiten vorgeschlagen. Der Kalender zeigt die Einheiten des
+Planers jetzt als gestrichelte Blöcke — Vorschlag, nicht Zusage — und die Alternativen
+darunter kommen aus denselben Regeln: alles, was der Tag sonst noch tragen würde, plus
+das, was er ausschließt, mit der Regel als Begründung.
+
+Der Smoke-Test vergleicht beide Ansichten bei jedem Lauf und schlägt fehl, wenn sie
+auseinanderlaufen.
 
 ### Anpassung am Morgen
 

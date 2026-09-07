@@ -67,6 +67,8 @@ src/
 │       ├── recovery.ts          Erholungswert 0–100 samt Begründungen
 │       ├── rules.ts             die zwölf harten Regeln, rollierendes 7-Tage-Fenster
 │       ├── planner.ts           Platzierung, Reparaturlauf, Zielfunktion, lokale Suche
+│       ├── slots.ts             Platzierung einer Einheit im Tagesfenster
+│       ├── options.ts           Vorschlag, Alternativen und Ausschlüsse je Tag
 │       ├── adjust.ts            Auf-/Abstufung bei abweichendem Befinden
 │       └── toSession.ts         Übersetzung einer geplanten Einheit in eine Session
 ├── data/            Persistenz und abgeleiteter Zustand

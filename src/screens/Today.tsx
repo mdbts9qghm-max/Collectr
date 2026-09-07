@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Recommendation, TrainingSession } from '../domain/types.ts';
+import type { TrainingSession } from '../domain/types.ts';
 import { isoWeekNumber, nowTimestamp } from '../domain/date.ts';
 import {
-  INTENSITY_META,
   SPORT_META,
   formatDateLong,
   formatDuration,
@@ -11,12 +10,16 @@ import {
   weekdayLong,
 } from '../domain/format.ts';
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
+import type { PlannedUnit } from '../domain/cycle/types.ts';
+import { CATALOGUE } from '../domain/cycle/catalogue.ts';
+import { formatClock } from '../domain/cycle/windows.ts';
+import { sessionFromUnit, shapeOf } from '../domain/cycle/toSession.ts';
 import { statusOn } from '../domain/habits.ts';
 import { summarise, tasksForDay } from '../domain/tasks.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
 import { activeHabits, entriesFor } from '../data/derived.ts';
-import { useData, useDayContext, useDayView, useIndexes, useToday } from '../app/hooks.ts';
+import { useCyclePlan, useData, useDayContext, useDayView, useIndexes, useToday } from '../app/hooks.ts';
 import {
   Button,
   Card,
@@ -66,29 +69,16 @@ export function Today() {
   const habitsDone = habitRows.filter((h) => h.status === 'complete').length;
 
   const readinessMeta = READINESS_LEVEL_META[view.readiness.level];
-  const top = view.recommendation.recommended[0];
+  // One cycle is enough: this card only ever speaks about today.
+  const cyclePlan = useCyclePlan(today, 1);
+  const cycleDay = cyclePlan.days.find((d) => d.shape.date === today) ?? null;
+  const unit = cycleDay?.units[0] ?? null;
   const done = view.sessions.filter((s) => s.status === 'completed').length;
 
-  const plan = (rec: Recommendation) => {
-    if (rec.template.isRest) {
-      toast('Ruhetag — nichts zu planen. Das ist die Einheit.', 'good');
-      return;
-    }
-    saveSession({
-      ...emptySession(today, rec.template.sport),
-      id: makeId('ses'),
-      title: rec.template.title,
-      plannedIntensity: rec.template.intensity,
-      plannedDurationMin: rec.template.durationMin,
-      plannedDistanceKm: rec.template.distanceKm,
-      startTime: rec.suggestedStart,
-      goal: rec.template.goal,
-      muscleGroups: rec.template.muscleGroups,
-      fromRecommendationId: rec.id,
-      createdAt: nowTimestamp(),
-      updatedAt: nowTimestamp(),
-    });
-    toast(`${rec.template.title} eingeplant`, 'good');
+  const planUnit = (unit: PlannedUnit) => {
+    const stamp = nowTimestamp();
+    saveSession(sessionFromUnit(unit, { id: makeId('ses'), createdAt: stamp, updatedAt: stamp }));
+    toast(`${CATALOGUE[unit.kind].label} eingeplant`, 'good');
   };
 
   return (
@@ -119,42 +109,58 @@ export function Today() {
         </button>
       </div>
 
-      {/* ---------- Die eine Antwort ---------- */}
+      {/*
+        ---------- Die eine Antwort ----------
+        From the cycle planner, the same source the training tab and the morning
+        check-in read. There is one plan, so there is one answer.
+      */}
       <Card hero accentEdge>
-        <div className="t-label">Heute</div>
-        {top ? (
+        <div className="row between">
+          <span className="t-label">Heute</span>
+          {cycleDay?.recovery.known && (
+            <Pill
+              tone={
+                cycleDay.recovery.band === 'green'
+                  ? 'good'
+                  : cycleDay.recovery.band === 'amber'
+                    ? 'warn'
+                    : 'bad'
+              }
+            >
+              Erholung {cycleDay.recovery.value}
+            </Pill>
+          )}
+        </div>
+        {unit ? (
           <>
             <div className="row gap-3 mt-3">
-              <span style={{ fontSize: 32, lineHeight: 1 }}>{SPORT_META[top.template.sport].icon}</span>
+              <span style={{ fontSize: 32, lineHeight: 1 }}>
+                {SPORT_META[shapeOf(unit.kind).sport].icon}
+              </span>
               <div className="grow">
-                <div className="t-title">{top.template.title}</div>
+                <div className="t-title">{CATALOGUE[unit.kind].label}</div>
                 <div className="t-small secondary mt-2">
-                  {top.template.isRest
-                    ? 'Kein Training — bewusst.'
-                    : [
-                        formatDuration(top.template.durationMin),
-                        top.template.distanceKm ? `≈ ${top.template.distanceKm.toFixed(1)} km` : null,
-                        INTENSITY_META[top.template.intensity].zone,
-                        top.suggestedStart ? `ab ${top.suggestedStart}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
+                  {[
+                    formatDuration(unit.durationMinutes),
+                    CATALOGUE[unit.kind].description,
+                    `ab ${formatClock(unit.start)}`,
+                  ].join(' · ')}
                 </div>
               </div>
             </div>
 
             <div className="mt-4">
               <Disclosure summary={<span className="t-label">Warum?</span>}>
-                <ReasonList reasons={top.reasons.slice(0, 4)} />
+                <ReasonList
+                  reasons={unit.reasons.map((text) => ({ text, impact: 'neutral' as const }))}
+                />
               </Disclosure>
             </div>
 
             <div className="row gap-2 mt-4">
-              {!top.template.isRest && (
-                <Button variant="primary" onClick={() => plan(top)}>
-                  <IconPlus size={16} /> Einplanen
-                </Button>
-              )}
+              <Button variant="primary" onClick={() => planUnit(unit)}>
+                <IconPlus size={16} /> Einplanen
+              </Button>
               <Link to="/training" className="btn btn-outline">
                 Andere Optionen <IconChevronRight size={15} />
               </Link>
@@ -162,10 +168,21 @@ export function Today() {
           </>
         ) : (
           <div className="mt-3">
-            <div className="t-title">Ruhetag</div>
+            <div className="t-title">
+              {cycleDay?.recovery.known === false ? 'Keine Schicht eingetragen' : 'Ruhetag'}
+            </div>
             <p className="t-small secondary mt-2">
-              Alle Optionen sind heute durch Schicht, Erholung oder Belastung ausgeschlossen.
+              {cycleDay?.recovery.known === false
+                ? 'Ohne Schicht weiß die App nicht, was der Tag mit deinem Schlaf macht — und plant ihn deshalb nicht.'
+                : cycleDay?.shape.trainingWindow
+                  ? 'Für heute ist bewusst keine Einheit vorgesehen.'
+                  : 'Dieser Schichttag hat kein Trainingsfenster.'}
             </p>
+            <div className="row gap-2 mt-4">
+              <Link to="/training" className="btn btn-outline">
+                Trotzdem etwas planen <IconChevronRight size={15} />
+              </Link>
+            </div>
           </div>
         )}
       </Card>

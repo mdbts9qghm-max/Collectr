@@ -4,6 +4,7 @@ import type { PlannedUnit, SessionKind } from '../cycle/types.ts';
 import { DEFAULT_PLANNER_SETTINGS } from '../cycle/types.ts';
 import { buildDayShapes, detectCycle } from '../cycle/detect.ts';
 import { planCycle } from '../cycle/planner.ts';
+import { checkPlacement } from '../cycle/rules.ts';
 import { CATALOGUE } from '../cycle/catalogue.ts';
 import { defaultShiftTypes } from '../../data/defaults.ts';
 import { addDays } from '../date.ts';
@@ -292,5 +293,128 @@ describe('Tage ohne eingetragene Schicht', () => {
       expect(day.recovery.known).toBe(true);
       expect(day.recovery.base).toBe(85);
     }
+  });
+});
+
+describe('Doppeleinheiten', () => {
+  it('kombiniert nie zwei Läufe oder zwei Krafteinheiten an einem Tag', () => {
+    // Two runs on one day are one run split in half: same tissue, same impact,
+    // no second adaptation.
+    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
+    for (const day of p.days) {
+      const disciplines = day.units
+        .map((u) => CATALOGUE[u.kind].discipline)
+        .filter((d) => d !== 'other');
+      expect(new Set(disciplines).size).toBe(disciplines.length);
+    }
+  });
+
+  it('weist zwei Läufe am selben Tag als Regelverstoß aus', () => {
+    const shape = buildDayShapes(
+      detectCycle(START, START, shifts(['off']), TYPES),
+      DEFAULT_PLANNER_SETTINGS,
+      () => undefined,
+    )[0];
+    const first: PlannedUnit = {
+      date: START, kind: 'easy_run', start: 8 * 60, durationMinutes: 40, load: 25, reasons: [],
+    };
+    const violations = checkPlacement(
+      { date: START, kind: 'long_run', start: 15 * 60, durationMinutes: 90 },
+      {
+        shape,
+        recovery: { value: 100, base: 100, adjustments: [], band: 'green', known: true },
+        sameDay: [first],
+        allUnits: [first],
+        loadByDate: new Map(),
+        shapesByDate: new Map([[START, shape]]),
+        settings: DEFAULT_PLANNER_SETTINGS,
+      },
+    );
+    expect(violations.map((v) => v.rule)).toContain('doppel_disziplin');
+  });
+
+  it('lässt keine Regeneration als zweite Einheit zu', () => {
+    // A recovery walk would tick the frequency target without training
+    // anything. Either the day carries strength plus endurance, or one session.
+    const shape = buildDayShapes(
+      detectCycle(START, START, shifts(['off']), TYPES),
+      DEFAULT_PLANNER_SETTINGS,
+      () => undefined,
+    )[0];
+    const first: PlannedUnit = {
+      date: START, kind: 'intense_run', start: 8 * 60, durationMinutes: 55, load: 80, reasons: [],
+    };
+    const violations = checkPlacement(
+      { date: START, kind: 'regeneration', start: 15 * 60, durationMinutes: 20 },
+      {
+        shape,
+        recovery: { value: 100, base: 100, adjustments: [], band: 'green', known: true },
+        sameDay: [first],
+        allUnits: [first],
+        loadByDate: new Map(),
+        shapesByDate: new Map([[START, shape]]),
+        settings: DEFAULT_PLANNER_SETTINGS,
+      },
+    );
+    expect(violations.map((v) => v.rule)).toContain('doppel_disziplin');
+  });
+
+  it('erzeugt über drei Zyklen nur Doppel aus Kraft und Ausdauer', () => {
+    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
+    for (const day of p.days) {
+      if (day.units.length < 2) continue;
+      const disciplines = day.units.map((u) => CATALOGUE[u.kind].discipline).sort();
+      expect(disciplines).toEqual(['run', 'strength']);
+    }
+  });
+
+  it('lässt Kraft plus Lauf an einem freien Tag zu', () => {
+    const shape = buildDayShapes(
+      detectCycle(START, START, shifts(['off']), TYPES),
+      DEFAULT_PLANNER_SETTINGS,
+      () => undefined,
+    )[0];
+    const strength: PlannedUnit = {
+      date: START, kind: 'moderate_strength', start: 8 * 60, durationMinutes: 50, load: 45, reasons: [],
+    };
+    const violations = checkPlacement(
+      { date: START, kind: 'easy_run', start: 15 * 60, durationMinutes: 40 },
+      {
+        shape,
+        recovery: { value: 100, base: 100, adjustments: [], band: 'green', known: true },
+        sameDay: [strength],
+        allUnits: [strength],
+        loadByDate: new Map(),
+        shapesByDate: new Map([[START, shape]]),
+        settings: DEFAULT_PLANNER_SETTINGS,
+      },
+    );
+    expect(violations.map((v) => v.rule)).not.toContain('doppel_disziplin');
+  });
+});
+
+describe('Der Schlüsseltag bleibt der Schlüsseltag', () => {
+  it('verplant den erholtesten Tag jedes Zyklus mit einer echten Einheit', () => {
+    // Two regressions met here. The growth rule was checked while sessions were
+    // still being placed, so it compared against a half-built previous window
+    // and blocked the third cycle's key session; and the repair pass then
+    // weakened the freshest day of the cycle down to a twenty-minute walk.
+    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
+    for (const day of p.days) {
+      if (day.shape.cycleDay !== 4) continue;
+      expect(day.units).not.toHaveLength(0);
+      expect(day.units[0].kind).not.toBe('regeneration');
+      expect(day.load).toBeGreaterThanOrEqual(60);
+    }
+  });
+
+  it('hält die drei Zyklen im Umfang beieinander', () => {
+    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
+    const loads = [0, 1, 2].map((c) =>
+      p.days
+        .filter((d) => d.shape.date >= addDays(START, c * 5) && d.shape.date < addDays(START, (c + 1) * 5))
+        .reduce((sum, d) => sum + d.load, 0),
+    );
+    for (const load of loads) expect(load).toBeGreaterThan(loads[0] * 0.6);
   });
 });

@@ -37,6 +37,17 @@ export interface PlacementContext {
    * every first session as a 110 % overshoot.
    */
   previousWindowKnown?: boolean;
+  /**
+   * False while sessions are still being placed one by one.
+   *
+   * The growth rule compares this window against the previous one, and both are
+   * only meaningful once the whole plan exists. Checked mid-build, the previous
+   * window holds whatever happens to have been placed so far — it under-reports,
+   * and the rule then blocks perfectly good sessions. The load ceiling has the
+   * opposite bias and is safe to check throughout: a partial plan can only be
+   * too permissive, and the repair pass catches the overshoot afterwards.
+   */
+  checkWindowGrowth?: boolean;
 }
 
 export interface Placement {
@@ -138,12 +149,32 @@ export function checkPlacement(p: Placement, ctx: PlacementContext): RuleViolati
       fail('doppel_nur_frei', 'Zwei Einheiten an einem Tag sind nur an freien Tagen zulässig.');
     }
     for (const other of ctx.sameDay) {
+      const otherSpec = CATALOGUE[other.kind];
       const gap = Math.abs(p.start - other.start) / 60;
       if (gap < 6) {
         fail('doppel_abstand', `Nur ${gap.toFixed(1)} h zwischen den beiden Einheiten; 6 h sind nötig.`);
       }
+      /*
+       * A double is exactly one strength session and one endurance session.
+       *
+       * Two runs on one day are one longer run split in half: the same tissue,
+       * the same impact, no second adaptation, and no break for the legs in
+       * between. And a regeneration walk is not a second session either — it
+       * would tick the frequency target without training anything, which is
+       * how a plan starts lying to itself. So a second session has to be the
+       * complementary discipline, or it does not belong on the day.
+       */
+      if (spec.discipline === 'other' || otherSpec.discipline === 'other') {
+        fail(
+          'doppel_disziplin',
+          'Eine zweite Einheit am Tag ist nur als Kraft plus Ausdauer sinnvoll, nicht als Regeneration.',
+        );
+      } else if (spec.discipline === otherSpec.discipline) {
+        const what = spec.discipline === 'run' ? 'Läufe' : 'Krafteinheiten';
+        fail('doppel_disziplin', `Zwei ${what} an einem Tag bringen keinen zweiten Reiz.`);
+      }
       // Interference minimisation: strength goes before the run.
-      if (spec.discipline === 'run' && CATALOGUE[other.kind].discipline === 'strength' && p.start < other.start) {
+      if (spec.discipline === 'run' && otherSpec.discipline === 'strength' && p.start < other.start) {
         fail('doppel_reihenfolge', 'Bei zwei Einheiten am selben Tag kommt Kraft vor Lauf.');
       }
     }
@@ -174,6 +205,7 @@ export function checkPlacement(p: Placement, ctx: PlacementContext): RuleViolati
     );
   }
   if (
+    ctx.checkWindowGrowth !== false &&
     ctx.previousWindowKnown !== false &&
     windowState.previousLoad > 0 &&
     windowState.load > windowState.previousLoad * ctx.settings.maxWindowGrowth

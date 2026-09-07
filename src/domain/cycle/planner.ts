@@ -11,8 +11,9 @@ import type {
 } from './types.ts';
 import { CATALOGUE, WINDOW_TARGET, downgradeUntil, isFullBodyStrength, isHard } from './catalogue.ts';
 import { checkPlacement, rollingWindow } from './rules.ts';
-import type { Placement, PlacementContext } from './rules.ts';
+import type { PlacementContext } from './rules.ts';
 import { computeRecovery } from './recovery.ts';
+import { findSlotFor as findSlot } from './slots.ts';
 import { formatClock } from './windows.ts';
 import { addDays } from '../date.ts';
 
@@ -100,6 +101,8 @@ export function planCycle(input: PlanInput): CyclePlan {
     shapesByDate,
     settings,
     previousWindowKnown: previousWindowKnown(shape.date),
+    // Sequential placement only; the growth rule waits for the finished plan.
+    checkWindowGrowth: false,
   });
 
   /**
@@ -200,8 +203,24 @@ export function planCycle(input: PlanInput): CyclePlan {
       for (const shape of shapes) {
         const isFree = (shape.cycleDay === 4 || shape.cycleDay === 5) && !shape.isVShift;
         if (!isFree) continue;
-        if (units.filter((u) => u.date === shape.date).length !== 1) continue;
-        if (place(shape, missingNow[0], 'Doppeleinheit, weil das 7-Tage-Fenster sonst unter Soll bleibt')) {
+        const onDay = units.filter((u) => u.date === shape.date);
+        if (onDay.length !== 1) continue;
+
+        /*
+         * The second session complements the first: strength next to a run, a
+         * run next to strength. Two runs on one day are one run split in half —
+         * the same tissue, the same impact, no second adaptation. So the
+         * candidate is picked from the missing sessions of the other discipline,
+         * and the day is skipped when none is missing.
+         */
+        const taken = CATALOGUE[onDay[0].kind].discipline;
+        const partner = missingNow.find((kind) => {
+          const d = CATALOGUE[kind].discipline;
+          return d !== taken && d !== 'other';
+        });
+        if (!partner) continue;
+
+        if (place(shape, partner, 'Doppeleinheit, weil das 7-Tage-Fenster sonst unter Soll bleibt')) {
           // At most one double per cycle — the deficit is 0.4 sessions per week,
           // not a second training day.
           break;
@@ -329,11 +348,23 @@ function findOffender(
   settings: PlannerSettings,
   previousWindowKnown: (date: ISODate) => boolean,
 ): { unit: PlannedUnit; index: number } | null {
-  // Heaviest first: weakening the biggest session resolves a window overshoot
-  // in the fewest steps and keeps the light sessions that carry the frequency.
+  /*
+   * Least-recovered day first, heaviest session within a day.
+   *
+   * When two sessions clash it is always one of them that has to give, and the
+   * choice is not arbitrary: the day that can carry the least should lose the
+   * most. Sorting by load alone used to gut the key day — two equally heavy
+   * strength sessions on consecutive days, and the one on the freshest day of
+   * the cycle was the one walked down to a twenty-minute stroll.
+   */
   const order = units
     .map((unit, index) => ({ unit, index }))
-    .sort((a, b) => b.unit.load - a.unit.load);
+    .sort((a, b) => {
+      const ra = recoveries.get(a.unit.date)?.value ?? 0;
+      const rb = recoveries.get(b.unit.date)?.value ?? 0;
+      if (ra !== rb) return ra - rb;
+      return b.unit.load - a.unit.load;
+    });
 
   for (const entry of order) {
     const shape = shapesByDate.get(entry.unit.date);
@@ -377,57 +408,6 @@ function windowIsFullyKnown(
     if (!planned.has(date) && !completed.has(date)) return false;
   }
   return true;
-}
-
-/* ------------------------------------------------------------------ *
- * Slot finding
- * ------------------------------------------------------------------ */
-
-/**
- * Places a session inside the day's window. A second session on the same day
- * goes at least six hours after the first, and strength always precedes the run.
- */
-function findSlot(
-  shape: DayShape,
-  kind: SessionKind,
-  existing: PlannedUnit[],
-): Placement | null {
-  const spec = CATALOGUE[kind];
-  const windows = [shape.trainingWindow, shape.alternativeWindow].filter(
-    (w): w is NonNullable<typeof w> => !!w,
-  );
-
-  for (const window of windows) {
-    const available = window.end - window.start;
-    const duration = Math.min(spec.defaultMinutes, available);
-    if (duration < spec.minMinutes) continue;
-
-    if (existing.length === 0) {
-      // Sessions with load ≥ 60 are pulled forward so the three-hour buffer
-      // before the next sleep can hold.
-      const latestStart = spec.load >= 60
-        ? Math.min(window.end - duration, shape.nextSleepStart - 180 - duration)
-        : window.end - duration;
-      const start = Math.max(window.start, Math.min(window.start, latestStart));
-      if (start + duration <= window.end) {
-        return { date: shape.date, kind, start, durationMinutes: duration };
-      }
-      continue;
-    }
-
-    const first = existing[0];
-    const strengthFirst = CATALOGUE[first.kind].discipline === 'strength';
-    const candidateIsRun = spec.discipline === 'run';
-    // Strength before run: a run may only go after, never before.
-    if (!strengthFirst && !candidateIsRun && spec.discipline === 'strength') continue;
-
-    const earliest = first.start + first.durationMinutes;
-    const start = Math.max(window.start, first.start + 6 * 60);
-    if (start >= earliest && start + duration <= window.end) {
-      return { date: shape.date, kind, start, durationMinutes: duration };
-    }
-  }
-  return null;
 }
 
 /* ------------------------------------------------------------------ *

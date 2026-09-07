@@ -31,6 +31,34 @@ if (!page.url().includes('/checkin')) {
 console.log('✓ app booted into the morning check-in');
 await shot('01-checkin');
 
+/*
+ * Seed three weeks of the shift rotation.
+ *
+ * The cycle planner derives everything from the roster, so without one it
+ * correctly proposes nothing and every downstream assertion would pass by
+ * doing nothing. Entering fifteen shifts through the sheet is covered by the
+ * shift tests; here the data is the point, not the typing.
+ */
+await page.evaluate(async () => {
+  const iso = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const request = indexedDB.open('hybrid-athlete');
+  const db = await new Promise((resolve) => { request.onsuccess = () => resolve(request.result); });
+  const tx = db.transaction('shifts', 'readwrite');
+  const store = tx.objectStore('shifts');
+  const rotation = ['shift_day', 'shift_night', 'shift_sleep_day', 'shift_off', 'shift_off'];
+  // Today lands on cycle day 4, the free key day, so there is training to check.
+  for (let i = -14; i <= 16; i++) {
+    store.put({ date: iso(i), shiftTypeId: rotation[(((i + 3) % 5) + 5) % 5], source: 'manual' });
+  }
+  await new Promise((resolve) => { tx.oncomplete = resolve; });
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(900);
+
 // Step 1: today's shift.
 await page.getByText('Freischicht').click();
 await page.getByRole('button', { name: 'Weiter' }).click();
@@ -124,28 +152,52 @@ if ((await page.locator('.cycle-explain').count()) === 0) {
 }
 console.log(`✓ cycle view: ${cycleDays} days with sleep rows and tap-to-explain`);
 
+// Tapping a cycle day selects it, so the suggestion below follows the tap. The
+// first day of the horizon is a day shift with no training window — the app has
+// to say that rather than show an empty space.
+const noWindow = (await page.locator('.app-main').innerText()).includes('kein Trainingsfenster');
+if (!noWindow) throw new Error('a day-shift day must state that it has no training window');
+console.log('✓ a day without a training window says so instead of proposing nothing');
+
 // The week calendar is still there, one tap away.
 await page.getByRole('tab', { name: 'Woche' }).click();
 await page.waitForSelector('.cal-day');
 await page.waitForTimeout(400);
 const planDays = await page.locator('.cal-day').count();
 if (planDays !== 7) throw new Error(`week calendar shows ${planDays} columns, expected 7`);
+
+// Back to a day the planner actually plans: the one it marks as suggested and
+// that carries nothing yet.
+const dayWithSuggestion = await page.evaluate(() => {
+  const days = [...document.querySelectorAll('.cal-day')];
+  return days.findIndex(
+    (d) => d.querySelector('.cal-block.suggested') && !d.querySelector('.cal-block.planned'),
+  );
+});
+if (dayWithSuggestion < 0) {
+  throw new Error('the calendar shows no suggested session at all — the planner is not feeding it');
+}
+await page.locator('.cal-day').nth(dayWithSuggestion).click();
+await page.waitForTimeout(500);
+
 // Only the top suggestion is on screen; alternatives sit behind a tap.
 const visibleRecos = await page.locator('.reco').count();
-if (visibleRecos === 0) throw new Error('no recommendation rendered');
+if (visibleRecos === 0) {
+  const shown = (await page.locator('.app-main').innerText()).replace(/\s+/g, ' ').slice(0, 300);
+  throw new Error(`no recommendation rendered. Screen says: ${shown}`);
+}
 if (visibleRecos > 1) throw new Error(`${visibleRecos} recommendations visible, expected only the top one`);
 if ((await page.locator('.reco-body').count()) !== 0) {
   throw new Error('recommendations should start collapsed');
 }
 const altToggle = page.getByText('Alternativen', { exact: false }).first();
-if (await altToggle.count()) {
-  await altToggle.click();
-  await page.waitForTimeout(350);
-  if ((await page.locator('.reco').count()) <= 1) {
-    throw new Error('alternatives did not appear after tapping the field');
-  }
-  console.log('✓ alternatives appear only after tapping the field');
+if ((await altToggle.count()) === 0) throw new Error('no alternatives field on a plannable day');
+await altToggle.click();
+await page.waitForTimeout(350);
+if ((await page.locator('.reco').count()) <= 1) {
+  throw new Error('alternatives did not appear after tapping the field');
 }
+console.log('✓ alternatives appear only after tapping the field');
 await page.locator('.reco').first().locator('button').first().click();
 await page.waitForTimeout(250);
 if ((await page.locator('.reco-body').count()) === 0) {
@@ -153,20 +205,29 @@ if ((await page.locator('.reco-body').count()) === 0) {
 }
 console.log('✓ week calendar shows 7 columns with collapsed, expandable recommendations');
 
-// Planning into another day of the week must land on that day.
-const otherDay = page.locator('.cal-day').nth(2);
-await otherDay.click();
-await page.waitForTimeout(500);
-const addBefore = await page.locator('.cal-block').count();
-const addButton = page.locator('.reco.top .reco-add');
-if (await addButton.count()) {
-  await addButton.click();
-  await page.waitForTimeout(600);
-  if ((await page.locator('.cal-block').count()) <= addBefore) {
-    throw new Error('planning into the selected day did not appear in the calendar');
-  }
-  console.log('✓ planning into a selected day appears as a calendar block');
+// The two views must not propose different sessions for the same day.
+const weekSuggestion = (await page.locator('.reco.top').first().innerText()).replace(/\s+/g, ' ').trim();
+await page.getByRole('tab', { name: 'Zyklus' }).click();
+await page.waitForSelector('.cycle-day');
+await page.waitForTimeout(600);
+const cycleSuggestion = (await page.locator('.reco.top').first().innerText()).replace(/\s+/g, ' ').trim();
+if (weekSuggestion !== cycleSuggestion) {
+  throw new Error(`week and cycle disagree: "${weekSuggestion}" vs "${cycleSuggestion}"`);
 }
+console.log('✓ week and cycle propose the same session for the selected day');
+
+// Planning that suggestion must turn it into a real block on that day.
+await page.getByRole('tab', { name: 'Woche' }).click();
+await page.waitForSelector('.cal-day');
+await page.waitForTimeout(400);
+const plannedBefore = await page.locator('.cal-block.planned').count();
+await page.locator('.reco.top .reco-add').click();
+await page.waitForTimeout(700);
+if ((await page.locator('.cal-block.planned').count()) <= plannedBefore) {
+  throw new Error('planning the suggestion did not appear in the calendar');
+}
+console.log('✓ planning a suggestion turns it into a real block on that day');
+
 await shot('06-week-planner');
 
 for (const [path, name] of [

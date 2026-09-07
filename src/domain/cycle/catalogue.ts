@@ -102,6 +102,11 @@ export const CATALOGUE: Record<SessionKind, SessionSpec> = {
   },
 };
 
+/** Every session, heaviest first — the order options are offered in. */
+export const SESSION_ORDER: SessionKind[] = (Object.keys(CATALOGUE) as SessionKind[]).sort(
+  (a, b) => CATALOGUE[b].load - CATALOGUE[a].load,
+);
+
 /** A session counts as hard from 60 load points upward. */
 export const HARD_LOAD_THRESHOLD = 60;
 

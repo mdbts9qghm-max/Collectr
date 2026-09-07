@@ -1161,6 +1161,15 @@
   border-left: 2px solid currentColor;
   padding: 1px;
 }
+/* A suggestion, not a commitment: outlined and transparent, so a glance tells
+   an entered session from one the planner is only proposing. */
+.cal-block.suggested {
+  background: transparent;
+  border: 1px dashed;
+  border-left-width: 2px;
+  border-left-style: solid;
+  opacity: 0.75;
+}
 .cal-block-icon { font-size: 11px; line-height: 1; }
 .cal-block-time {
   font-size: 8.5px;

@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import type { Recommendation, TrainingSession } from '../domain/types.ts';
+import { useMemo, useState } from 'react';
+import type { TrainingSession } from '../domain/types.ts';
 import type { PlannedUnit } from '../domain/cycle/types.ts';
 import { CATALOGUE } from '../domain/cycle/catalogue.ts';
 import type { WeekDayCell } from '../data/derived.ts';
 import { addDays, isoWeekNumber, nowTimestamp, startOfWeek } from '../domain/date.ts';
 import {
-  INTENSITY_META,
   SPORT_META,
   formatDateShort,
   formatDuration,
@@ -22,7 +21,6 @@ import {
   Card,
   Disclosure,
   Pill,
-  ReasonList,
   SectionTitle,
   Segmented,
 } from '../ui/primitives.tsx';
@@ -33,6 +31,9 @@ import { SessionRow } from '../ui/SessionRow.tsx';
 import { ShiftSheet } from '../ui/ShiftSheet.tsx';
 import { OutlookCard } from '../ui/OutlookCard.tsx';
 import { CycleView } from '../ui/CycleView.tsx';
+import { shapeOf } from '../domain/cycle/toSession.ts';
+import { DaySuggestion } from '../ui/DaySuggestion.tsx';
+import { dayOptions } from '../domain/cycle/options.ts';
 import { sessionFromUnit } from '../domain/cycle/toSession.ts';
 
 /**
@@ -58,6 +59,11 @@ export function Training() {
   // rest of the world runs on. Both are real; neither replaces the other.
   const [mode, setMode] = useState<'cycle' | 'week'>('cycle');
   const cyclePlan = useCyclePlan(selected, 3);
+  const selectedOptions = useMemo(() => dayOptions(cyclePlan, selected), [cyclePlan, selected]);
+  const suggestedByDate = useMemo(
+    () => new Map(cyclePlan.days.map((d) => [d.shape.date, d.units])),
+    [cyclePlan],
+  );
 
   /** Turns a planned unit into a real session the athlete can log against. */
   const takeUnit = (unit: PlannedUnit) => {
@@ -83,28 +89,6 @@ export function Training() {
     // Keep the same weekday when moving between weeks.
     const offset = week.findIndex((d) => d.date === selected);
     setSelected(addDays(next, offset >= 0 ? offset : 0));
-  };
-
-  const plan = (rec: Recommendation) => {
-    if (rec.template.isRest) {
-      toast('Ruhetag braucht keinen Eintrag.', 'good');
-      return;
-    }
-    saveSession({
-      ...emptySession(selected, rec.template.sport),
-      id: makeId('ses'),
-      title: rec.template.title,
-      plannedIntensity: rec.template.intensity,
-      plannedDurationMin: rec.template.durationMin,
-      plannedDistanceKm: rec.template.distanceKm,
-      startTime: rec.suggestedStart,
-      goal: rec.template.goal,
-      muscleGroups: rec.template.muscleGroups,
-      fromRecommendationId: rec.id,
-      createdAt: nowTimestamp(),
-      updatedAt: nowTimestamp(),
-    });
-    toast(`${rec.template.title} für ${relativeDayLabel(selected, today)} eingeplant`, 'good');
   };
 
   const sportDistribution = (Object.keys(view.week.bySport) as (keyof typeof view.week.bySport)[])
@@ -187,6 +171,7 @@ export function Training() {
               day={day}
               selected={day.date === selected}
               onSelect={() => setSelected(day.date)}
+              suggested={suggestedByDate.get(day.date) ?? []}
             />
           ))}
         </div>
@@ -304,14 +289,11 @@ export function Training() {
       </Card>
 
       {/*
-        ---------- Recommendations, compact ----------
-        The day engine and the cycle planner answer the same question in two
-        different ways, and showing both at once would just be two apps arguing.
-        The cycle view is the plan; these stay with the week, where they are the
-        way to fill a single day that the rotation does not cover.
+        ---------- What to train on the selected day ----------
+        One source for both modes. The week view and the cycle view used to be
+        fed by two different engines and proposed two different sessions for the
+        same day; now they render the same plan.
       */}
-      {mode === 'week' && (
-        <>
       {view.recommendation.planReview && view.recommendation.planReview.verdict !== 'aligned' && (
         <Card tight style={{ background: 'var(--warn-soft)', borderColor: 'transparent' }}>
           <div className="row gap-3 row-top">
@@ -321,63 +303,7 @@ export function Training() {
         </Card>
       )}
 
-      <SectionTitle title="Vorschlag" subtitle={view.recommendation.focus} />
-      <div className="col gap-2">
-        {view.recommendation.recommended.map((rec) => (
-          <CompactRecommendation key={rec.id} rec={rec} onPlan={plan} top />
-        ))}
-      </div>
-
-      {view.recommendation.alternatives.length > 0 && (
-        <Card tight>
-          <Disclosure
-            summary={
-              <span className="row gap-2">
-                <span className="t-label">Alternativen</span>
-                <Pill>{view.recommendation.alternatives.length}</Pill>
-              </span>
-            }
-          >
-            <div className="col gap-2">
-              {view.recommendation.alternatives.map((rec) => (
-                <CompactRecommendation key={rec.id} rec={rec} onPlan={plan} />
-              ))}
-            </div>
-          </Disclosure>
-        </Card>
-      )}
-
-      {view.recommendation.notRecommended.length > 0 && (
-        <Card tight>
-          <Disclosure
-            summary={
-              <span className="row gap-2">
-                <span className="t-label">Nicht empfohlen</span>
-                <Pill tone="bad">{view.recommendation.notRecommended.length}</Pill>
-              </span>
-            }
-          >
-            <div className="col gap-2">
-              {view.recommendation.notRecommended.map((rec) => (
-                <div className="row gap-2 row-top" key={rec.id}>
-                  <span style={{ fontSize: 14, opacity: 0.6 }}>
-                    {SPORT_META[rec.template.sport].icon}
-                  </span>
-                  <div className="grow">
-                    <div className="t-caption" style={{ fontWeight: 560 }}>
-                      {rec.template.title}
-                    </div>
-                    <div className="t-caption bad">{rec.blockedBy}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Disclosure>
-        </Card>
-      )}
-
-        </>
-      )}
+      <DaySuggestion options={selectedOptions} onPlan={takeUnit} />
 
       {/* ---------- Week detail, folded away ---------- */}
       <Card tight>
@@ -469,10 +395,13 @@ function CalendarDay({
   day,
   selected,
   onSelect,
+  suggested,
 }: {
   day: WeekDayCell;
   selected: boolean;
   onSelect: () => void;
+  /** What the cycle planner proposes for this day, shown when nothing is logged. */
+  suggested: PlannedUnit[];
 }) {
   const hasShift = !!day.shift;
   const noRoom = day.capacityMinutes < 25;
@@ -514,6 +443,11 @@ function CalendarDay({
       </span>
 
       <span className="cal-blocks">
+        {/*
+          Sessions that exist, then what the cycle planner suggests for the days
+          that have none. The calendar shows the same plan as the cycle view —
+          two views of one thing, not two opinions.
+        */}
         {day.sessions.map((session) => {
           const minutes =
             session.actualDurationMin ?? session.plannedDurationMin ?? 0;
@@ -538,6 +472,28 @@ function CalendarDay({
             </span>
           );
         })}
+        {day.sessions.length === 0 &&
+          suggested.map((unit) => {
+            const sport = shapeOf(unit.kind).sport;
+            const color = SPORT_META[sport].color;
+            return (
+              <span
+                key={`${unit.kind}-${unit.start}`}
+                className="cal-block suggested"
+                style={{
+                  height: blockHeight(unit.durationMinutes),
+                  borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
+                  color,
+                }}
+                title={`Vorschlag: ${CATALOGUE[unit.kind].label} · ${formatDuration(unit.durationMinutes)}`}
+              >
+                <span className="cal-block-icon">{SPORT_META[sport].icon}</span>
+                <span className="cal-block-time" style={{ color: 'var(--text-muted)' }}>
+                  {compactDuration(unit.durationMinutes)}
+                </span>
+              </span>
+            );
+          })}
       </span>
 
       <span className="cal-free">
@@ -552,71 +508,5 @@ function CalendarDay({
                 : formatDuration(day.freeMinutes)}
       </span>
     </button>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Compact, collapsed recommendation
- * ------------------------------------------------------------------ */
-
-function CompactRecommendation({
-  rec,
-  onPlan,
-  top,
-}: {
-  rec: Recommendation;
-  onPlan: (rec: Recommendation) => void;
-  top?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className={`reco ${top ? 'top' : ''}`}>
-      <div className="reco-head">
-        <button
-          type="button"
-          className="row gap-3 grow left"
-          style={{ minWidth: 0 }}
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-        >
-          <span style={{ fontSize: 17, lineHeight: 1, flex: 'none' }}>
-            {SPORT_META[rec.template.sport].icon}
-          </span>
-          <span className="grow" style={{ minWidth: 0 }}>
-            <span className="reco-title truncate" style={{ display: 'block' }}>
-              {rec.template.title}
-            </span>
-            <span className="reco-meta">
-              {rec.template.isRest
-                ? 'kein Training'
-                : [
-                    formatDuration(rec.template.durationMin),
-                    rec.template.distanceKm ? `${rec.template.distanceKm.toFixed(1)} km` : null,
-                    INTENSITY_META[rec.template.intensity].zone,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-            </span>
-          </span>
-        </button>
-        {!rec.template.isRest && (
-          <button
-            type="button"
-            className="reco-add"
-            onClick={() => onPlan(rec)}
-            aria-label={`${rec.template.title} einplanen`}
-          >
-            <IconPlus size={16} />
-          </button>
-        )}
-      </div>
-      {open && (
-        <div className="reco-body">
-          {rec.template.goal && <div className="t-caption muted mb-2">{rec.template.goal}</div>}
-          <ReasonList reasons={rec.reasons.slice(0, 4)} />
-        </div>
-      )}
-    </div>
   );
 }
