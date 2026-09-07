@@ -8,16 +8,17 @@ import type {
   SessionKind,
 } from './types.ts';
 import { CATALOGUE, HARD_LOAD_THRESHOLD, isHard } from './catalogue.ts';
-import { addDays, diffDays } from '../date.ts';
+
 import { formatClock } from './windows.ts';
 
 /**
- * The hard rules from section 6. They are never traded off against the
- * objective: a plan that violates one of them is not a plan.
+ * The hard rules from section 6.
  *
- * They are written as checks over a proposed placement rather than as filters
- * during construction, so the same code validates a plan the planner built and
- * a session the athlete dragged somewhere by hand.
+ * They run as the last check, after the template has been laid down and the
+ * recovery filter has done its downgrading. They are written as checks over a
+ * proposed placement rather than as filters during construction, so the same
+ * code validates the plan the app built and a session the athlete dragged
+ * somewhere by hand. Manual moves are never blocked — they are explained.
  */
 
 export interface PlacementContext {
@@ -31,23 +32,6 @@ export interface PlacementContext {
   loadByDate: Map<ISODate, number>;
   shapesByDate: Map<ISODate, DayShape>;
   settings: PlannerSettings;
-  /**
-   * Whether the seven days before the window are actually known. At the start
-   * of tracking they are not, and comparing against an empty week would block
-   * every first session as a 110 % overshoot.
-   */
-  previousWindowKnown?: boolean;
-  /**
-   * False while sessions are still being placed one by one.
-   *
-   * The growth rule compares this window against the previous one, and both are
-   * only meaningful once the whole plan exists. Checked mid-build, the previous
-   * window holds whatever happens to have been placed so far — it under-reports,
-   * and the rule then blocks perfectly good sessions. The load ceiling has the
-   * opposite bias and is safe to check throughout: a partial plan can only be
-   * too permissive, and the repair pass catches the overshoot afterwards.
-   */
-  checkWindowGrowth?: boolean;
 }
 
 export interface Placement {
@@ -57,134 +41,67 @@ export interface Placement {
   durationMinutes: number;
 }
 
+/**
+ * Distance between two sessions, measured start to start.
+ *
+ * Not end to start: two sessions at the same time of day on consecutive days
+ * are what "24 hours apart" means in training, and measuring from the end of
+ * the first would report 23 and change.
+ */
+function hoursBetween(a: { date: ISODate; start: number }, b: { date: ISODate; start: number }): number {
+  const absolute = (u: { date: ISODate; start: number }) =>
+    Date.parse(`${u.date}T00:00:00`) / 60000 + u.start;
+  return Math.abs(absolute(b) - absolute(a)) / 60;
+}
+
 /** All violated rules for a placement. Empty means allowed. */
 export function checkPlacement(p: Placement, ctx: PlacementContext): RuleViolation[] {
+  const violations: RuleViolation[] = [];
   const spec = CATALOGUE[p.kind];
-  const out: RuleViolation[] = [];
-  const fail = (rule: string, message: string) =>
-    out.push({ rule, message, date: p.date, kind: p.kind });
   const end = p.start + p.durationMinutes;
+  const fail = (rule: string, message: string) =>
+    violations.push({ rule, message, date: p.date, kind: p.kind });
 
-  /* 1 · Inside the day's window. */
-  const windows = [ctx.shape.trainingWindow, ctx.shape.alternativeWindow].filter(
-    (w): w is NonNullable<typeof w> => !!w,
-  );
-  if (windows.length === 0) {
-    fail('fenster', 'Dieser Tag hat kein Trainingsfenster.');
-  } else if (!windows.some((w) => p.start >= w.start && end <= w.end)) {
-    const shown = windows.map((w) => `${formatClock(w.start)}–${formatClock(w.end)}`).join(' oder ');
-    fail(
-      'fenster',
-      `${formatClock(p.start)}–${formatClock(end)} liegt außerhalb des Fensters ${shown}.`,
+  /* ---------------- Windows and sleep ---------------- */
+
+  /* 1 · No session outside its window. */
+  if (ctx.shape.cycleDay === 1 && !ctx.shape.isVShift) {
+    fail('tagschicht', 'Am Tagschichttag wird nicht trainiert, auch nicht früh oder spät.');
+  } else if (!ctx.shape.trainingWindow) {
+    fail('kein_fenster', 'Dieser Tag hat kein Trainingsfenster.');
+  } else {
+    const windows = [ctx.shape.trainingWindow, ctx.shape.alternativeWindow].filter(
+      (w): w is NonNullable<typeof w> => !!w,
     );
-  }
-
-  /* 2 · Recovery value reaches the session's minimum. */
-  if (ctx.recovery.value < spec.minRecovery) {
-    fail(
-      'erholung',
-      `Erholungswert ${ctx.recovery.value} liegt unter der Mindestanforderung ${spec.minRecovery} für ${spec.label}.`,
-    );
-  }
-
-  /* 3 · No intense run on night-shift or V-Schicht days. */
-  if (p.kind === 'intense_run' && (ctx.shape.cycleDay === 2 || ctx.shape.isVShift)) {
-    fail(
-      'intensitaet',
-      ctx.shape.isVShift
-        ? 'An V-Schichttagen ist kein intensiver Lauf zulässig.'
-        : 'An Nachtschichttagen ist kein intensiver Lauf zulässig.',
-    );
-  }
-
-  /* 4 · Night-shift day: finished by 13:30. */
-  if (ctx.shape.cycleDay === 2 && end > 13 * 60 + 30) {
-    fail('nachtschicht_ende', `Einheit endet ${formatClock(end)}, an Nachtschichttagen ist 13:30 die Grenze.`);
-  }
-
-  /* 5 · Sleep day: finished by 20:00. */
-  if (ctx.shape.cycleDay === 3 && end > 20 * 60) {
-    fail('schlaftag_ende', `Einheit endet ${formatClock(end)}, am Schlaftag ist 20:00 die Grenze.`);
-  }
-
-  /* 6 + 7 · Spacing between hard sessions. */
-  if (isHard(p.kind)) {
-    for (const other of ctx.allUnits) {
-      if (!isHard(other.kind)) continue;
-      const hours = hoursBetween(
-        { date: p.date, start: p.start, duration: p.durationMinutes },
-        { date: other.date, start: other.start, duration: other.durationMinutes },
+    const fits = windows.some((w) => p.start >= w.start && end <= w.end);
+    if (!fits) {
+      const w = ctx.shape.trainingWindow;
+      fail(
+        'fenster',
+        `${formatClock(p.start)}–${formatClock(end)} liegt außerhalb des Fensters ${formatClock(w.start)}–${formatClock(w.end)}.`,
       );
-      const sameDiscipline = CATALOGUE[other.kind].discipline === spec.discipline;
-      const required = sameDiscipline ? 48 : 24;
-      if (hours < required) {
-        fail(
-          sameDiscipline ? 'abstand_gleiche_disziplin' : 'abstand_andere_disziplin',
-          `Nur ${Math.round(hours)} h Abstand zu ${CATALOGUE[other.kind].label} am ${other.date}; ${required} h sind nötig.`,
-        );
-      }
     }
   }
 
-  /* 8 · Heavy leg strength not within 24 h before a long or intense run. */
-  if (spec.discipline === 'strength' && spec.loadsLegs && spec.load >= HARD_LOAD_THRESHOLD) {
-    for (const other of ctx.allUnits) {
-      if (other.kind !== 'long_run' && other.kind !== 'intense_run') continue;
-      const otherStart = absoluteMinutes(other.date, other.start);
-      const thisEnd = absoluteMinutes(p.date, end);
-      const gap = (otherStart - thisEnd) / 60;
-      if (gap >= 0 && gap < 24) {
-        fail(
-          'kraft_vor_lauf',
-          `Schwere Beinkraft nur ${Math.round(gap)} h vor ${CATALOGUE[other.kind].label} am ${other.date}; 24 h sind nötig.`,
-        );
-      }
+  /* 2 · Night-shift day ends by 13:30 — 90 min of buffer before the 15:00 nap. */
+  if (ctx.shape.cycleDay === 2 && !ctx.shape.isVShift && end > 13 * 60 + 30) {
+    fail(
+      'vorschlaf_puffer',
+      `Am Nachtschichttag muss um 13:30 Schluss sein; 90 min Puffer vor dem Vorschlaf um 15:00.`,
+    );
+  }
+
+  /* 3 · Sleep day: not before 16:00 (sleep inertia), not past 20:00. */
+  if (ctx.shape.cycleDay === 3 && !ctx.shape.isVShift) {
+    if (p.start < 16 * 60) {
+      fail('schlaftraegheit', 'Am Schlaftag frühestens ab 16:00 — davor wirkt die Schlafträgheit.');
+    }
+    if (end > 20 * 60) {
+      fail('schlaftag_ende', 'Am Schlaftag spätestens um 20:00 Schluss.');
     }
   }
 
-  /* 9 · Two sessions on one day. */
-  if (ctx.sameDay.length > 0) {
-    const isFreeDay = ctx.shape.cycleDay === 4 || ctx.shape.cycleDay === 5;
-    if (!isFreeDay || ctx.shape.isVShift) {
-      fail('doppel_nur_frei', 'Zwei Einheiten an einem Tag sind nur an freien Tagen zulässig.');
-    }
-    for (const other of ctx.sameDay) {
-      const otherSpec = CATALOGUE[other.kind];
-      const gap = Math.abs(p.start - other.start) / 60;
-      if (gap < 6) {
-        fail('doppel_abstand', `Nur ${gap.toFixed(1)} h zwischen den beiden Einheiten; 6 h sind nötig.`);
-      }
-      /*
-       * A double is exactly one strength session and one endurance session.
-       *
-       * Two runs on one day are one longer run split in half: the same tissue,
-       * the same impact, no second adaptation, and no break for the legs in
-       * between. And a regeneration walk is not a second session either — it
-       * would tick the frequency target without training anything, which is
-       * how a plan starts lying to itself. So a second session has to be the
-       * complementary discipline, or it does not belong on the day.
-       */
-      if (spec.discipline === 'other' || otherSpec.discipline === 'other') {
-        fail(
-          'doppel_disziplin',
-          'Eine zweite Einheit am Tag ist nur als Kraft plus Ausdauer sinnvoll, nicht als Regeneration.',
-        );
-      } else if (spec.discipline === otherSpec.discipline) {
-        const what = spec.discipline === 'run' ? 'Läufe' : 'Krafteinheiten';
-        fail('doppel_disziplin', `Zwei ${what} an einem Tag bringen keinen zweiten Reiz.`);
-      }
-      // Interference minimisation: strength goes before the run.
-      if (spec.discipline === 'run' && otherSpec.discipline === 'strength' && p.start < other.start) {
-        fail('doppel_reihenfolge', 'Bei zwei Einheiten am selben Tag kommt Kraft vor Lauf.');
-      }
-    }
-    const dayLoad = ctx.sameDay.reduce((sum, u) => sum + u.load, 0) + spec.load;
-    if (dayLoad > 105) {
-      fail('tagesbelastung', `Tagesbelastung ${dayLoad} überschreitet die Grenze von 105.`);
-    }
-  }
-
-  /* 10 · Load ≥ 60 must finish at least 3 h before the next sleep. */
+  /* 4 · Load ≥ 60 finishes at least 3 h before the next sleep. The nap counts. */
   if (spec.load >= HARD_LOAD_THRESHOLD) {
     const buffer = (ctx.shape.nextSleepStart - end) / 60;
     if (buffer < 3) {
@@ -196,81 +113,140 @@ export function checkPlacement(p: Placement, ctx: PlacementContext): RuleViolati
     }
   }
 
-  /* 11 + 12 · Rolling seven-day window. */
-  const windowState = rollingWindow(p.date, ctx.loadByDate, spec.load);
-  if (windowState.load > ctx.settings.weeklyLoadCap) {
-    fail(
-      'fenster_obergrenze',
-      `Belastung im 7-Tage-Fenster wäre ${windowState.load}, Obergrenze ist ${ctx.settings.weeklyLoadCap}.`,
-    );
-  }
-  if (
-    ctx.checkWindowGrowth !== false &&
-    ctx.previousWindowKnown !== false &&
-    windowState.previousLoad > 0 &&
-    windowState.load > windowState.previousLoad * ctx.settings.maxWindowGrowth
-  ) {
-    fail(
-      'fenster_steigerung',
-      `Belastung im 7-Tage-Fenster wäre ${windowState.load}, mehr als ${Math.round(
-        ctx.settings.maxWindowGrowth * 100,
-      )} % des Vorfensters (${windowState.previousLoad}).`,
-    );
-  }
-  if (windowState.restDays === 0) {
-    fail('ruhetag', 'Im 7-Tage-Fenster bliebe kein Tag mit Belastung 0.');
+  /* ---------------- Load management ---------------- */
+
+  /* 5 · No intensive run on night-shift, sleep or V-Schicht days. */
+  if (p.kind === 'intense_run') {
+    if (ctx.shape.isVShift) {
+      fail('intensitaet_schicht', 'An einer V-Schicht ist kein intensiver Lauf zulässig.');
+    } else if (ctx.shape.cycleDay === 2 || ctx.shape.cycleDay === 3) {
+      const where = ctx.shape.cycleDay === 2 ? 'Nachtschichttag' : 'Schlaftag';
+      fail('intensitaet_schicht', `Am ${where} ist kein intensiver Lauf zulässig.`);
+    }
   }
 
-  return out;
-}
+  /* 6 · 48 h between two hard sessions of the same discipline, 24 h across. */
+  if (isHard(p.kind)) {
+    for (const other of ctx.allUnits) {
+      if (!isHard(other.kind)) continue;
+      const gap = hoursBetween(p, other);
+      const sameDiscipline = CATALOGUE[other.kind].discipline === spec.discipline;
+      const needed = sameDiscipline ? 48 : 24;
+      if (gap < needed) {
+        fail(
+          sameDiscipline ? 'abstand_gleiche_disziplin' : 'abstand_harte_einheiten',
+          `Nur ${Math.round(gap)} h zu ${CATALOGUE[other.kind].label} am ${other.date}; ${needed} h sind nötig.`,
+        );
+      }
+    }
+  }
 
-/* ------------------------------------------------------------------ *
- * Helpers
- * ------------------------------------------------------------------ */
+  /*
+   * 7 · Heavy leg strength never in the 24 h before a long or intensive run.
+   *
+   * Afterwards it is fine — that is the whole reason the template puts the key
+   * run on day 4 and heavy strength on day 5, never the other way round.
+   */
+  {
+    const isHeavyLegs = (kind: SessionKind) => {
+      const s = CATALOGUE[kind];
+      return s.discipline === 'strength' && s.loadsLegs && s.load >= HARD_LOAD_THRESHOLD;
+    };
+    const isKeyRun = (kind: SessionKind) => kind === 'long_run' || kind === 'intense_run';
+    const minutes = (u: { date: ISODate; start: number }) =>
+      Date.parse(`${u.date}T00:00:00`) / 60000 + u.start;
 
-function absoluteMinutes(date: ISODate, minutes: number): number {
-  return diffDays(date, '2000-01-01') * 24 * 60 + minutes;
+    // Checked from both sides: the lift may be the placement under test, or it
+    // may be the session already in the plan that the run is landing after.
+    for (const other of ctx.allUnits) {
+      const liftFirst = isHeavyLegs(p.kind) && isKeyRun(other.kind);
+      const runFirst = isKeyRun(p.kind) && isHeavyLegs(other.kind);
+      if (!liftFirst && !runFirst) continue;
+
+      const lift = liftFirst ? p : other;
+      const run = liftFirst ? other : p;
+      const hoursBefore = (minutes(run) - minutes(lift)) / 60;
+      if (hoursBefore > 0 && hoursBefore < 24) {
+        fail(
+          'beinkraft_vor_lauf',
+          `Schwere Beinkraft nur ${Math.round(hoursBefore)} h vor ${CATALOGUE[run.kind].label} — beschädigt die Laufqualität.`,
+        );
+      }
+    }
+  }
+
+  /* 8 · Two sessions on one day: free days only, six hours apart. */
+  if (ctx.sameDay.length > 0) {
+    const isFreeDay = ctx.shape.cycleDay === 4 || ctx.shape.cycleDay === 5;
+    if (!isFreeDay) {
+      fail('doppel_nur_frei', 'Zwei Einheiten an einem Tag sind nur an freien Tagen zulässig.');
+    }
+    for (const other of ctx.sameDay) {
+      const otherSpec = CATALOGUE[other.kind];
+      const gap = Math.abs(p.start - other.start) / 60;
+      if (gap < 6) {
+        fail('doppel_abstand', `Nur ${gap.toFixed(1)} h zwischen den beiden Einheiten; 6 h sind nötig.`);
+      }
+      /*
+       * Order: the session that matters more for the goal comes first, and when
+       * that is a toss-up, strength before the run. A run placed before the
+       * strength session is the case this catches.
+       */
+      if (spec.discipline === 'run' && otherSpec.discipline === 'strength' && p.start < other.start) {
+        fail('doppel_reihenfolge', 'Bei zwei Einheiten am selben Tag kommt Kraft vor Lauf.');
+      }
+    }
+  }
+
+  /* 9 · Two runs on consecutive days: at most one of them hard. */
+  if (spec.discipline === 'run') {
+    for (const other of ctx.allUnits) {
+      if (CATALOGUE[other.kind].discipline !== 'run') continue;
+      const gap = hoursBetween(p, other);
+      if (gap > 36) continue; // not consecutive days
+      if (isHard(p.kind) && isHard(other.kind)) {
+        fail(
+          'zwei_harte_laeufe',
+          `${CATALOGUE[other.kind].label} liegt am Nachbartag — von zwei Läufen in Folge darf nur einer hart sein.`,
+        );
+      }
+      // The second run of a pair is short and easy, and always after the hard
+      // one — a hard run on tired legs is the injury, not the adaptation.
+      const otherStart = Date.parse(`${other.date}T00:00:00`) / 60000 + other.start;
+      const thisStart = Date.parse(`${p.date}T00:00:00`) / 60000 + p.start;
+      if (!isHard(p.kind) && isHard(other.kind) && thisStart < otherStart) {
+        fail(
+          'lauf_reihenfolge',
+          `Der lockere Lauf gehört nach ${CATALOGUE[other.kind].label}, nicht davor.`,
+        );
+      }
+      if (!isHard(p.kind) && isHard(other.kind) && thisStart > otherStart && p.durationMinutes > 35) {
+        fail(
+          'zweiter_lauf_umfang',
+          `Der zweite Lauf eines Paares darf höchstens 35 min dauern, nicht ${p.durationMinutes}.`,
+        );
+      }
+    }
+  }
+
+  return violations;
 }
 
 /**
- * Distance between two hard sessions, measured start to start.
+ * At least one day with zero load per cycle.
  *
- * Not end to start: two sessions at the same time of day on consecutive days
- * are what "24 hours apart" means in training, and measuring from the end would
- * make that 23 h and reject the standard cycle — an intense run on day 4
- * followed by heavy strength on day 5 is explicitly meant to be allowed.
+ * On this rotation the day-shift day satisfies it by itself, so the check only
+ * ever fires when something was moved onto it by hand.
  */
-function hoursBetween(
-  a: { date: ISODate; start: number; duration: number },
-  b: { date: ISODate; start: number; duration: number },
-): number {
-  const aStart = absoluteMinutes(a.date, a.start);
-  const bStart = absoluteMinutes(b.date, b.start);
-  return Math.abs(bStart - aStart) / 60;
-}
-
-/**
- * The seven days ending on `date`, plus the seven before it. Both are needed:
- * the cap applies to the current window, the growth limit compares the two.
- */
-export function rollingWindow(
-  date: ISODate,
+export function restDayViolation(
+  cycleDates: ISODate[],
   loadByDate: Map<ISODate, number>,
-  extraLoad = 0,
-): { load: number; previousLoad: number; restDays: number } {
-  let load = 0;
-  let restDays = 0;
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(date, -i);
-    // The anchor day's own load counts too — a second session that day is not
-    // free just because the placement being checked is the one being added.
-    const dayLoad = (loadByDate.get(d) ?? 0) + (d === date ? extraLoad : 0);
-    load += dayLoad;
-    if (dayLoad === 0) restDays += 1;
-  }
-  let previousLoad = 0;
-  for (let i = 7; i < 14; i++) {
-    previousLoad += loadByDate.get(addDays(date, -i)) ?? 0;
-  }
-  return { load, previousLoad, restDays };
+): RuleViolation | null {
+  const hasRest = cycleDates.some((date) => (loadByDate.get(date) ?? 0) === 0);
+  if (hasRest) return null;
+  return {
+    rule: 'kein_ruhetag',
+    message: 'Dieser Zyklus hat keinen Tag mit Belastung 0 — mindestens einer ist nötig.',
+    date: cycleDates[0] ?? '',
+  };
 }

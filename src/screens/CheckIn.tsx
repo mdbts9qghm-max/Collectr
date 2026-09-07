@@ -49,6 +49,8 @@ export function CheckIn() {
 
   const view = useDayView(today);
   const todayShiftId = shifts[today]?.shiftTypeId;
+  const cycleToday = useCyclePlan(today, 1);
+  const hasNap = !!cycleToday.days.find((d) => d.shape.date === today)?.shape.nap;
 
   // Seed the sleep field from what the shift plan makes possible, so the
   // common case is confirming a number rather than dialling one in.
@@ -172,6 +174,35 @@ export function CheckIn() {
               low="schlecht"
               high="sehr gut"
             />
+
+            {/*
+              Only asked on a night-shift day. Sleep extension plus the
+              prophylactic nap are the two measures that actually work against
+              night-shift fatigue, so a missed nap costs more than its minutes.
+            */}
+            {hasNap && (
+              <div className="rate">
+                <div className="t-heading">Vorschlaf vor dem Dienst?</div>
+                <div className="row gap-2 mt-2">
+                  <Button
+                    variant={draft.napTaken === true ? 'primary' : 'outline'}
+                    onClick={() => patch({ napTaken: true })}
+                  >
+                    Gehalten
+                  </Button>
+                  <Button
+                    variant={draft.napTaken === false ? 'primary' : 'outline'}
+                    onClick={() => patch({ napTaken: false })}
+                  >
+                    Ausgefallen
+                  </Button>
+                </div>
+                <div className="rate-ends mt-2">
+                  <span>15:00–17:30</span>
+                  <span>kostet 15 Punkte, wenn er ausfällt</span>
+                </div>
+              </div>
+            )}
           </>
         )}
 

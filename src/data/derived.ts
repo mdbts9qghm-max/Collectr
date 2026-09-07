@@ -342,27 +342,60 @@ export function buildCyclePlan(data: AppData, idx: Indexes, anyDate: ISODate, cy
     (date) => byDate.get(addDays(date, 1)),
   );
 
-  // The key session rotates per cycle. Counting the day shifts already behind
-  // us keeps the rotation continuous across app restarts without storing it.
-  const history = detectCycle(addDays(start, -60), addDays(start, -1), idx.shiftAssignments, idx.shiftTypes);
-  const keyRotationIndex = history.filter((d) => d.cycleDay === 1).length;
+  /*
+   * Which cycle number this horizon starts on.
+   *
+   * A and B alternate and the deload falls on every fourth cycle, so the count
+   * has to be continuous across app restarts. Counting the day shifts already
+   * behind us derives it from the roster instead of storing a counter that
+   * could drift out of step with the shifts themselves.
+   */
+  const history = detectCycle(addDays(start, -180), addDays(start, -1), idx.shiftAssignments, idx.shiftTypes);
+  const cycleOffset = history.filter((d) => d.cycleDay === 1).length;
 
+  // Load per day from what was actually completed, on the planner's scale.
   const completedLoadByDate = new Map<ISODate, number>();
+  const knownDates = new Set<ISODate>();
+  const today = todayIso();
+  for (const [date, assignment] of idx.shiftAssignments) {
+    // A day with a shift entered is a day we know happened, even at load zero.
+    if (date <= today && assignment) knownDates.add(date);
+  }
   for (const session of data.sessions) {
     if (session.status !== 'completed') continue;
     const load = cycleLoadFromSrpe(sessionLoad(session));
     if (load <= 0) continue;
     completedLoadByDate.set(session.date, (completedLoadByDate.get(session.date) ?? 0) + load);
+    knownDates.add(session.date);
   }
+
+  // The resting-heart-rate norm: the median of the last 30 entered mornings,
+  // falling back to the profile value while there is not enough history.
+  const restingHrNorm = restingHrBaseline(idx, today) ?? data.settings.profile.restingHr ?? null;
 
   return planCycle({
     shapes,
     completedLoadByDate,
+    knownDates,
     checkIns: idx.checkIns,
     settings,
-    keyRotationIndex,
-    today: todayIso(),
+    cycleOffset,
+    restingHrNorm,
+    today,
   });
+}
+
+/** Median resting heart rate over the last 30 days, or null below five entries. */
+function restingHrBaseline(idx: Indexes, date: ISODate): number | null {
+  const values: number[] = [];
+  for (let i = 1; i <= 30; i++) {
+    const value = idx.checkIns.get(addDays(date, -i))?.restingHr;
+    if (value != null && value > 0) values.push(value);
+  }
+  if (values.length < 5) return null;
+  values.sort((a, b) => a - b);
+  const mid = Math.floor(values.length / 2);
+  return values.length % 2 === 1 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
 }
 
 export type CyclePlanView = ReturnType<typeof buildCyclePlan>;

@@ -106,55 +106,77 @@ export interface RecoveryValue {
   known: boolean;
 }
 
-export interface RollingWindowState {
+/**
+ * The balance of one macrocycle — two cycles, ten days.
+ *
+ * This replaces the old rolling seven-day target. The rotation is five days
+ * long, so a seven-day count cuts every cycle in a different place; ten days is
+ * the first span where the template's own arithmetic closes.
+ */
+export interface MacrocycleBalance {
   from: ISODate;
   to: ISODate;
+  /** Complete only when both cycles of the macrocycle lie inside the horizon. */
+  complete: boolean;
   load: number;
-  /** Load of the seven days before this window, for the 110 % rule. */
-  previousLoad: number;
-  counts: Record<SessionKind, number>;
+  runs: number;
+  strengthSessions: number;
   restDays: number;
   /** Share of running minutes spent in zone 2. */
   zone2Share: number;
 }
 
+export interface CycleBlock {
+  index: number;
+  type: 'A' | 'B';
+  /** 1 or 2 — position inside the macrocycle. */
+  position: 1 | 2;
+  isDeload: boolean;
+  from: ISODate;
+  to: ISODate;
+  load: number;
+  days: DayPlan[];
+}
+
 export interface CyclePlan {
   days: DayPlan[];
-  window: RollingWindowState;
+  /** The cycles the horizon covers, in order. */
+  cycles: CycleBlock[];
+  macrocycle: MacrocycleBalance;
+  /** Acute-to-chronic load ratio and its band. */
+  acwr: AcwrSummary;
   /** The settings the plan was built with, so the UI can show the same limits. */
   settings: PlannerSettings;
-  /** Target sessions the window still lacks. */
-  missing: SessionKind[];
   violations: RuleViolation[];
-  /** Objective score, higher is better. */
-  score: number;
-  scoreBreakdown: { goal: string; weight: number; achieved: number; points: number }[];
   warnings: string[];
 }
 
-/** Everything the planner can be tuned with, all surfaced in Settings. */
+export interface AcwrSummary {
+  ratio: number | null;
+  band: 'low' | 'ok' | 'high' | 'unknown';
+  message: string | null;
+  /** Daily ratio over the recent past, for the trend curve. */
+  history: { date: ISODate; ratio: number | null }[];
+}
+
+/**
+ * Everything the planner can be tuned with.
+ *
+ * Deliberately short. The template fixes what is trained and when; these are
+ * the two things it cannot know — the commute, and where the V-Schicht window
+ * sits — plus the growth ceiling.
+ */
 export interface PlannerSettings {
   /** Wake time on day-shift days; depends on the commute. */
   dayShiftWakeMinutes: number;
   /** Preferred V-Schicht window: morning before the shift, or evening after. */
   vShiftWindow: 'morning' | 'evening';
-  /**
-   * Load ceiling for the rolling seven-day window. A steady standard cycle
-   * carries about 245 points over its five days, i.e. roughly 345 over seven,
-   * so the default sits just above that: high enough not to starve the normal
-   * rhythm, low enough to catch a genuine overreach.
-   */
-  weeklyLoadCap: number;
-  /** Maximum growth against the previous seven-day window. */
-  maxWindowGrowth: number;
-  /** Session target for the rolling window. */
-  targetUnits: number;
+  /** Maximum load growth from one macrocycle to the next. */
+  maxMacrocycleGrowth: number;
 }
 
 export const DEFAULT_PLANNER_SETTINGS: PlannerSettings = {
   dayShiftWakeMinutes: 5 * 60 + 30,
   vShiftWindow: 'morning',
-  weeklyLoadCap: 360,
-  maxWindowGrowth: 1.1,
-  targetUnits: 6,
+  maxMacrocycleGrowth: 1.08,
 };

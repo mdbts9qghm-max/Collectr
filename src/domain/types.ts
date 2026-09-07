@@ -409,6 +409,11 @@ export interface DailyCheckIn {
    * The planner's recovery value uses it directly: (value − 7) × 5.
    */
   wellbeing?: number;
+  /**
+   * Whether the prophylactic nap before a night shift actually happened.
+   * Undefined means not asked; false costs 15 recovery points.
+   */
+  napTaken?: boolean;
   restingHr?: number;
   hrvMs?: number;
   /** WHOOP recovery percentage, if entered or imported. */

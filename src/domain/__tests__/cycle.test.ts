@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { DailyCheckIn, ISODate, ShiftAssignment } from '../types.ts';
-import type { PlannedUnit, SessionKind } from '../cycle/types.ts';
+import type { PlannedUnit } from '../cycle/types.ts';
 import { DEFAULT_PLANNER_SETTINGS } from '../cycle/types.ts';
 import { buildDayShapes, detectCycle } from '../cycle/detect.ts';
 import { planCycle } from '../cycle/planner.ts';
 import { checkPlacement } from '../cycle/rules.ts';
 import { CATALOGUE } from '../cycle/catalogue.ts';
+import { ACWR_LOWER, ACWR_UPPER, computeAcwr } from '../cycle/acwr.ts';
 import { defaultShiftTypes } from '../../data/defaults.ts';
 import { addDays } from '../date.ts';
 
-const START: ISODate = '2026-03-02'; // a Monday, but the cycle ignores weekdays
+const START: ISODate = '2026-03-02';
 const TYPES = new Map(defaultShiftTypes().map((t) => [t.id, t]));
 
-/** Builds shift assignments from a list of shift keys, starting at START. */
+/** One full cycle: day shift, night shift, sleep day, free, free. */
+const CYCLE = ['day', 'night', 'sleep_day', 'off', 'off'];
+const cycles = (n: number) => Array.from({ length: n }, () => CYCLE).flat();
+
 function shifts(keys: string[], from: ISODate = START): Map<ISODate, ShiftAssignment> {
   const byKey = new Map(defaultShiftTypes().map((t) => [t.key, t.id]));
   const map = new Map<ISODate, ShiftAssignment>();
@@ -23,37 +27,37 @@ function shifts(keys: string[], from: ISODate = START): Map<ISODate, ShiftAssign
   return map;
 }
 
-/** One full cycle: day shift, night shift, sleep day, free, free. */
-const STANDARD_CYCLE = ['day', 'night', 'sleep_day', 'off', 'off'];
-
 interface PlanOptions {
   keys?: string[];
   from?: ISODate;
   days?: number;
-  keyRotationIndex?: number;
+  cycleOffset?: number;
   completed?: Record<ISODate, number>;
+  knownDates?: ISODate[];
   checkIns?: DailyCheckIn[];
+  restingHrNorm?: number;
   today?: ISODate;
 }
 
 function plan(options: PlanOptions = {}) {
-  const keys = options.keys ?? STANDARD_CYCLE;
+  const keys = options.keys ?? CYCLE;
   const from = options.from ?? START;
   const to = addDays(from, (options.days ?? keys.length) - 1);
   const assignments = shifts(keys, from);
   const detected = detectCycle(from, to, assignments, TYPES);
-  const lookup = (date: ISODate) => {
-    const all = detectCycle(from, addDays(to, 1), assignments, TYPES);
-    return all.find((d) => d.date === date);
-  };
-  const shapes = buildDayShapes(detected, DEFAULT_PLANNER_SETTINGS, (d) => lookup(addDays(d, 1)));
+  const all = detectCycle(from, addDays(to, 1), assignments, TYPES);
+  const shapes = buildDayShapes(detected, DEFAULT_PLANNER_SETTINGS, (d) =>
+    all.find((x) => x.date === addDays(d, 1)),
+  );
 
   return planCycle({
     shapes,
     completedLoadByDate: new Map(Object.entries(options.completed ?? {})),
+    knownDates: new Set(options.knownDates ?? Object.keys(options.completed ?? {})),
     checkIns: new Map((options.checkIns ?? []).map((c) => [c.date, c])),
     settings: DEFAULT_PLANNER_SETTINGS,
-    keyRotationIndex: options.keyRotationIndex ?? 0,
+    cycleOffset: options.cycleOffset ?? 0,
+    restingHrNorm: options.restingHrNorm,
     today: options.today,
   });
 }
@@ -62,108 +66,333 @@ const allUnits = (p: ReturnType<typeof plan>): PlannedUnit[] => p.days.flatMap((
 const unitsOn = (p: ReturnType<typeof plan>, date: ISODate) =>
   p.days.find((d) => d.shape.date === date)?.units ?? [];
 const end = (u: PlannedUnit) => u.start + u.durationMinutes;
+const dayN = (cycle: number, day: number) => addDays(START, cycle * 5 + day - 1);
 
 /* ------------------------------------------------------------------ *
- * Section 12 — the specified acceptance tests
+ * Section 11 — the specified test cases
  * ------------------------------------------------------------------ */
 
-describe('Testfälle aus Abschnitt 12', () => {
-  it('Standardzyklus → genau 4 Einheiten, Tagschichttag bleibt leer', () => {
-    const p = plan();
-    expect(allUnits(p).length).toBe(4);
-    // Cycle day 1 is the day shift and carries no window at all.
-    expect(unitsOn(p, START)).toHaveLength(0);
-    expect(p.days[0].load).toBe(0);
+describe('Zyklus A und B alternieren', () => {
+  it('wechselt über vier Zyklen korrekt A → B → A → B', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    expect(p.cycles.map((c) => c.type)).toEqual(['A', 'B', 'A', 'B']);
   });
 
-  it('Nachtschichttag → keine Einheit endet nach 13:30, kein intensiver Lauf', () => {
-    const p = plan();
-    const nightDay = addDays(START, 1);
-    for (const unit of unitsOn(p, nightDay)) {
-      expect(end(unit)).toBeLessThanOrEqual(13 * 60 + 30);
-      expect(unit.kind).not.toBe('intense_run');
+  it('setzt in A den intensiven, in B den langen Lauf auf Tag 4', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    // The fourth cycle is a deload, where the intensive run drops out — so the
+    // check covers the three that are not.
+    expect(unitsOn(p, dayN(0, 4))[0].kind).toBe('intense_run');
+    expect(unitsOn(p, dayN(1, 4))[0].kind).toBe('long_run');
+    expect(unitsOn(p, dayN(2, 4))[0].kind).toBe('intense_run');
+  });
+
+  it('erzeugt aus derselben Ausgangslage immer denselben Plan', () => {
+    // The whole reason for a fixed template rather than an optimiser.
+    const a = allUnits(plan({ keys: cycles(4), days: 20 }));
+    const b = allUnits(plan({ keys: cycles(4), days: 20 }));
+    expect(a.map((u) => `${u.date}:${u.kind}@${u.start}`)).toEqual(
+      b.map((u) => `${u.date}:${u.kind}@${u.start}`),
+    );
+  });
+});
+
+describe('Bilanz des Makrozyklus', () => {
+  it('enthält genau 4 Läufe und 4 Krafteinheiten', () => {
+    const p = plan({ keys: cycles(2), days: 10 });
+    expect(p.macrocycle.complete).toBe(true);
+    expect(p.macrocycle.runs).toBe(4);
+    expect(p.macrocycle.strengthSessions).toBe(4);
+  });
+
+  it('hält den Zone-2-Anteil hoch', () => {
+    const p = plan({ keys: cycles(2), days: 10 });
+    // Two easy runs at 40 min plus the 90 min long run against the 55 min
+    // intensive run: 170 of 225 running minutes, so 76 %.
+    expect(p.macrocycle.zone2Share).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('kommt auf die Gesamtbelastung der Vorlage', () => {
+    const p = plan({ keys: cycles(2), days: 10 });
+    // A: 30 + 30 + 80 + 70 = 210 · B: 30 + 30 + 60 + 70 = 190 · zusammen 400.
+    expect(p.macrocycle.load).toBe(400);
+  });
+});
+
+describe('Nachtschichttag', () => {
+  it('lässt keine Einheit nach 13:30 enden', () => {
+    const p = plan({ keys: cycles(2), days: 10 });
+    for (const cycle of [0, 1]) {
+      for (const unit of unitsOn(p, dayN(cycle, 2))) {
+        expect(end(unit)).toBeLessThanOrEqual(13 * 60 + 30);
+      }
     }
-    expect(unitsOn(p, nightDay).length).toBeGreaterThan(0);
   });
 
-  it('Schlaftag → keine Einheit beginnt vor 16:00 oder endet nach 20:00', () => {
-    const p = plan();
-    const sleepDay = addDays(START, 2);
-    const units = unitsOn(p, sleepDay);
-    expect(units.length).toBeGreaterThan(0);
-    for (const unit of units) {
-      expect(unit.start).toBeGreaterThanOrEqual(16 * 60);
-      expect(end(unit)).toBeLessThanOrEqual(20 * 60);
+  it('trägt weder schwere Kraft noch intensiven Lauf', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    for (const cycle of [0, 1, 2, 3]) {
+      for (const unit of unitsOn(p, dayN(cycle, 2))) {
+        expect(unit.kind).not.toBe('heavy_strength');
+        expect(unit.kind).not.toBe('intense_run');
+      }
+    }
+  });
+});
+
+describe('Schlaftag', () => {
+  it('trainiert strikt beinfrei und läuft nicht', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    for (const cycle of [0, 1, 2, 3]) {
+      for (const unit of unitsOn(p, dayN(cycle, 3))) {
+        expect(CATALOGUE[unit.kind].discipline).not.toBe('run');
+        expect(CATALOGUE[unit.kind].loadsLegs).toBe(false);
+      }
     }
   });
 
-  it('V-Schicht mit Tagschicht am Folgetag → Lauf liegt morgens, nicht abends', () => {
-    // …, free, V-Schicht, day shift
-    const p = plan({ keys: ['day', 'night', 'sleep_day', 'off', 'v_shift', 'day'], days: 6 });
-    const vDay = addDays(START, 4);
-    const units = unitsOn(p, vDay);
-    expect(units.length).toBe(1);
-    expect(units[0].start).toBeGreaterThanOrEqual(6 * 60 + 15);
+  it('hält das Fenster 16:00–20:00 ein', () => {
+    const p = plan({ keys: cycles(2), days: 10 });
+    for (const cycle of [0, 1]) {
+      for (const unit of unitsOn(p, dayN(cycle, 3))) {
+        expect(unit.start).toBeGreaterThanOrEqual(16 * 60);
+        expect(end(unit)).toBeLessThanOrEqual(20 * 60);
+      }
+    }
+  });
+});
+
+describe('Reihenfolge von Kraft und Lauf', () => {
+  it('legt schwere Kraft nie an den Tag vor einem langen oder intensiven Lauf', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    const units = allUnits(p);
+    for (const lift of units.filter((u) => u.kind === 'heavy_strength')) {
+      for (const run of units.filter((u) => u.kind === 'long_run' || u.kind === 'intense_run')) {
+        const hours =
+          (Date.parse(`${run.date}T00:00:00`) + run.start * 60000 -
+            Date.parse(`${lift.date}T00:00:00`) - lift.start * 60000) / 3_600_000;
+        if (hours > 0) expect(hours).toBeGreaterThanOrEqual(24);
+      }
+    }
+  });
+
+  it('erzeugt den Plan ganz ohne Regelverstöße', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    expect(p.violations).toEqual([]);
+  });
+});
+
+describe('V-Schicht', () => {
+  const keys = ['day', 'night', 'sleep_day', 'off', 'v_shift', 'day'];
+
+  it('legt den Lauf ins Morgenfenster, wenn danach eine Tagschicht kommt', () => {
+    const p = plan({ keys, days: 6 });
+    const units = unitsOn(p, dayN(0, 5));
+    expect(units).toHaveLength(1);
+    expect(units[0].kind).toBe('easy_run');
+    expect(units[0].start).toBe(6 * 60 + 15);
     expect(end(units[0])).toBeLessThanOrEqual(7 * 60 + 15);
   });
 
-  it('V-Schicht ohne Tagschicht am Folgetag → Abendfenster zulässig, Ende spätestens 21:00', () => {
-    const p = plan({ keys: ['day', 'night', 'sleep_day', 'off', 'v_shift', 'off'], days: 6 });
-    const vDay = addDays(START, 4);
-    const units = unitsOn(p, vDay);
-    expect(units.length).toBe(1);
-    // Either window is acceptable; the evening one must respect the 21:00 limit.
-    const isMorning = units[0].start >= 6 * 60 && end(units[0]) <= 7 * 60 + 15;
-    const isEvening = units[0].start >= 20 * 60 && end(units[0]) <= 21 * 60;
-    expect(isMorning || isEvening).toBe(true);
+  it('verschiebt die Krafteinheit als moderate Kraft auf Tag 4', () => {
+    const p = plan({ keys, days: 6 });
+    const dayFour = unitsOn(p, dayN(0, 4));
+    expect(dayFour).toHaveLength(2);
+    expect(dayFour.some((u) => u.kind === 'moderate_strength')).toBe(true);
+    // Total day load stays under the 125 a double day is allowed.
+    const load = dayFour.reduce((sum, u) => sum + u.load, 0);
+    expect(load).toBeLessThanOrEqual(125);
   });
 
-  it('Intensiver Lauf an Tag 4 und schwere Kraft an Tag 5 → zulässig', () => {
-    const p = plan({ keyRotationIndex: 0 });
-    const day4 = unitsOn(p, addDays(START, 3));
-    const day5 = unitsOn(p, addDays(START, 4));
-    expect(day4.map((u) => u.kind)).toContain('intense_run');
-    expect(day5.map((u) => u.kind)).toContain('heavy_strength');
-    // Different disciplines need 24 h, which consecutive days provide.
-    expect(p.violations).toHaveLength(0);
-  });
-
-  it('Zwei harte Läufe an Folgetagen → 48-h-Regel stuft den zweiten ab, löscht ihn nicht', () => {
-    // A long run is already completed on cycle day 4; the planner must not put
-    // another hard run on day 5, but it must still put *something* there.
-    const day4 = addDays(START, 3);
-    const day5 = addDays(START, 4);
+  it('lässt die Krafteinheit ersatzlos entfallen, wenn Tag 4 unter 85 liegt', () => {
     const p = plan({
-      keys: ['day', 'night', 'sleep_day', 'off', 'off'],
-      keyRotationIndex: 1, // long run is the key session
+      keys,
+      days: 6,
+      checkIns: [{ date: dayN(0, 4), wellbeing: 2, source: 'manual', updatedAt: '' }],
     });
-    const runsOnBoth = [...unitsOn(p, day4), ...unitsOn(p, day5)].filter(
-      (u) => CATALOGUE[u.kind].discipline === 'run' && CATALOGUE[u.kind].load >= 60,
-    );
-    // At most one hard run across the two consecutive days.
-    expect(runsOnBoth.length).toBeLessThanOrEqual(1);
-    // And day 5 is not left empty.
-    expect(unitsOn(p, day5).length).toBeGreaterThan(0);
+    const dayFour = unitsOn(p, dayN(0, 4));
+    expect(dayFour.some((u) => CATALOGUE[u.kind].discipline === 'strength')).toBe(false);
+    expect(p.warnings.some((w) => w.includes('entfällt ersatzlos'))).toBe(true);
+  });
+});
+
+describe('Der Erholungswert stuft ab, statt zu streichen', () => {
+  it('macht aus dem intensiven Lauf bei Erholungswert 75 einen langen Lauf', () => {
+    // Base 100 on day 4, wellbeing 2 costs 25: exactly the 75 a long run needs.
+    const p = plan({
+      keys: CYCLE,
+      checkIns: [{ date: dayN(0, 4), wellbeing: 2, source: 'manual', updatedAt: '' }],
+    });
+    const units = unitsOn(p, dayN(0, 4));
+    expect(units).toHaveLength(1);
+    expect(units[0].kind).toBe('long_run');
+    expect(units[0].downgradedFrom).toBe('intense_run');
+    expect(p.days.find((d) => d.shape.date === dayN(0, 4))!.recovery.value).toBe(75);
   });
 
-  it('Über 3 Zyklen → jede Schlüsseleinheit kam mindestens einmal auf Tag 4', () => {
-    const onDay4: SessionKind[] = [];
-    for (let cycle = 0; cycle < 3; cycle++) {
-      const from = addDays(START, cycle * 5);
-      const p = plan({ from, keyRotationIndex: cycle });
-      onDay4.push(...unitsOn(p, addDays(from, 3)).map((u) => u.kind));
+  it('geht bei Erholungswert 70 eine Stufe weiter, weil der lange Lauf 75 braucht', () => {
+    /*
+     * The written test case expects a long run at a recovery value of 70, but
+     * the minimum table in the same specification puts the long run at 75. The
+     * table wins: it is the rule, the test case was the illustration. At 70 the
+     * chain therefore takes one more step, to the easy run — still a downgrade,
+     * never a deletion.
+     */
+    const p = plan({
+      keys: CYCLE,
+      checkIns: [{ date: dayN(0, 4), wellbeing: 1, source: 'manual', updatedAt: '' }],
+    });
+    const units = unitsOn(p, dayN(0, 4));
+    expect(p.days.find((d) => d.shape.date === dayN(0, 4))!.recovery.value).toBe(70);
+    expect(units).toHaveLength(1);
+    expect(units[0].kind).toBe('easy_run');
+    expect(units[0].downgradedFrom).toBe('intense_run');
+  });
+
+  it('zieht Schlafmangel, Muskelkater und Ruhepuls zusammen ab', () => {
+    const date = dayN(0, 4);
+    const p = plan({
+      keys: CYCLE,
+      restingHrNorm: 50,
+      checkIns: [
+        { date, sleepHours: 6, soreness: 4, restingHr: 59, source: 'manual', updatedAt: '' },
+      ],
+    });
+    const recovery = p.days.find((d) => d.shape.date === date)!.recovery;
+    // 100 − 20 (2 h unter 8 h Ziel) − 15 (Muskelkater 4) − 15 (Puls +9) = 50.
+    expect(recovery.value).toBe(50);
+  });
+
+  it('zieht den ausgefallenen Vorschlaf ab', () => {
+    const date = dayN(0, 2);
+    const p = plan({
+      keys: CYCLE,
+      checkIns: [{ date, napTaken: false, source: 'manual', updatedAt: '' }],
+    });
+    const recovery = p.days.find((d) => d.shape.date === date)!.recovery;
+    expect(recovery.value).toBe(60);
+    expect(recovery.adjustments.some((a) => a.label.includes('Vorschlaf'))).toBe(true);
+  });
+
+  it('streicht nie, sondern stuft bis zur Regeneration ab', () => {
+    const p = plan({
+      keys: cycles(2),
+      days: 10,
+      checkIns: [dayN(0, 2), dayN(0, 3), dayN(0, 4), dayN(0, 5)].map((date) => ({
+        date,
+        wellbeing: 1,
+        source: 'manual' as const,
+        updatedAt: '',
+      })),
+    });
+    // Four sessions per cycle: none of them may simply disappear.
+    for (const day of [2, 3, 4, 5]) {
+      expect(unitsOn(p, dayN(0, day))).toHaveLength(1);
     }
-    for (const key of ['intense_run', 'long_run', 'heavy_strength'] as SessionKind[]) {
-      expect(onDay4).toContain(key);
+  });
+});
+
+describe('Deload', () => {
+  it('greift im vierten Zyklus', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    expect(p.cycles.map((c) => c.isDeload)).toEqual([false, false, false, true]);
+  });
+
+  it('nimmt die Belastung um rund 40 % zurück', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    const normal = p.cycles.filter((c) => !c.isDeload);
+    const deload = p.cycles.find((c) => c.isDeload)!;
+    const average = normal.reduce((sum, c) => sum + c.load, 0) / normal.length;
+    const reduction = 1 - deload.load / average;
+    expect(reduction).toBeGreaterThan(0.25);
+    expect(reduction).toBeLessThan(0.5);
+  });
+
+  it('lässt weder intensiven Lauf noch schwere Kraft im Deload zu', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    const deload = p.cycles.find((c) => c.isDeload)!;
+    for (const day of deload.days) {
+      for (const unit of day.units) {
+        expect(unit.kind).not.toBe('intense_run');
+        expect(unit.kind).not.toBe('heavy_strength');
+      }
     }
   });
 
-  it('Jedes rollierende 7-Tage-Fenster enthält mindestens einen Tag mit Belastung 0', () => {
-    // Two full cycles, so a seven-day window always spans a day shift.
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 10 });
-    expect(p.window.restDays).toBeGreaterThanOrEqual(1);
-    const zeroDays = p.days.filter((d) => d.load === 0);
-    expect(zeroDays.length).toBeGreaterThanOrEqual(2);
+  it('fällt strukturbedingt immer auf einen B-Zyklus', () => {
+    /*
+     * Four cycles is two macrocycles, so "every fourth cycle" always lands on
+     * the same position: the second half of every second macrocycle, which is
+     * always a B cycle. The consequence is that the deload's "the intensive run
+     * drops out" clause never actually fires — a B cycle has no intensive run
+     * to drop. The heavy-to-moderate substitution and the halved volumes carry
+     * the whole reduction.
+     */
+    const p = plan({ keys: cycles(8), days: 40 });
+    for (const cycle of p.cycles.filter((c) => c.isDeload)) {
+      expect(cycle.type).toBe('B');
+    }
+  });
+});
+
+describe('Belastungsverhältnis akut zu chronisch', () => {
+  const known = (n: number) => Array.from({ length: n }, (_, i) => addDays(START, -i));
+
+  it('meldet unbekannt, solange die Historie zu kurz ist', () => {
+    const state = computeAcwr(START, new Map([[addDays(START, -1), 50]]), new Set(known(3)));
+    expect(state.ratio).toBeNull();
+    expect(state.band).toBe('unknown');
+  });
+
+  it('erkennt einen Ausreißer nach oben und warnt', () => {
+    const load = new Map<ISODate, number>();
+    for (let i = 7; i < 28; i++) load.set(addDays(START, -i), 10);
+    for (let i = 0; i < 7; i++) load.set(addDays(START, -i), 80);
+    const state = computeAcwr(START, load, new Set(known(28)));
+    expect(state.band).toBe('high');
+    expect(state.ratio!).toBeGreaterThan(ACWR_UPPER);
+    expect(state.message).toBeTruthy();
+  });
+
+  it('erkennt auch das Abfallen nach unten', () => {
+    const load = new Map<ISODate, number>();
+    for (let i = 7; i < 28; i++) load.set(addDays(START, -i), 60);
+    for (let i = 0; i < 7; i++) load.set(addDays(START, -i), 5);
+    const state = computeAcwr(START, load, new Set(known(28)));
+    expect(state.band).toBe('low');
+    expect(state.ratio!).toBeLessThan(ACWR_LOWER);
+  });
+
+  it('stuft die nächste harte Einheit ab, wenn das Band überschritten ist', () => {
+    const completed: Record<ISODate, number> = {};
+    for (let i = 7; i < 28; i++) completed[addDays(START, -i)] = 10;
+    for (let i = 1; i <= 7; i++) completed[addDays(START, -i)] = 90;
+    const p = plan({
+      keys: CYCLE,
+      completed,
+      knownDates: Array.from({ length: 28 }, (_, i) => addDays(START, -i)),
+      today: START,
+    });
+    const key = unitsOn(p, dayN(0, 4))[0];
+    expect(key.kind).not.toBe('intense_run');
+    expect(key.reasons.some((r) => r.includes('Belastungsverhältnis'))).toBe(true);
+    expect(p.warnings.some((w) => w.includes('Belastungsverhältnis'))).toBe(true);
+  });
+});
+
+describe('Ruhetag', () => {
+  it('enthält in jedem Zyklus mindestens einen Tag mit Belastung 0', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    for (const cycle of p.cycles) {
+      expect(cycle.days.some((d) => d.load === 0)).toBe(true);
+    }
+  });
+
+  it('trainiert am Tagschichttag gar nicht', () => {
+    const p = plan({ keys: cycles(4), days: 20 });
+    for (const cycle of [0, 1, 2, 3]) {
+      expect(unitsOn(p, dayN(cycle, 1))).toHaveLength(0);
+    }
   });
 });
 
@@ -171,250 +400,145 @@ describe('Testfälle aus Abschnitt 12', () => {
  * The hard rules, checked directly
  * ------------------------------------------------------------------ */
 
-describe('harte Regeln', () => {
-  it('hält jede Einheit in ihrem Fenster', () => {
-    const p = plan();
-    for (const day of p.days) {
-      const windows = [day.shape.trainingWindow, day.shape.alternativeWindow].filter(Boolean);
-      for (const unit of day.units) {
-        const fits = windows.some((w) => w && unit.start >= w.start && end(unit) <= w.end);
-        expect(fits).toBe(true);
-      }
-    }
-  });
+function shapeFor(key: string) {
+  const assignments = shifts([key]);
+  return buildDayShapes(detectCycle(START, START, assignments, TYPES), DEFAULT_PLANNER_SETTINGS, () => undefined)[0];
+}
 
-  it('respektiert die Mindestanforderung an den Erholungswert', () => {
-    const p = plan();
-    for (const day of p.days) {
-      for (const unit of day.units) {
-        expect(day.recovery.value).toBeGreaterThanOrEqual(CATALOGUE[unit.kind].minRecovery);
-      }
-    }
-  });
-
-  it('lässt keine harte Einheit weniger als 3 h vor dem Vorschlaf enden', () => {
-    const p = plan();
-    for (const day of p.days) {
-      for (const unit of day.units) {
-        if (CATALOGUE[unit.kind].load < 60) continue;
-        expect(day.shape.nextSleepStart - end(unit)).toBeGreaterThanOrEqual(180);
-      }
-    }
-  });
-
-  it('erzeugt einen Plan ganz ohne Regelverstöße', () => {
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 10 });
-    expect(p.violations).toHaveLength(0);
-  });
-
-  it('senkt den Erholungswert bei schlechtem Befinden und kurzem Schlaf', () => {
-    const day4 = addDays(START, 3);
-    const good = plan();
-    const bad = plan({
-      checkIns: [
-        { date: day4, wellbeing: 3, sleepHours: 5, source: 'manual', updatedAt: '' },
-      ],
-    });
-    const goodValue = good.days.find((d) => d.shape.date === day4)!.recovery.value;
-    const badValue = bad.days.find((d) => d.shape.date === day4)!.recovery.value;
-    // Base 100 plus the rest-day bonus is clamped to 100; the bad day is
-    // 105 − 20 (Befinden 3) − 10 (Schlaf 5 h statt 8 h) = 75.
-    expect(goodValue).toBe(100);
-    expect(badValue).toBe(75);
-  });
-
-  it('stuft ab statt zu streichen, wenn der Erholungswert nicht reicht', () => {
-    const day4 = addDays(START, 3);
-    const p = plan({
-      keyRotationIndex: 0, // wants an intense run, needs recovery 85
-      // Base 100 + 5 rest bonus − 25 (Befinden 2) = 80, just under the 85 an
-      // intense run demands, so the planner must weaken it instead of dropping it.
-      checkIns: [{ date: day4, wellbeing: 2, source: 'manual', updatedAt: '' }],
-    });
-    const units = unitsOn(p, day4);
-    expect(units.length).toBe(1);
-    expect(units[0].kind).not.toBe('intense_run');
-    expect(units[0].downgradedFrom).toBe('intense_run');
-  });
-});
-
-/* ------------------------------------------------------------------ *
- * Progression is measured on what was trained, not on a projection
- * ------------------------------------------------------------------ */
-
-describe('Steigerungsregel', () => {
-  it('rotiert die Schlüsseleinheit über mehrere Zyklen', () => {
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 10, today: START });
-    const keyDays = [addDays(START, 3), addDays(START, 8)];
-    const kinds = keyDays.map((d) => unitsOn(p, d).map((u) => u.downgradedFrom ?? u.kind));
-    // The second cycle must not repeat the first cycle's key session.
-    expect(kinds[0][0]).not.toBe(kinds[1][0]);
-  });
-
-  it('drosselt einen künftigen Zyklus nicht wegen des davor geplanten', () => {
-    // With `today` at the start of the horizon every previous window lies in the
-    // future, where it is the planner's own projection. Throttling against it
-    // would ratchet the plan down instead of progressing it.
-    const p = plan({
-      keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE],
-      days: 15,
-      today: START,
-    });
-    const load = (cycle: number) =>
-      p.days
-        .filter((d) => d.shape.date >= addDays(START, cycle * 5) && d.shape.date < addDays(START, (cycle + 1) * 5))
-        .reduce((sum, d) => sum + d.load, 0);
-
-    expect(p.violations).toHaveLength(0);
-    // No cycle collapses to a fraction of the first one.
-    expect(load(1)).toBeGreaterThan(load(0) * 0.6);
-    expect(load(2)).toBeGreaterThan(load(0) * 0.6);
-  });
-});
-
-describe('Tage ohne eingetragene Schicht', () => {
-  it('behauptet keinen Erholungswert', () => {
-    // Nothing is entered for these days, so the app knows nothing about what
-    // they did to sleep. A confident number here would be invented.
-    const p = plan({ keys: [], days: 3 });
-    for (const day of p.days) {
-      expect(day.recovery.known).toBe(false);
-    }
-  });
-
-  it('verplant sie auch nicht', () => {
-    const p = plan({ keys: [], days: 3 });
-    expect(allUnits(p)).toHaveLength(0);
-  });
-
-  it('unterscheidet Urlaub von fehlender Angabe', () => {
-    const p = plan({ keys: ['vacation', 'vacation'], days: 2 });
-    for (const day of p.days) {
-      expect(day.recovery.known).toBe(true);
-      expect(day.recovery.base).toBe(85);
-    }
-  });
-});
-
-describe('Doppeleinheiten', () => {
-  it('kombiniert nie zwei Läufe oder zwei Krafteinheiten an einem Tag', () => {
-    // Two runs on one day are one run split in half: same tissue, same impact,
-    // no second adaptation.
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
-    for (const day of p.days) {
-      const disciplines = day.units
-        .map((u) => CATALOGUE[u.kind].discipline)
-        .filter((d) => d !== 'other');
-      expect(new Set(disciplines).size).toBe(disciplines.length);
-    }
-  });
-
-  it('weist zwei Läufe am selben Tag als Regelverstoß aus', () => {
-    const shape = buildDayShapes(
-      detectCycle(START, START, shifts(['off']), TYPES),
-      DEFAULT_PLANNER_SETTINGS,
-      () => undefined,
-    )[0];
-    const first: PlannedUnit = {
-      date: START, kind: 'easy_run', start: 8 * 60, durationMinutes: 40, load: 25, reasons: [],
-    };
-    const violations = checkPlacement(
-      { date: START, kind: 'long_run', start: 15 * 60, durationMinutes: 90 },
-      {
-        shape,
-        recovery: { value: 100, base: 100, adjustments: [], band: 'green', known: true },
-        sameDay: [first],
-        allUnits: [first],
-        loadByDate: new Map(),
-        shapesByDate: new Map([[START, shape]]),
-        settings: DEFAULT_PLANNER_SETTINGS,
+function violationsFor(
+  key: string,
+  placement: { kind: PlannedUnit['kind']; start: number; durationMinutes: number },
+  extra: { sameDay?: PlannedUnit[]; allUnits?: PlannedUnit[]; recovery?: number } = {},
+) {
+  const shape = shapeFor(key);
+  return checkPlacement(
+    { date: START, ...placement },
+    {
+      shape,
+      recovery: {
+        value: extra.recovery ?? 100,
+        base: 100,
+        adjustments: [],
+        band: 'green',
+        known: true,
       },
+      sameDay: extra.sameDay ?? [],
+      allUnits: extra.allUnits ?? [],
+      loadByDate: new Map(),
+      shapesByDate: new Map([[START, shape]]),
+      settings: DEFAULT_PLANNER_SETTINGS,
+    },
+  ).map((v) => v.rule);
+}
+
+describe('Harte Regeln', () => {
+  it('verbietet jedes Training am Tagschichttag', () => {
+    expect(violationsFor('day', { kind: 'easy_run', start: 5 * 60, durationMinutes: 40 })).toContain(
+      'tagschicht',
     );
-    expect(violations.map((v) => v.rule)).toContain('doppel_disziplin');
   });
 
-  it('lässt keine Regeneration als zweite Einheit zu', () => {
-    // A recovery walk would tick the frequency target without training
-    // anything. Either the day carries strength plus endurance, or one session.
-    const shape = buildDayShapes(
-      detectCycle(START, START, shifts(['off']), TYPES),
-      DEFAULT_PLANNER_SETTINGS,
-      () => undefined,
-    )[0];
-    const first: PlannedUnit = {
-      date: START, kind: 'intense_run', start: 8 * 60, durationMinutes: 55, load: 80, reasons: [],
+  it('verbietet den intensiven Lauf an Nachtschicht- und Schlaftagen', () => {
+    expect(
+      violationsFor('night', { kind: 'intense_run', start: 9 * 60, durationMinutes: 55 }),
+    ).toContain('intensitaet_schicht');
+    expect(
+      violationsFor('sleep_day', { kind: 'intense_run', start: 16 * 60, durationMinutes: 55 }),
+    ).toContain('intensitaet_schicht');
+  });
+
+  it('erzwingt den Puffer vor dem Vorschlaf', () => {
+    expect(
+      violationsFor('night', { kind: 'easy_run', start: 13 * 60, durationMinutes: 45 }),
+    ).toContain('vorschlaf_puffer');
+  });
+
+  it('erzwingt am Schlaftag den Beginn ab 16:00 und das Ende bis 20:00', () => {
+    expect(
+      violationsFor('sleep_day', { kind: 'upper_strength', start: 15 * 60, durationMinutes: 40 }),
+    ).toContain('schlaftraegheit');
+    expect(
+      violationsFor('sleep_day', { kind: 'upper_strength', start: 19 * 60 + 30, durationMinutes: 40 }),
+    ).toContain('schlaftag_ende');
+  });
+
+  it('fordert 48 h zwischen zwei harten Einheiten derselben Disziplin', () => {
+    const yesterday: PlannedUnit = {
+      date: addDays(START, -1), kind: 'long_run', start: 8 * 60, durationMinutes: 90, load: 60, reasons: [],
     };
-    const violations = checkPlacement(
-      { date: START, kind: 'regeneration', start: 15 * 60, durationMinutes: 20 },
-      {
-        shape,
-        recovery: { value: 100, base: 100, adjustments: [], band: 'green', known: true },
-        sameDay: [first],
-        allUnits: [first],
-        loadByDate: new Map(),
-        shapesByDate: new Map([[START, shape]]),
-        settings: DEFAULT_PLANNER_SETTINGS,
-      },
+    expect(
+      violationsFor('off', { kind: 'intense_run', start: 8 * 60, durationMinutes: 55 }, { allUnits: [yesterday] }),
+    ).toContain('abstand_gleiche_disziplin');
+  });
+
+  it('lässt genau 24 h zwischen harten Einheiten verschiedener Disziplin genügen', () => {
+    // Same time of day, one day apart: exactly 24 h, which both rules allow.
+    const yesterday: PlannedUnit = {
+      date: addDays(START, -1), kind: 'heavy_strength', start: 8 * 60, durationMinutes: 60, load: 70, reasons: [],
+    };
+    const rules = violationsFor(
+      'off',
+      { kind: 'intense_run', start: 8 * 60, durationMinutes: 55 },
+      { allUnits: [yesterday] },
     );
-    expect(violations.map((v) => v.rule)).toContain('doppel_disziplin');
+    expect(rules).toEqual([]);
   });
 
-  it('erzeugt über drei Zyklen nur Doppel aus Kraft und Ausdauer', () => {
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
-    for (const day of p.days) {
-      if (day.units.length < 2) continue;
-      const disciplines = day.units.map((u) => CATALOGUE[u.kind].discipline).sort();
-      expect(disciplines).toEqual(['run', 'strength']);
-    }
+  it('verbietet schwere Beinkraft innerhalb der 24 h vor einem harten Lauf', () => {
+    // Yesterday afternoon is 18 h before this morning's run — inside the window.
+    const yesterday: PlannedUnit = {
+      date: addDays(START, -1), kind: 'heavy_strength', start: 14 * 60, durationMinutes: 60, load: 70, reasons: [],
+    };
+    expect(
+      violationsFor('off', { kind: 'intense_run', start: 8 * 60, durationMinutes: 55 }, { allUnits: [yesterday] }),
+    ).toContain('beinkraft_vor_lauf');
   });
 
-  it('lässt Kraft plus Lauf an einem freien Tag zu', () => {
-    const shape = buildDayShapes(
-      detectCycle(START, START, shifts(['off']), TYPES),
-      DEFAULT_PLANNER_SETTINGS,
-      () => undefined,
-    )[0];
+  it('erlaubt schwere Beinkraft nach dem harten Lauf', () => {
+    const yesterday: PlannedUnit = {
+      date: addDays(START, -1), kind: 'intense_run', start: 8 * 60, durationMinutes: 55, load: 80, reasons: [],
+    };
+    expect(
+      violationsFor('off', { kind: 'heavy_strength', start: 8 * 60, durationMinutes: 60 }, { allUnits: [yesterday] }),
+    ).not.toContain('beinkraft_vor_lauf');
+  });
+
+  it('lässt von zwei Läufen an Nachbartagen nur einen hart sein', () => {
+    const yesterday: PlannedUnit = {
+      date: addDays(START, -1), kind: 'intense_run', start: 8 * 60, durationMinutes: 55, load: 80, reasons: [],
+    };
+    expect(
+      violationsFor('off', { kind: 'long_run', start: 8 * 60, durationMinutes: 90 }, { allUnits: [yesterday] }),
+    ).toContain('zwei_harte_laeufe');
+  });
+
+  it('begrenzt den zweiten Lauf eines Paares auf 35 min', () => {
+    const yesterday: PlannedUnit = {
+      date: addDays(START, -1), kind: 'intense_run', start: 8 * 60, durationMinutes: 55, load: 80, reasons: [],
+    };
+    expect(
+      violationsFor('off', { kind: 'easy_run', start: 9 * 60, durationMinutes: 45 }, { allUnits: [yesterday] }),
+    ).toContain('zweiter_lauf_umfang');
+  });
+
+  it('verlangt bei zwei Einheiten am Tag sechs Stunden Abstand und Kraft zuerst', () => {
     const strength: PlannedUnit = {
       date: START, kind: 'moderate_strength', start: 8 * 60, durationMinutes: 50, load: 45, reasons: [],
     };
-    const violations = checkPlacement(
-      { date: START, kind: 'easy_run', start: 15 * 60, durationMinutes: 40 },
-      {
-        shape,
-        recovery: { value: 100, base: 100, adjustments: [], band: 'green', known: true },
-        sameDay: [strength],
-        allUnits: [strength],
-        loadByDate: new Map(),
-        shapesByDate: new Map([[START, shape]]),
-        settings: DEFAULT_PLANNER_SETTINGS,
-      },
-    );
-    expect(violations.map((v) => v.rule)).not.toContain('doppel_disziplin');
-  });
-});
-
-describe('Der Schlüsseltag bleibt der Schlüsseltag', () => {
-  it('verplant den erholtesten Tag jedes Zyklus mit einer echten Einheit', () => {
-    // Two regressions met here. The growth rule was checked while sessions were
-    // still being placed, so it compared against a half-built previous window
-    // and blocked the third cycle's key session; and the repair pass then
-    // weakened the freshest day of the cycle down to a twenty-minute walk.
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
-    for (const day of p.days) {
-      if (day.shape.cycleDay !== 4) continue;
-      expect(day.units).not.toHaveLength(0);
-      expect(day.units[0].kind).not.toBe('regeneration');
-      expect(day.load).toBeGreaterThanOrEqual(60);
-    }
+    expect(
+      violationsFor('off', { kind: 'easy_run', start: 11 * 60, durationMinutes: 40 }, { sameDay: [strength] }),
+    ).toContain('doppel_abstand');
+    expect(
+      violationsFor('off', { kind: 'easy_run', start: 6 * 60, durationMinutes: 40 }, { sameDay: [strength] }),
+    ).toContain('doppel_reihenfolge');
   });
 
-  it('hält die drei Zyklen im Umfang beieinander', () => {
-    const p = plan({ keys: [...STANDARD_CYCLE, ...STANDARD_CYCLE, ...STANDARD_CYCLE], days: 15 });
-    const loads = [0, 1, 2].map((c) =>
-      p.days
-        .filter((d) => d.shape.date >= addDays(START, c * 5) && d.shape.date < addDays(START, (c + 1) * 5))
-        .reduce((sum, d) => sum + d.load, 0),
-    );
-    for (const load of loads) expect(load).toBeGreaterThan(loads[0] * 0.6);
+  it('lässt Kraft vormittags und Lauf am Nachmittag zu', () => {
+    const strength: PlannedUnit = {
+      date: START, kind: 'moderate_strength', start: 8 * 60, durationMinutes: 50, load: 45, reasons: [],
+    };
+    expect(
+      violationsFor('off', { kind: 'easy_run', start: 15 * 60, durationMinutes: 40 }, { sameDay: [strength] }),
+    ).toEqual([]);
   });
 });

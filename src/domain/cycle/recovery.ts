@@ -1,17 +1,18 @@
 import type { DailyCheckIn, ISODate } from '../types.ts';
 import type { DayShape, RecoveryValue } from './types.ts';
-import { addDays } from '../date.ts';
 
 /**
- * Recovery value per day, 0–100.
+ * The recovery value does not plan. It downgrades.
  *
- * A start value follows from the cycle position alone — what the rotation did
- * to sleep is known before anything is logged. Everything the athlete actually
- * enters then adjusts it: yesterday's load, the training streak, subjective
- * wellbeing, and how far real sleep fell short of the target for that day.
+ * The plan comes from the fixed template — same rotation position, same
+ * session, every cycle. This value is the filter that sits in front of it:
+ * computed in the morning, compared against the session's minimum, and where it
+ * falls short the session is weakened along its chain. It never chooses what to
+ * train, only how much of it survives the morning.
  *
- * The next day influences today only through the hard rules, not through this
- * value; the rules are where a night shift tomorrow shortens today's session.
+ * A start value follows from the cycle position alone, because what the
+ * rotation does to sleep is known before anything is logged. Everything the
+ * athlete actually enters then adjusts it.
  */
 
 const BASE_BY_CYCLE_DAY: Record<number, { value: number; why: string }> = {
@@ -29,15 +30,19 @@ const VACATION_BASE = { value: 85, why: 'Urlaub: kein Dienst, freier Schlaf' };
  *
  * The number is a placeholder, not an estimate: without the shift the app does
  * not know what the day did to sleep. The planner skips these days entirely and
- * the UI shows them as unknown — putting a confident green 85 on a blank day
- * would be inventing exactly the kind of certainty this app refuses.
+ * the UI shows them as unknown.
  */
 const UNKNOWN_BASE = { value: 50, why: 'Keine Schicht eingetragen — Erholung unbekannt' };
 
+/** Soreness on the 1–5 scale counts against the day from 3 upward. */
+export const SORENESS_THRESHOLD = 3;
+/** Resting heart rate this far above the norm counts as a warning sign. */
+export const RESTING_HR_MARGIN = 7;
+
 export interface RecoveryInputs {
-  /** Total load per day, from what was actually completed. */
-  loadByDate: Map<ISODate, number>;
   checkIns: Map<ISODate, DailyCheckIn>;
+  /** The athlete's normal resting heart rate, from the profile or a baseline. */
+  restingHrNorm?: number | null;
 }
 
 export function computeRecovery(shape: DayShape, inputs: RecoveryInputs): RecoveryValue {
@@ -62,41 +67,45 @@ export function computeRecovery(shape: DayShape, inputs: RecoveryInputs): Recove
 
   const adjustments: { label: string; delta: number }[] = [];
   let value = baseEntry.value;
-
-  const previousDate = addDays(shape.date, -1);
-  const previousLoad = inputs.loadByDate.get(previousDate) ?? 0;
-
-  if (previousLoad >= 60) {
-    adjustments.push({ label: `Vortag mit hoher Belastung (${previousLoad})`, delta: -12 });
-    value -= 12;
-  } else if (previousLoad === 0) {
-    adjustments.push({ label: 'Vortag war echter Ruhetag', delta: +5 });
-    value += 5;
-  }
-
-  // From the third consecutive training day onward, ten points per further day.
-  const streak = consecutiveTrainingDays(shape.date, inputs.loadByDate);
-  if (streak >= 2) {
-    const delta = -10 * (streak - 1);
-    adjustments.push({ label: `${streak + 1}. Trainingstag in Folge`, delta });
+  const add = (label: string, delta: number) => {
+    if (delta === 0) return;
+    adjustments.push({ label, delta });
     value += delta;
-  }
+  };
 
   const checkIn = inputs.checkIns.get(shape.date);
-  if (checkIn?.wellbeing != null) {
-    const delta = (checkIn.wellbeing - 7) * 5;
-    adjustments.push({ label: `Befinden ${checkIn.wellbeing}/10`, delta });
-    value += delta;
+
+  // Sleep: ten points per full hour below the target for this cycle day.
+  if (checkIn?.sleepHours != null) {
+    const shortfallHours = (shape.sleep.targetMinutes - checkIn.sleepHours * 60) / 60;
+    if (shortfallHours >= 1) {
+      const hours = Math.floor(shortfallHours);
+      add(
+        `Schlaf ${checkIn.sleepHours.toFixed(1)} h statt ${(shape.sleep.targetMinutes / 60).toFixed(1)} h`,
+        -10 * hours,
+      );
+    }
   }
 
-  if (checkIn?.sleepHours != null) {
-    const actual = checkIn.sleepHours * 60;
-    if (actual <= shape.sleep.targetMinutes - 60) {
-      adjustments.push({
-        label: `Schlaf ${checkIn.sleepHours.toFixed(1)} h statt ${(shape.sleep.targetMinutes / 60).toFixed(1)} h`,
-        delta: -10,
-      });
-      value -= 10;
+  // The prophylactic nap is half of what makes a night shift survivable, so
+  // missing it costs more than the lost minutes alone would suggest.
+  if (shape.nap && checkIn?.napTaken === false) {
+    add('Vorschlaf vor dem Nachtdienst ausgefallen', -15);
+  }
+
+  if (checkIn?.wellbeing != null) {
+    add(`Befinden ${checkIn.wellbeing}/10`, (checkIn.wellbeing - 7) * 5);
+  }
+
+  if (checkIn?.soreness != null && checkIn.soreness >= SORENESS_THRESHOLD) {
+    add(`Muskelkater ${checkIn.soreness}/5`, -15);
+  }
+
+  const norm = inputs.restingHrNorm;
+  if (checkIn?.restingHr != null && norm != null && norm > 0) {
+    const above = checkIn.restingHr - norm;
+    if (above >= RESTING_HR_MARGIN) {
+      add(`Ruhepuls ${checkIn.restingHr} bpm, ${above} über deinem Normwert`, -15);
     }
   }
 
@@ -108,17 +117,6 @@ export function computeRecovery(shape: DayShape, inputs: RecoveryInputs): Recove
     band: clamped < 45 ? 'red' : clamped < 75 ? 'amber' : 'green',
     known,
   };
-}
-
-/** Consecutive days with load before `date`, stopping at the first rest day. */
-function consecutiveTrainingDays(date: ISODate, loadByDate: Map<ISODate, number>): number {
-  let count = 0;
-  let cursor = addDays(date, -1);
-  while ((loadByDate.get(cursor) ?? 0) > 0 && count < 14) {
-    count += 1;
-    cursor = addDays(cursor, -1);
-  }
-  return count;
 }
 
 export function baseReasonFor(shape: DayShape): string {
@@ -142,16 +140,16 @@ export const RECOVERY_BAND_META: Record<
   red: {
     label: 'wenig erholt',
     color: 'var(--bad)',
-    advice: 'Nur leichte Einheiten. Harte Reize kosten heute mehr, als sie bringen.',
+    advice: 'Die Einheit des Tages wird abgestuft, nicht gestrichen.',
   },
   amber: {
     label: 'teilweise erholt',
     color: 'var(--warn)',
-    advice: 'Mittlere Belastung geht. Alles Intensive besser auf den nächsten Tag.',
+    advice: 'Mittlere Belastung geht. Alles Intensive wird abgestuft.',
   },
   green: {
     label: 'gut erholt',
     color: 'var(--good)',
-    advice: 'Der Tag trägt die harte Einheit des Zyklus.',
+    advice: 'Der Tag trägt die vorgesehene Einheit.',
   },
 };

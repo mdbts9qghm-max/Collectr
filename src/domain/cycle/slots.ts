@@ -34,11 +34,19 @@ export function findSlotFor(
       continue;
     }
 
+    /*
+     * Order on a double day: the session that matters more for the goal comes
+     * first, and only when that is a toss-up does strength go before the run.
+     *
+     * So strength may follow a key run — that is exactly the V-Schicht case,
+     * where day 4 carries the intensive run and the displaced strength session
+     * six hours later. What is never allowed is a run before a strength session
+     * that was placed first, because then the legs are already spent.
+     */
     const first = existing[0];
-    const strengthFirst = CATALOGUE[first.kind].discipline === 'strength';
-    const candidateIsRun = spec.discipline === 'run';
-    // Strength before run: a run may only go after, never before.
-    if (!strengthFirst && !candidateIsRun && spec.discipline === 'strength') continue;
+    const firstIsKeyRun = CATALOGUE[first.kind].discipline === 'run' && CATALOGUE[first.kind].load >= 60;
+    const firstIsStrength = CATALOGUE[first.kind].discipline === 'strength';
+    if (spec.discipline === 'strength' && !firstIsStrength && !firstIsKeyRun) continue;
 
     const earliest = first.start + first.durationMinutes;
     const start = Math.max(window.start, first.start + 6 * 60);

@@ -63,10 +63,12 @@ src/
 │       ├── types.ts             Zyklustage, Fenster, Tagesform, Planereinstellungen
 │       ├── catalogue.ts         sieben Einheiten mit Last, Mindesterholung, Abstufung
 │       ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag
+│       ├── template.ts          feste Vorlage A/B, Makrozyklus, Deload
+│       ├── acwr.ts              Belastungsverhältnis akut zu chronisch
 │       ├── detect.ts            Zyklusposition aus den eingetragenen Schichten
-│       ├── recovery.ts          Erholungswert 0–100 samt Begründungen
-│       ├── rules.ts             die zwölf harten Regeln, rollierendes 7-Tage-Fenster
-│       ├── planner.ts           Platzierung, Reparaturlauf, Zielfunktion, lokale Suche
+│       ├── recovery.ts          Erholungswert 0–100, reiner Abstufungsfilter
+│       ├── rules.ts             die harten Regeln als letzte Prüfschicht
+│       ├── planner.ts           Vorlage laden, Filter anwenden, Regeln prüfen
 │       ├── slots.ts             Platzierung einer Einheit im Tagesfenster
 │       ├── options.ts           Vorschlag, Alternativen und Ausschlüsse je Tag
 │       ├── adjust.ts            Auf-/Abstufung bei abweichendem Befinden

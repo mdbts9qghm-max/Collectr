@@ -1336,3 +1336,19 @@
 .cycle-day.selected .cycle-explain {
   background: var(--surface-3);
 }
+
+/* The acute-to-chronic curve: full width, fixed height, band drawn behind. */
+.acwr-curve {
+  display: block;
+  width: 100%;
+  height: 56px;
+  overflow: visible;
+}
+.acwr-empty {
+  display: grid;
+  place-items: center;
+  height: 56px;
+  margin-top: var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}

@@ -199,149 +199,179 @@ Vorliebe darf eine knappe Entscheidung kippen, aber niemals eine Erholungsregel
 
 ## 4b. Zyklusplaner
 
-Der Empfehlungs-Engine aus Abschnitt 4 beantwortet die Frage "was heute?". Der
-Zyklusplaner beantwortet die Frage "was in diesem Zyklus?" — und das ist die Frage,
-die im Schichtdienst zählt. Die Rotation ist fünf Tage lang und wandert damit durch
-die Kalenderwoche: derselbe Wochentag bedeutet jedes Mal etwas anderes, ein
-Wochenplan schneidet jeden Zyklus an einer anderen Stelle durch.
+### Die zentrale Designentscheidung
 
-Der Planer bekommt **keine zusätzlichen Eingaben**. Alles leitet er aus dem ab, was
-ohnehin schon eingetragen wird: den Schichten, dem Schlaf und dem Befinden aus dem
-Morgen-Check-in sowie den abgeschlossenen Einheiten.
+Frühere Versionen haben jeden Tag frei bewertet und dann optimiert. Das ist hier falsch:
 
-### Die fünf Zyklustage
+- Die Rotation ist **vollständig vorhersehbar**. Ein Optimierer würde bei gleicher
+  Ausgangslage unterschiedliche Pläne erzeugen — schlecht für die Trainingskonsistenz und
+  für die Vergleichbarkeit über Zyklen.
+- Trainingsanpassung entsteht aus **wiederholten, gleichartigen Reizen**, nicht aus
+  jeweils lokal optimalen Einzelentscheidungen.
+- Deshalb: **feste Zyklusvorlage**, die über einen Makrozyklus rotiert. Der Erholungswert
+  ist nur noch ein **Abstufungs-Filter**, keine Planungsgrundlage.
 
-| Tag | Schicht | Rolle | Fenster |
+Es gibt keine Zielfunktion und keine lokale Suche mehr. Ein Test prüft, dass zweimal
+dieselbe Ausgangslage zweimal denselben Plan ergibt.
+
+### Kapazität der Rotation
+
+| Zyklustag | Schicht | Trainingsfenster |
+| --- | --- | --- |
+| 1 | Tagschicht 07:00–19:00 | **keins** |
+| 2 | Nachtschicht 19:00–07:00 | 09:00–13:30 |
+| 3 | Schlaftag | 16:00–20:00 |
+| 4 | Frei | 08:00–19:00 |
+| 5 | Frei | 08:00–19:00 |
+
+Vier nutzbare Fenster pro Fünf-Tage-Zyklus sind 5,6 Einheiten pro 7 Tage. Das oft zitierte
+Ziel 3 + 3 = 6 ist auf dieser Rotation **ohne Doppeleinheiten nicht erreichbar**, und
+erzwungene Doppel kosten Qualität in beiden Einheiten. Deshalb wird das Ziel neu definiert
+statt erzwungen:
+
+> **8 Einheiten pro Makrozyklus (2 Zyklen = 10 Tage): 4 Läufe + 4 Krafteinheiten**
+> = 2,8 Läufe und 2,8 Krafteinheiten pro Woche
+
+### Die Vorlage
+
+**Zyklus A**
+
+| Tag | Fenster | Einheit | Last |
 | --- | --- | --- | --- |
-| 1 | Tagschicht | kein Training | keins |
-| 2 | Nachtschicht | mittlere Last vormittags | vor dem Vorschlaf |
-| 3 | Schlaftag | leichte bis mittlere Last | später Nachmittag |
-| 4 | frei | **Schlüsseleinheit** | ganzer Tag |
-| 5 | frei | zweiter Belastungstag | ganzer Tag |
+| 1 · Tagschicht | – | Ruhetag | 0 |
+| 2 · Nachtschicht | 09:00–13:30 | lockerer Lauf 40 min Z2 + 5 × 15 s Steigerungen | 30 |
+| 3 · Schlaftag | 16:00–20:00 | Oberkörperkraft, strikt beinfrei | 30 |
+| 4 · Frei | vormittags | **intensiver Lauf** | 80 |
+| 5 · Frei | vormittags | **schwere Kraft**, Unterkörper | 70 |
 
-Eine V-Schicht ersetzt Tag 5, wo immer sie fällt. Die Schlaffenster folgen dem
-Ankerprinzip: eine feste Aufstehzeit, Schlafverlängerung vor der Nachtschicht,
-90 Minuten Puffer vor dem Vorschlaf um 15:00, Bettzeit nach dem Tagschlaf auf 22:45.
+**Zyklus B** ist identisch, nur trägt Tag 4 den **langen Lauf** (60) statt des intensiven.
 
-### Erholungswert
+Die App alterniert A → B → A → B.
 
-Eine Zahl von 0 bis 100 pro Tag, aus einem Basiswert je Zyklustag plus Zuschlägen:
+**Tatsächliche Bilanz je Makrozyklus:** 4 Läufe + 4 Krafteinheiten · **400 Lastpunkte** ·
+**Zone-2-Anteil 76 %** der Laufminuten (170 von 225).
 
-| Einfluss | Wirkung |
+### Warum genau diese Belegung
+
+**Tag 2 — lockerer Lauf, keine Kraft.** Der Vormittag ist das zirkadiane Leistungstief:
+Körperkerntemperatur am Minimum, Maximalkraft typisch 3–8 % unter dem Tageshoch,
+Gelenksteifigkeit erhöht. Schwere Kraft dort ist ineffizient und riskanter. Ein Z2-Lauf ist
+davon praktisch unbeeinflusst. Die Steigerungen erhalten die neuromuskuläre Qualität bei
+minimalen systemischen Kosten — sie ersetzen die intensive Einheit nicht.
+
+**Tag 3 — Oberkörperkraft, kein Laufen.** Nach 6 h Tagschlaf und rund 24 h vorheriger
+Wachzeit ist die neuromuskuläre Kontrolle reduziert. Stoßbelastung durch Laufen ist hier
+das größte Verletzungsrisiko im Zyklus. Oberkörperkraft hat niedrige systemische Kosten und
+null Stoßbelastung. Strikt beinfrei, weil am Folgetag der Schlüssellauf steht.
+
+**Tag 4 — Schlüssellauf.** Zwei Nächte regulärer Schlaf davor, ganzes Fenster frei. Der
+einzige Tag im Zyklus, der einen Maximalreiz trägt.
+
+**Tag 5 — schwere Kraft.** Harter Lauf → schwere Beinkraft ist die richtige Richtung.
+Umgekehrt würde die Beinkraft die Laufqualität am Folgetag beschädigen. Deshalb wandert die
+schwere Kraft nie auf Tag 4.
+
+**Tag 1 — Ruhe.** Der Tagschichttag erfüllt die Ruhetagsanforderung automatisch.
+
+### Harte Regeln
+
+**Fenster und Schlaf**
+
+- Keine Einheit außerhalb ihres Fensters.
+- Nachtschichttag: Ende spätestens 13:30 — 90 min Puffer vor dem Vorschlaf um 15:00.
+- Schlaftag: Beginn frühestens 16:00 (Schlafträgheit), Ende spätestens 20:00.
+- Keine Einheit mit Last ≥ 60 endet weniger als 3 h vor dem nächsten Schlafbeginn. Der
+  Vorschlaf zählt mit.
+- Kein Training am Tagschichttag, auch nicht früh oder spät.
+
+**Belastungssteuerung**
+
+- Kein intensiver Lauf an Nachtschicht-, Schlaf- oder V-Schichttagen.
+- ≥ 48 h zwischen zwei harten Einheiten derselben Disziplin, ≥ 24 h bei verschiedener.
+- Schwere Beinkraft nie in den 24 h **vor** langem oder intensivem Lauf. Danach zulässig.
+- Doppeleinheit nur an freien Tagen, ≥ 6 h Abstand. Die für das Ziel wichtigere Einheit
+  zuerst, im Zweifel Kraft vor Lauf.
+- Von zwei Läufen an Nachbartagen darf nur einer hart sein; der zweite höchstens 35 min und
+  immer nach dem harten.
+- Mindestens ein Tag mit Last 0 pro Zyklus.
+
+### Erholungsfilter
+
+Der Erholungswert plant nicht, er stuft ab. Startwert nach Zyklustag: Tag 4 = 100 ·
+Tag 5 = 90 · Tag 2 = 75 · Tag 3 = 60 · V-Schicht = 55 · Tag 1 = 0.
+
+| Bedingung | Anpassung |
 | --- | --- |
-| Basis Tag 4 / 5 / 2 / 3 / V / 1 | 100 / 90 / 75 / 60 / 55 / 0 |
-| Vortag mit Last ≥ 60 | −12 |
-| Vortag war Ruhetag | +5 |
-| Belastungsstrecke ab 2 Tagen | −10 je weiterem Tag |
-| Befinden im Check-in | (Wert − 7) × 5 |
-| Schlaf ≥ 1 h unter dem Ziel | −10 |
+| Schlaf ≥ 1 h unter dem Soll des Tages | −10 je voller Stunde |
+| Vorschlaf am Nachtschichttag ausgefallen | −15 |
+| Befinden 1–10 | (Wert − 7) × 5 |
+| Muskelkater ≥ 3 von 5 | −15 |
+| Ruhepuls ≥ 7 über dem Normwert | −15 |
 
-Rot unter 45, gelb bis 74, grün ab 75. Die Farbe im Zyklustab kommt genau aus diesen
-Schwellen, damit Zahl und Farbe nie auseinanderlaufen können.
+Der Normwert für den Ruhepuls ist der Median der letzten 30 erfassten Morgen, ersatzweise
+der Profilwert. Mindestanforderungen: intensiver Lauf 85 · schwere Kraft 70 · langer Lauf 75
+· moderate Kraft 55 · Oberkörperkraft 45 · lockerer Lauf 40 · Regeneration 0.
 
-Für einen Tag **ohne eingetragene Schicht** gibt es keinen Erholungswert. Die App weiß
-dann nicht, was der Tag mit dem Schlaf gemacht hat; der Planer überspringt ihn, und im
-Zyklustab steht grau „Erholung unbekannt" statt einer grünen Zahl. Urlaub ist etwas
-anderes — der ist bekannt und startet bei 85.
+Abstufungsketten, **niemals streichen**: intensiver → langer → lockerer Lauf → Regeneration,
+und schwere → moderate → Oberkörperkraft → Regeneration. Bei nur vier Einheiten pro Zyklus
+ist Frequenzerhalt wichtiger als Einzelintensität, und eine gestrichene Einheit lässt sich
+auf dieser Rotation nicht nachholen.
 
-### Einheitenkatalog
+### Belastungsverhältnis akut zu chronisch
 
-| Einheit | Last | braucht Erholung | stuft ab auf |
-| --- | --- | --- | --- |
-| Intensiver Lauf | 80 | 85 | Langer Lauf |
-| Schwere Kraft | 70 | 70 | Moderate Kraft |
-| Langer Lauf | 60 | 75 | Lockerer Lauf |
-| Moderate Kraft | 45 | 55 | Oberkörperkraft |
-| Oberkörperkraft | 30 | 45 | Regeneration |
-| Lockerer Lauf | 25 | 40 | Regeneration |
-| Regeneration | 5 | 0 | — |
+Last der letzten 7 Tage geteilt durch den Tagesdurchschnitt der letzten 28. Zielband
+**0,8 bis 1,3**. Außerhalb gibt die App eine Warnung aus und stuft die **nächste** harte
+Einheit eine Stufe ab — einmal, nicht dauerhaft. Unter zwei Wochen erfasster Historie sagt
+sie „unbekannt" statt eine Zahl zu erfinden.
 
-Ab 60 Punkten gilt eine Einheit als hart. Die Abstufungskette ist der Kern des
-Planers: **wenn eine Regel dagegensteht, wird abgeschwächt, nicht gestrichen.** Im
-Hybridtraining ist die Frequenz mehr wert als jede einzelne harte Einheit. Gestrichen
-wird nur, wenn selbst die Regeneration nicht mehr ins Fenster passt.
+### Deload
 
-### Zwei Skalen, ein Modell
+Jeder vierte Zyklus: der intensive Lauf entfällt, schwere Kraft wird moderate Kraft, die
+Umfänge werden halbiert. Die Last folgt dabei der **tatsächlich geplanten** Dauer, nicht dem
+angeforderten Faktor — die Mindestdauern fangen die Halbierung teilweise auf, und eine
+Einheit als halb so teuer zu buchen, während sie fünf Sechstel so lang ist, wäre falsch.
 
-Der Katalog rechnet in eigenen Lastpunkten, das Belastungsmodell aus Abschnitt 1 in
-skalierter sRPE. Der Faktor zwischen beiden ist 0,7, gemessen an den Einheiten, die
-der Katalog selbst beschreibt (45 min locker: 25 zu 35; 60 min intensiv: 80 zu 120;
-60 min schwere Kraft: 70 zu 100). Der lange Lauf ist der Ausreißer — der Katalog
-bewertet ihn höher, als Dauer × RPE es tut, und das ist beabsichtigt: drei Stunden
-locker kosten trotzdem Tage an Frische.
+### Ausnahme V-Schicht
 
-### Doppeleinheiten
-
-Zwei Einheiten an einem Tag sind **genau eine Kraft- und eine Ausdauereinheit**, nie zwei
-vom selben Typ. Zwei Läufe an einem Tag sind ein längerer Lauf in zwei Hälften: dasselbe
-Gewebe, derselbe Aufprall, kein zweiter Reiz — und dazwischen keine Pause für die Beine.
-Eine Regeneration zählt ebenfalls nicht als zweite Einheit: sie würde den Frequenzsollwert
-abhaken, ohne etwas zu trainieren.
-
-Dazu kommen sechs Stunden Abstand und Kraft vor Lauf, und beides nur an freien Tagen.
-
-### Rollierendes Fenster
-
-Alle Lastregeln gelten auf sieben rollierenden Tagen, nicht auf der Kalenderwoche.
-Sollwert sind sechs Einheiten; ein normaler Zyklus liefert vier auf fünf Tage, also
-5,6 auf sieben — etwa jeder dritte Zyklus braucht deshalb eine Doppeleinheit. Die
-Lastobergrenze liegt bei 360 Punkten, knapp über den rund 345, die ein normaler
-Zyklus trägt: hoch genug, um den gewohnten Rhythmus nicht auszuhungern, niedrig
-genug, um echtes Übersteuern zu fangen.
-
-Die Steigerungsregel (höchstens 110 % des Vorfensters) greift **nur, wenn das
-Vorfenster in der Vergangenheit liegt**. Progression misst sich an dem, was
-trainiert wurde. Gegen die eigene Vorausplanung zu drosseln wäre eine Ratsche: ein
-zufällig leichter Zyklus würde jeden folgenden kleiner machen.
-
-Sie wird außerdem erst am **fertigen** Plan geprüft, nicht beim Platzieren. Mitten im
-Aufbau enthält das Vorfenster nur, was zufällig schon gesetzt wurde — es meldet zu wenig,
-und die Regel blockiert dann Einheiten, die am Ende problemlos passen. Die Lastobergrenze
-hat den umgekehrten Fehler und darf durchgehend gelten: ein halber Plan kann nur zu
-großzügig sein, und der Reparaturlauf fängt den Überhang danach ab.
+Ersetzt Zyklustag 5. Lauf im Fenster 06:15–07:15 vor Dienstbeginn, höchstens 45 min. Das
+Abendfenster 20:15–21:00 nur, wenn der Folgetag kein Tagschichttag ist. Die Krafteinheit
+wandert als zweite Einheit auf Tag 4, ≥ 6 h nach dem Lauf, und wird dabei auf moderate Kraft
+abgestuft. Bedingung: Erholungswert an Tag 4 ≥ 85. Sonst entfällt sie **ersatzlos** — kein
+Nachholen im Folgezyklus.
 
 ### Ablauf
 
-1. Zyklus aus den Schichtarten erkennen
-2. Erholungswert für jeden Tag berechnen
-3. Schlaf- und Trainingsfenster je Tag aufspannen
-4. Schlüsseleinheit auf Tag 4 setzen, rotierend über intensiver Lauf → langer Lauf →
-   schwere Kraft
-5. Standardbelegung der übrigen Tage
-6. Doppeleinheit nur, wenn das Fenster wirklich unter Soll bleibt — und nie
-   spekulativ, also nur bei vollständig bekanntem Fenster
-7. Reparaturlauf: den fertigen Plan gegen alle zwölf harten Regeln prüfen und die
-   schwerste verletzende Einheit abstufen, bis er sauber ist
-8. Lokale Suche: Einheiten tauschen, solange die Zielfunktion besser wird
-   (höchstens 200 Schritte)
+1. Zyklustag und Zyklustyp (A oder B) bestimmen
+2. Vorlage laden
+3. V-Schichten prüfen und die Ausnahmeregel anwenden
+4. Deload-Zyklus prüfen und gegebenenfalls anwenden
+5. Erholungswert berechnen, Mindestanforderung prüfen, bei Unterschreitung abstufen
+6. Belastungsverhältnis prüfen, bei Überschreitung warnen und abstufen
+7. Harte Regeln als letzte Prüfschicht
+8. Plan, angewandte Abstufungen und Begründungen ausgeben
 
-Der Reparaturlauf stuft dabei **den am wenigsten erholten Tag zuerst** ab. Wenn zwei
-Einheiten kollidieren, muss eine weichen, und diese Wahl ist nicht beliebig: der Tag, der
-am wenigsten tragen kann, verliert am meisten. Nur nach Last zu sortieren hat den
-Schlüsseltag ausgeweidet — zwei gleich schwere Krafteinheiten an aufeinanderfolgenden
-Tagen, und ausgerechnet die am frischesten Tag wurde bis auf einen Zwanzig-Minuten-
-Spaziergang heruntergestuft.
-9. Zusammensetzen samt Begründungen und verbleibenden Warnungen
+### Wo die Spezifikation von der Umsetzung abweicht
+
+Vier Stellen, an denen die geschriebene Vorgabe mit sich selbst in Konflikt stand. Umgesetzt
+ist jeweils die Regel, nicht die daraus abgeleitete Zahl:
+
+| Vorgabe | Tatsächlich | Grund |
+| --- | --- | --- |
+| Gesamtlast 420 je Makrozyklus | **400** | Die Vorlage summiert sich auf 210 + 190 |
+| Zone-2-Anteil ≈ 82 % | **76 %** | 170 Z2-Minuten von 225 Laufminuten |
+| Erholungswert 70 → langer Lauf | → **lockerer Lauf** | Die Mindesttabelle setzt den langen Lauf auf 75 |
+| Deload −40 % | **−34 %** | Ergibt sich aus Substitution plus halbierten Umfängen |
+
+Dazu eine strukturelle Folge: „jeder vierte Zyklus" fällt bei alternierendem A/B **immer auf
+einen B-Zyklus**. Die Deload-Klausel „der intensive Lauf entfällt" greift deshalb nie — ein
+B-Zyklus hat keinen intensiven Lauf. Die Reduktion tragen die Substitution der schweren
+Kraft und die halbierten Umfänge.
 
 ### Eine Quelle für alle Ansichten
 
-Zyklustab, Wochentab, Tagesbildschirm und Morgen-Check-in lesen **denselben Plan**. Vorher
-haben Wochen- und Zyklusansicht zwei verschiedene Engines gefragt und für denselben
-Dienstag zwei verschiedene Einheiten vorgeschlagen. Der Kalender zeigt die Einheiten des
-Planers jetzt als gestrichelte Blöcke — Vorschlag, nicht Zusage — und die Alternativen
-darunter kommen aus denselben Regeln: alles, was der Tag sonst noch tragen würde, plus
-das, was er ausschließt, mit der Regel als Begründung.
-
-Der Smoke-Test vergleicht beide Ansichten bei jedem Lauf und schlägt fehl, wenn sie
-auseinanderlaufen.
-
-### Anpassung am Morgen
-
-Weicht das Befinden um zwei Punkte oder mehr vom eigenen Normalwert ab — dem Median
-der letzten vierzehn Tage, nicht von einer absoluten Zahl —, schlägt der Check-in
-eine Ab- oder Aufstufung vor. Übernommen wird sie nur auf Tippen. Eine Aufstufung,
-die der Erholungswert des Tages nicht trägt, wird gar nicht erst angeboten: ein guter
-Morgen erschafft keine Erholung, die nicht da ist.
+Zyklustab, Wochentab, Tagesbildschirm und Morgen-Check-in lesen denselben Plan. Der Kalender
+zeigt die Einheiten als gestrichelte Blöcke — Vorschlag, nicht Zusage. Der Smoke-Test
+vergleicht beide Ansichten bei jedem Lauf und schlägt fehl, wenn sie auseinanderlaufen.
 
 ## 5. Hybrid Score
 

@@ -3,6 +3,7 @@ import type { ISODate } from '../domain/types.ts';
 import type { CyclePlanView } from '../data/derived.ts';
 import type { DayPlan, PlannedUnit } from '../domain/cycle/types.ts';
 import { CATALOGUE } from '../domain/cycle/catalogue.ts';
+import { ACWR_LOWER, ACWR_UPPER } from '../domain/cycle/acwr.ts';
 import { CYCLE_DAY_META, formatClock } from '../domain/cycle/windows.ts';
 import { RECOVERY_BAND_META } from '../domain/cycle/recovery.ts';
 import { shapeOf } from '../domain/cycle/toSession.ts';
@@ -31,55 +32,99 @@ export function CycleView({
   onSelect: (date: ISODate) => void;
   selected: ISODate;
 }) {
-  const cycles = groupByCycle(plan.days);
+  const { macrocycle, acwr } = plan;
 
   return (
     <>
+      {/*
+        The macrocycle, not a rolling week. The rotation is five days long, so a
+        seven-day count cuts every cycle in a different place; ten days is the
+        first span where the template's own arithmetic closes: 4 runs + 4
+        strength sessions.
+      */}
       <Card tight>
         <div className="row between">
-          <span className="t-label">Rollierendes 7-Tage-Fenster</span>
-          <span className="t-small t-num">
-            {plan.window.load} / {plan.settings.weeklyLoadCap}
-          </span>
+          <span className="t-label">Makrozyklus · 2 Zyklen</span>
+          <span className="t-small t-num">{macrocycle.load} Punkte</span>
         </div>
-        <div className="segmented-bar mt-2">
-          <span
-            style={{
-              width: `${Math.min(100, (plan.window.load / Math.max(plan.settings.weeklyLoadCap, 1)) * 100)}%`,
-              background: plan.window.load > plan.settings.weeklyLoadCap ? 'var(--bad)' : 'var(--accent)',
-            }}
-          />
+        <div className="row gap-4 mt-3">
+          <Balance label="Läufe" value={macrocycle.runs} target={4} />
+          <Balance label="Kraft" value={macrocycle.strengthSessions} target={4} />
+          <Balance label="Ruhetage" value={macrocycle.restDays} target={2} />
         </div>
-        <div className="row between mt-2 t-caption muted">
+        <div className="row between mt-3 t-caption muted">
           <span>
-            {formatDateShort(plan.window.from)} – {formatDateShort(plan.window.to)} ·{' '}
-            {plan.window.restDays} {plan.window.restDays === 1 ? 'Ruhetag' : 'Ruhetage'}
+            {formatDateShort(macrocycle.from)} – {formatDateShort(macrocycle.to)}
           </span>
-          <span>
-            {plan.window.previousLoad > 0
-              ? `Vorfenster ${plan.window.previousLoad}`
-              : 'Vorfenster unbekannt'}
-          </span>
+          <span>Zone 2: {Math.round(macrocycle.zone2Share * 100)} % der Laufminuten</span>
         </div>
-        {plan.missing.length > 0 && (
+        {!macrocycle.complete && (
           <div className="t-caption muted mt-2">
-            Fehlt im Fenster: {plan.missing.map((k) => CATALOGUE[k].label).join(', ')}
+            Noch kein vollständiger Makrozyklus im Zeitraum — die Bilanz ist unvollständig.
           </div>
         )}
       </Card>
 
-      {cycles.map((cycle) => (
-        <Card key={cycle[0].shape.date} flush>
+      {/* Acute against chronic load, with the target band marked. */}
+      <Card tight>
+        <div className="row between">
+          <span className="t-label">Belastungsverhältnis</span>
+          <span
+            className="t-small t-num"
+            style={{
+              color:
+                acwr.band === 'ok'
+                  ? 'var(--good)'
+                  : acwr.band === 'unknown'
+                    ? 'var(--text-muted)'
+                    : 'var(--warn)',
+            }}
+          >
+            {acwr.ratio != null ? acwr.ratio.toFixed(2) : 'unbekannt'}
+          </span>
+        </div>
+        <AcwrCurve history={acwr.history} />
+        <div className="row between mt-2 t-caption muted">
+          <span>Zielband {ACWR_LOWER.toFixed(1)} – {ACWR_UPPER.toFixed(1)}</span>
+          <span>7 Tage gegen 28 Tage</span>
+        </div>
+        {acwr.message && <div className="t-caption warn mt-2">{acwr.message}</div>}
+        {acwr.band === 'unknown' && (
+          <div className="t-caption muted mt-2">
+            Noch zu wenig Historie — das Verhältnis wird erst ab zwei Wochen erfasster Tage berechnet.
+          </div>
+        )}
+      </Card>
+
+      {plan.warnings.map((warning) => (
+        <Card key={warning} tight style={{ background: 'var(--warn-soft)', borderColor: 'transparent' }}>
+          <div className="row gap-3 row-top">
+            <span style={{ fontSize: 15 }}>⚠️</span>
+            <span className="t-small grow">{warning}</span>
+          </div>
+        </Card>
+      ))}
+
+      {plan.cycles.map((cycle) => (
+        <Card key={cycle.from} flush>
           <div className="row between" style={{ padding: 'var(--s3) var(--s3) 0' }}>
-            <span className="t-label">
-              Zyklus ab {formatDateShort(cycle[0].shape.date)}
+            <span className="row gap-2">
+              <span className="t-label">Zyklus {cycle.type}</span>
+              <Pill tone={cycle.isDeload ? 'warn' : undefined}>
+                {cycle.isDeload ? 'Deload' : `${cycle.position} von 2`}
+              </Pill>
             </span>
-            <span className="t-caption muted t-num">
-              {cycle.reduce((sum, d) => sum + d.load, 0)} Punkte
-            </span>
+            <span className="t-caption muted t-num">{cycle.load} Punkte</span>
+          </div>
+          <div className="t-caption muted" style={{ padding: '4px var(--s3) 0' }}>
+            {cycle.isDeload
+              ? 'Jeder vierte Zyklus: Umfang halbiert, kein intensiver Lauf, Kraft moderat.'
+              : cycle.type === 'A'
+                ? 'Schlüsseleinheit an Tag 4: intensiver Lauf'
+                : 'Schlüsseleinheit an Tag 4: langer Lauf'}
           </div>
           <div className="list">
-            {cycle.map((day) => (
+            {cycle.days.map((day) => (
               <CycleDayRow
                 key={day.shape.date}
                 day={day}
@@ -96,18 +141,52 @@ export function CycleView({
   );
 }
 
-function groupByCycle(days: DayPlan[]): DayPlan[][] {
-  const out: DayPlan[][] = [];
-  let current: DayPlan[] = [];
-  for (const day of days) {
-    if (day.shape.cycleDay === 1 && current.length > 0) {
-      out.push(current);
-      current = [];
-    }
-    current.push(day);
+function Balance({ label, value, target }: { label: string; value: number; target: number }) {
+  const met = value === target;
+  return (
+    <div className="grow">
+      <div className="t-caption muted">{label}</div>
+      <div className="t-heading t-num" style={{ color: met ? 'var(--good)' : 'var(--text)' }}>
+        {value}
+        <span className="t-caption muted"> / {target}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The ratio over the last four weeks with the target band drawn behind it.
+ *
+ * A single number says whether today is fine; the curve says whether the load
+ * is drifting, which is the part worth acting on.
+ */
+function AcwrCurve({ history }: { history: { date: ISODate; ratio: number | null }[] }) {
+  const points = history.filter((h) => h.ratio != null) as { date: ISODate; ratio: number }[];
+  if (points.length < 2) {
+    return <div className="acwr-empty t-caption muted">Kurve ab zwei Wochen Historie</div>;
   }
-  if (current.length) out.push(current);
-  return out;
+
+  const W = 300;
+  const H = 56;
+  const max = Math.max(1.6, ...points.map((p) => p.ratio));
+  const min = Math.min(0.6, ...points.map((p) => p.ratio));
+  const y = (v: number) => H - ((v - min) / (max - min)) * H;
+  const x = (i: number) => (i / (points.length - 1)) * W;
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.ratio).toFixed(1)}`).join(' ');
+
+  return (
+    <svg className="acwr-curve mt-2" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+      <rect
+        x="0"
+        y={y(ACWR_UPPER)}
+        width={W}
+        height={Math.max(1, y(ACWR_LOWER) - y(ACWR_UPPER))}
+        fill="var(--good)"
+        opacity="0.14"
+      />
+      <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
 }
 
 function CycleDayRow({

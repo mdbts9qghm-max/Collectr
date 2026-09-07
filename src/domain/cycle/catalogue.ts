@@ -25,7 +25,7 @@ export const CATALOGUE: Record<SessionKind, SessionSpec> = {
   heavy_strength: {
     kind: 'heavy_strength',
     label: 'Schwere Kraft',
-    description: 'Grundübungen 3–6 Wdh, RPE 8',
+    description: 'Unterkörper-Fokus, 3–6 Wdh, RPE 8',
     load: 70,
     minRecovery: 70,
     discipline: 'strength',
@@ -38,14 +38,14 @@ export const CATALOGUE: Record<SessionKind, SessionSpec> = {
   long_run: {
     kind: 'long_run',
     label: 'Langer Lauf',
-    description: 'Zone 2, 75–120 min',
+    description: 'Zone 2, 75–110 min',
     load: 60,
     minRecovery: 75,
     discipline: 'run',
     loadsLegs: true,
     defaultMinutes: 90,
     minMinutes: 75,
-    maxMinutes: 120,
+    maxMinutes: 110,
     downgradeTo: 'easy_run',
   },
   moderate_strength: {
@@ -64,7 +64,7 @@ export const CATALOGUE: Record<SessionKind, SessionSpec> = {
   upper_strength: {
     kind: 'upper_strength',
     label: 'Oberkörperkraft',
-    description: 'beinfrei',
+    description: 'strikt beinfrei',
     load: 30,
     minRecovery: 45,
     discipline: 'strength',
@@ -77,14 +77,14 @@ export const CATALOGUE: Record<SessionKind, SessionSpec> = {
   easy_run: {
     kind: 'easy_run',
     label: 'Lockerer Lauf',
-    description: 'Zone 2, 30–50 min',
-    load: 25,
+    description: 'Zone 2, 35–45 min + 5 × 15 s Steigerungen',
+    load: 30,
     minRecovery: 40,
     discipline: 'run',
     loadsLegs: true,
     defaultMinutes: 40,
-    minMinutes: 30,
-    maxMinutes: 50,
+    minMinutes: 35,
+    maxMinutes: 45,
     downgradeTo: 'regeneration',
   },
   regeneration: {
@@ -128,19 +128,6 @@ export function downgradeUntil(
   }
   return null;
 }
-
-/**
- * The rolling seven-day target from section 9: three runs — one intense, one
- * long, one easy — plus three strength sessions, two full-body and one upper.
- */
-export const WINDOW_TARGET: { kind: SessionKind; count: number }[] = [
-  { kind: 'intense_run', count: 1 },
-  { kind: 'long_run', count: 1 },
-  { kind: 'easy_run', count: 1 },
-  { kind: 'heavy_strength', count: 1 },
-  { kind: 'moderate_strength', count: 1 },
-  { kind: 'upper_strength', count: 1 },
-];
 
 /** Full-body strength, as opposed to the leg-free upper session. */
 export function isFullBodyStrength(kind: SessionKind): boolean {

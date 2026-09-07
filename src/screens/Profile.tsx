@@ -364,41 +364,24 @@ export function Profile() {
             />
           </Field>
         </div>
-        <div className="grid-2 mt-4">
-          <Field
-            label="Lastobergrenze"
-            hint="Punkte im rollierenden 7-Tage-Fenster. Ein normaler Zyklus liegt bei rund 345."
-          >
-            <TextInput
-              type="number"
-              inputMode="numeric"
-              step="10"
-              value={settings.planner.weeklyLoadCap}
-              onChange={(e) => setPlanner({ weeklyLoadCap: Number(e.target.value) || 0 })}
-            />
-          </Field>
-          <Field label="Einheiten pro Woche" hint="Sollwert im rollierenden Fenster.">
-            <TextInput
-              type="number"
-              inputMode="numeric"
-              value={settings.planner.targetUnits}
-              onChange={(e) => setPlanner({ targetUnits: Number(e.target.value) || 0 })}
-            />
-          </Field>
-        </div>
         <SettingRow
-          label="Steigerung pro Fenster"
-          hint="Wie viel mehr Last ein Fenster gegenüber dem vorigen tragen darf."
+          label="Steigerung pro Makrozyklus"
+          hint="Wie viel mehr Last zwei Zyklen gegenüber den zwei davor tragen dürfen."
         >
           <TextInput
             type="number"
             inputMode="decimal"
-            step="0.05"
+            step="0.01"
             style={{ width: 92 }}
-            value={settings.planner.maxWindowGrowth}
-            onChange={(e) => setPlanner({ maxWindowGrowth: Number(e.target.value) || 1 })}
+            value={settings.planner.maxMacrocycleGrowth}
+            onChange={(e) => setPlanner({ maxMacrocycleGrowth: Number(e.target.value) || 1 })}
           />
         </SettingRow>
+        <p className="t-caption muted mt-2">
+          Was trainiert wird, steht in der Zyklusvorlage und ist bewusst nicht einstellbar: die
+          Rotation ist vorhersehbar, und ein Plan, der sich jedes Mal anders entscheidet, erzeugt
+          keine Anpassung. Der Erholungswert stuft nur ab.
+        </p>
       </Card>
 
       {/* ---------- Shifts ---------- */}
