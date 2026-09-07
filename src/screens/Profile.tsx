@@ -4,6 +4,7 @@ import { INTENSITIES } from '../domain/types.ts';
 import { INTENSITY_META, formatDuration, formatPace } from '../domain/format.ts';
 import { PHASE_META } from '../domain/phases.ts';
 import { clockToMinutes, minutesToClock } from '../domain/date.ts';
+import { HEADLINE as EXTENSION_HEADLINE } from '../domain/aerobic/extension.ts';
 import { storageEstimate } from '../data/db.ts';
 import {
   backupFilename,
@@ -58,6 +59,8 @@ export function Profile() {
   const set = updateSettings;
   const setPlanner = (patch: Partial<typeof settings.planner>) =>
     set({ planner: { ...settings.planner, ...patch } });
+  const setExtension = (patch: Partial<typeof settings.volumeExtension>) =>
+    set({ volumeExtension: { ...settings.volumeExtension, ...patch } });
   const activePlan = data.plans.find((p) => p.active) ?? data.plans[0] ?? null;
 
   const handleImport = async (file: File) => {
@@ -382,6 +385,41 @@ export function Profile() {
           Rotation ist vorhersehbar, und ein Plan, der sich jedes Mal anders entscheidet, erzeugt
           keine Anpassung. Der Erholungswert stuft nur ab.
         </p>
+      </Card>
+
+      {/* ---------- Volume extension ---------- */}
+      <SectionTitle
+        title="Volumenerweiterung"
+        subtitle="Zusätzliche Fenster, alle in Zone 1 oder 2. Mehr Volumen wird nie über Intensität erzeugt."
+      />
+      <Card>
+        <p className="t-small secondary">{EXTENSION_HEADLINE}</p>
+        <div className="divider mt-3 mb-1" />
+        <SettingRow
+          label="Zweite Einheit an freien Tagen"
+          hint="30–45 min Zone 1–2 an Tag 4 und 5, mindestens 6 h Abstand, ab Erholungswert 75."
+        >
+          <Switch
+            label="Zweite Einheit an freien Tagen"
+            checked={settings.volumeExtension.secondOnFreeDays}
+            onChange={(v) => setExtension({ secondOnFreeDays: v })}
+          />
+        </SettingRow>
+        <SettingRow
+          label="Kurzeinheit am Schlaftag"
+          hint="20–30 min Zone 1 auf dem Rad zusätzlich zur Kraft, nur ab 5,5 h Tagschlaf."
+        >
+          <Switch
+            label="Kurzeinheit am Schlaftag"
+            checked={settings.volumeExtension.shortOnSleepDay}
+            onChange={(v) => setExtension({ shortOnSleepDay: v })}
+          />
+        </SettingRow>
+        <div className="t-caption muted mt-3">
+          Freischaltbar erst ab Phase P2 und nach drei Makrozyklen ohne Abstufung. Ist die
+          Erweiterung aktiv, ist der Deload alle vier Zyklen nicht mehr verschiebbar — und der
+          Tagschichttag bleibt frei, ohne Ausnahme.
+        </div>
       </Card>
 
       {/* ---------- Shifts ---------- */}

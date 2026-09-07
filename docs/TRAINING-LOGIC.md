@@ -197,181 +197,145 @@ umgesetzt werden, und verschiebt die Bewertung um maximal ±6 Punkte. Bewusst kl
 Vorliebe darf eine knappe Entscheidung kippen, aber niemals eine Erholungsregel
 überstimmen.
 
-## 4b. Zyklusplaner
+## 4b. Aerober Planer
 
-### Die zentrale Designentscheidung
+### Das Ziel bestimmt die Struktur
 
-Frühere Versionen haben jeden Tag frei bewertet und dann optimiert. Das ist hier falsch:
+Der Nutzer trainiert **nicht auf einen Wettkampf hin**. Das Ziel ist ein dauerhaft
+leistungsfähiges Herz-Kreislauf-System; 100 km laufen zu können ist ein gewünschtes
+Nebenprodukt. Daraus folgt:
 
-- Die Rotation ist **vollständig vorhersehbar**. Ein Optimierer würde bei gleicher
-  Ausgangslage unterschiedliche Pläne erzeugen — schlecht für die Trainingskonsistenz und
-  für die Vergleichbarkeit über Zyklen.
-- Trainingsanpassung entsteht aus **wiederholten, gleichartigen Reizen**, nicht aus
-  jeweils lokal optimalen Einzelentscheidungen.
-- Deshalb: **feste Zyklusvorlage**, die über einen Makrozyklus rotiert. Der Erholungswert
-  ist nur noch ein **Abstufungs-Filter**, keine Planungsgrundlage.
+- **Kein Zieltermin, kein Taper.** Der Plan läuft unbefristet in rotierenden Blöcken.
+- **Die Steuergröße ist der aerobe Reiz, nicht der Laufkilometer.** Gerechnet wird in
+  Trainingsminuten und Herzfrequenzzonen.
+- Fortschritt misst sich an physiologischen Markern, nicht an Zeiten.
 
-Es gibt keine Zielfunktion und keine lokale Suche mehr. Ein Test prüft, dass zweimal
-dieselbe Ausgangslage zweimal denselben Plan ergibt.
+**Der entscheidende Punkt:** Wenn das Ziel ein starkes Herz ist und kein Laufwettkampf,
+muss der aerobe Reiz nicht aus dem Laufen kommen. Rad und Rudergerät erzeugen dieselben
+zentralen Anpassungen — größeres Schlagvolumen, mehr Plasmavolumen, mehr Mitochondrien —
+bei einem Bruchteil der orthopädischen Belastung. Progressionsgrenzen im Laufen sind
+damit **keine Bremse fürs Herz**, sondern eine Aufteilungsfrage.
 
-### Kapazität der Rotation
+### Zonen aus der Schwelle
 
-| Zyklustag | Schicht | Trainingsfenster |
+Fünf Zonen auf Basis der **Schwellenherzfrequenz**, nicht der Maximalfrequenz: Formeln
+für die Maximalfrequenz liegen um zehn Schläge und mehr daneben, und das ist breiter als
+die Zonen selbst.
+
+| Zone | Anteil der Schwelle | Zweck |
 | --- | --- | --- |
-| 1 | Tagschicht 07:00–19:00 | **keins** |
-| 2 | Nachtschicht 19:00–07:00 | 09:00–13:30 |
-| 3 | Schlaftag | 16:00–20:00 |
-| 4 | Frei | 08:00–19:00 |
-| 5 | Frei | 08:00–19:00 |
+| Z1 | < 82 % | Regeneration |
+| Z2 | 82–89 % | Grundlage, Hauptzone |
+| Z3 | 90–94 % | Tempo, sparsam |
+| Z4 | 95–102 % | Schwelle |
+| Z5 | > 102 % | VO2max |
 
-Vier nutzbare Fenster pro Fünf-Tage-Zyklus sind 5,6 Einheiten pro 7 Tage. Das oft zitierte
-Ziel 3 + 3 = 6 ist auf dieser Rotation **ohne Doppeleinheiten nicht erreichbar**, und
-erzwungene Doppel kosten Qualität in beiden Einheiten. Deshalb wird das Ziel neu definiert
-statt erzwungen:
+Bestimmt über ein 30-Minuten-Zeitfahren, Durchschnitt der letzten 20 Minuten. Erstmals
+nach P0, danach alle 10 bis 12 Wochen. Bis dahin steuert die App **ausschließlich
+subjektiv**: Zone 2 ist die Intensität, bei der ein vollständiger Satz sprechbar bleibt.
 
-> **8 Einheiten pro Makrozyklus (2 Zyklen = 10 Tage): 4 Läufe + 4 Krafteinheiten**
-> = 2,8 Läufe und 2,8 Krafteinheiten pro Woche
+### Phasen und Blöcke
 
-### Die Vorlage
-
-**Zyklus A**
-
-| Tag | Fenster | Einheit | Last |
+| Phase | ab Makrozyklus | aerobe Minuten je 10 Tage | Laufanteil |
 | --- | --- | --- | --- |
-| 1 · Tagschicht | – | Ruhetag | 0 |
-| 2 · Nachtschicht | 09:00–13:30 | lockerer Lauf 40 min Z2 + 5 × 15 s Steigerungen | 30 |
-| 3 · Schlaftag | 16:00–20:00 | Oberkörperkraft, strikt beinfrei | 30 |
-| 4 · Frei | vormittags | **intensiver Lauf** | 80 |
-| 5 · Frei | vormittags | **schwere Kraft**, Unterkörper | 70 |
+| P0 Einstieg | 0 | 300 → 420 | 40 % |
+| P1 Volumen | 6 | 420 → 600 | 50 % |
+| P2 Kapazität | 18 | 600 → 750 | 60 % |
+| P3 Dauerbetrieb | 30 | 700–850 | 60–75 % |
 
-**Zyklus B** ist identisch, nur trägt Tag 4 den **langen Lauf** (60) statt des intensiven.
+Ab P3 rotieren Volumen-, VO2max- und Schwellenblock dauerhaft, je drei Makrozyklen. P3
+steigt nicht endlos linear, sondern schwingt über sechs Makrozyklen durch sein Band —
+endloses Wachstum ist kein Plan, sondern ein Countdown.
 
-Die App alterniert A → B → A → B.
+### Vorlage
 
-**Tatsächliche Bilanz je Makrozyklus:** 4 Läufe + 4 Krafteinheiten · **400 Lastpunkte** ·
-**Zone-2-Anteil 76 %** der Laufminuten (170 von 225).
+Ein Makrozyklus sind zwei Zyklen, zehn Tage, acht Fenster: **6 aerobe Einheiten +
+2 Krafteinheiten**, davon eine Intensitäts- und eine lange Einheit.
 
-### Warum genau diese Belegung
-
-**Tag 2 — lockerer Lauf, keine Kraft.** Der Vormittag ist das zirkadiane Leistungstief:
-Körperkerntemperatur am Minimum, Maximalkraft typisch 3–8 % unter dem Tageshoch,
-Gelenksteifigkeit erhöht. Schwere Kraft dort ist ineffizient und riskanter. Ein Z2-Lauf ist
-davon praktisch unbeeinflusst. Die Steigerungen erhalten die neuromuskuläre Qualität bei
-minimalen systemischen Kosten — sie ersetzen die intensive Einheit nicht.
-
-**Tag 3 — Oberkörperkraft, kein Laufen.** Nach 6 h Tagschlaf und rund 24 h vorheriger
-Wachzeit ist die neuromuskuläre Kontrolle reduziert. Stoßbelastung durch Laufen ist hier
-das größte Verletzungsrisiko im Zyklus. Oberkörperkraft hat niedrige systemische Kosten und
-null Stoßbelastung. Strikt beinfrei, weil am Folgetag der Schlüssellauf steht.
-
-**Tag 4 — Schlüssellauf.** Zwei Nächte regulärer Schlaf davor, ganzes Fenster frei. Der
-einzige Tag im Zyklus, der einen Maximalreiz trägt.
-
-**Tag 5 — schwere Kraft.** Harter Lauf → schwere Beinkraft ist die richtige Richtung.
-Umgekehrt würde die Beinkraft die Laufqualität am Folgetag beschädigen. Deshalb wandert die
-schwere Kraft nie auf Tag 4.
-
-**Tag 1 — Ruhe.** Der Tagschichttag erfüllt die Ruhetagsanforderung automatisch.
-
-### Harte Regeln
-
-**Fenster und Schlaf**
-
-- Keine Einheit außerhalb ihres Fensters.
-- Nachtschichttag: Ende spätestens 13:30 — 90 min Puffer vor dem Vorschlaf um 15:00.
-- Schlaftag: Beginn frühestens 16:00 (Schlafträgheit), Ende spätestens 20:00.
-- Keine Einheit mit Last ≥ 60 endet weniger als 3 h vor dem nächsten Schlafbeginn. Der
-  Vorschlaf zählt mit.
-- Kein Training am Tagschichttag, auch nicht früh oder spät.
-
-**Belastungssteuerung**
-
-- Kein intensiver Lauf an Nachtschicht-, Schlaf- oder V-Schichttagen.
-- ≥ 48 h zwischen zwei harten Einheiten derselben Disziplin, ≥ 24 h bei verschiedener.
-- Schwere Beinkraft nie in den 24 h **vor** langem oder intensivem Lauf. Danach zulässig.
-- Doppeleinheit nur an freien Tagen, ≥ 6 h Abstand. Die für das Ziel wichtigere Einheit
-  zuerst, im Zweifel Kraft vor Lauf.
-- Von zwei Läufen an Nachbartagen darf nur einer hart sein; der zweite höchstens 35 min und
-  immer nach dem harten.
-- Mindestens ein Tag mit Last 0 pro Zyklus.
-
-### Erholungsfilter
-
-Der Erholungswert plant nicht, er stuft ab. Startwert nach Zyklustag: Tag 4 = 100 ·
-Tag 5 = 90 · Tag 2 = 75 · Tag 3 = 60 · V-Schicht = 55 · Tag 1 = 0.
-
-| Bedingung | Anpassung |
-| --- | --- |
-| Schlaf ≥ 1 h unter dem Soll des Tages | −10 je voller Stunde |
-| Vorschlaf am Nachtschichttag ausgefallen | −15 |
-| Befinden 1–10 | (Wert − 7) × 5 |
-| Muskelkater ≥ 3 von 5 | −15 |
-| Ruhepuls ≥ 7 über dem Normwert | −15 |
-
-Der Normwert für den Ruhepuls ist der Median der letzten 30 erfassten Morgen, ersatzweise
-der Profilwert. Mindestanforderungen: intensiver Lauf 85 · schwere Kraft 70 · langer Lauf 75
-· moderate Kraft 55 · Oberkörperkraft 45 · lockerer Lauf 40 · Regeneration 0.
-
-Abstufungsketten, **niemals streichen**: intensiver → langer → lockerer Lauf → Regeneration,
-und schwere → moderate → Oberkörperkraft → Regeneration. Bei nur vier Einheiten pro Zyklus
-ist Frequenzerhalt wichtiger als Einzelintensität, und eine gestrichene Einheit lässt sich
-auf dieser Rotation nicht nachholen.
-
-### Belastungsverhältnis akut zu chronisch
-
-Last der letzten 7 Tage geteilt durch den Tagesdurchschnitt der letzten 28. Zielband
-**0,8 bis 1,3**. Außerhalb gibt die App eine Warnung aus und stuft die **nächste** harte
-Einheit eine Stufe ab — einmal, nicht dauerhaft. Unter zwei Wochen erfasster Historie sagt
-sie „unbekannt" statt eine Zahl zu erfinden.
-
-### Deload
-
-Jeder vierte Zyklus: der intensive Lauf entfällt, schwere Kraft wird moderate Kraft, die
-Umfänge werden halbiert. Die Last folgt dabei der **tatsächlich geplanten** Dauer, nicht dem
-angeforderten Faktor — die Mindestdauern fangen die Halbierung teilweise auf, und eine
-Einheit als halb so teuer zu buchen, während sie fünf Sechstel so lang ist, wäre falsch.
-
-### Ausnahme V-Schicht
-
-Ersetzt Zyklustag 5. Lauf im Fenster 06:15–07:15 vor Dienstbeginn, höchstens 45 min. Das
-Abendfenster 20:15–21:00 nur, wenn der Folgetag kein Tagschichttag ist. Die Krafteinheit
-wandert als zweite Einheit auf Tag 4, ≥ 6 h nach dem Lauf, und wird dabei auf moderate Kraft
-abgestuft. Bedingung: Erholungswert an Tag 4 ≥ 85. Sonst entfällt sie **ersatzlos** — kein
-Nachholen im Folgezyklus.
-
-### Ablauf
-
-1. Zyklustag und Zyklustyp (A oder B) bestimmen
-2. Vorlage laden
-3. V-Schichten prüfen und die Ausnahmeregel anwenden
-4. Deload-Zyklus prüfen und gegebenenfalls anwenden
-5. Erholungswert berechnen, Mindestanforderung prüfen, bei Unterschreitung abstufen
-6. Belastungsverhältnis prüfen, bei Überschreitung warnen und abstufen
-7. Harte Regeln als letzte Prüfschicht
-8. Plan, angewandte Abstufungen und Begründungen ausgeben
-
-### Wo die Spezifikation von der Umsetzung abweicht
-
-Vier Stellen, an denen die geschriebene Vorgabe mit sich selbst in Konflikt stand. Umgesetzt
-ist jeweils die Regel, nicht die daraus abgeleitete Zahl:
-
-| Vorgabe | Tatsächlich | Grund |
+| Tag | Zyklus A | Zyklus B |
 | --- | --- | --- |
-| Gesamtlast 420 je Makrozyklus | **400** | Die Vorlage summiert sich auf 210 + 190 |
-| Zone-2-Anteil ≈ 82 % | **76 %** | 170 Z2-Minuten von 225 Laufminuten |
-| Erholungswert 70 → langer Lauf | → **lockerer Lauf** | Die Mindesttabelle setzt den langen Lauf auf 75 |
-| Deload −40 % | **−34 %** | Ergibt sich aus Substitution plus halbierten Umfängen |
+| 1 Tagschicht | Ruhe | Ruhe |
+| 2 Nachtschicht | Lauf Z2 locker | Lauf Z2 + Bergsprints |
+| 3 Schlaftag | Kraft | Kraft |
+| 4 Frei | **Intensitätseinheit** | **lange Einheit Z2** |
+| 5 Frei | Rad/Rudern (ab P2: Z1 regenerativ) | Rad/Rudern, ab P2 Lauf Z2 |
 
-Dazu eine strukturelle Folge: „jeder vierte Zyklus" fällt bei alternierendem A/B **immer auf
-einen B-Zyklus**. Die Deload-Klausel „der intensive Lauf entfällt" greift deshalb nie — ein
-B-Zyklus hat keinen intensiven Lauf. Die Reduktion tragen die Substitution der schweren
-Kraft und die halbierten Umfänge.
+Tag 5 ist bis P2 kein Lauftag: der Tag nach der harten oder langen Einheit trägt die
+höchste Verletzungsanfälligkeit, und Rad oder Rudern liefern dort denselben aeroben Reiz
+bei null Stoßbelastung.
 
-### Eine Quelle für alle Ansichten
+### Intervalle auf der Bahn ab Zyklus 1
 
-Zyklustab, Wochentab, Tagesbildschirm und Morgen-Check-in lesen denselben Plan. Der Kalender
-zeigt die Einheiten als gestrichelte Blöcke — Vorschlag, nicht Zusage. Der Smoke-Test
-vergleicht beide Ansichten bei jedem Lauf und schlägt fehl, wenn sie auseinanderlaufen.
+Die Intensitätseinheit gibt es **ab dem ersten Zyklus**. Was in Stufen steigt, ist ihre
+Form, nicht ihre Existenz. Auf der Bahn, weil Tartan nachgiebiger und gleichmäßig eben ist
+und weil die exakte Distanzkontrolle den häufigsten Anfängerfehler sofort sichtbar macht:
+die erste Wiederholung zu schnell.
+
+| Stufe | ab Makrozyklus | Einheit |
+| --- | --- | --- |
+| I | 0 | 8 × 100 m, 100 m gehen |
+| II | 3 | 10 × 200 m |
+| III | 6 | 8 × 400 m |
+| IV | 9 | 6 × 800 m |
+| V | 18 | nach Blockschwerpunkt |
+
+Ein Stufenwechsel verlangt **zwei Makrozyklen ohne Abstufung** — Kalenderwochen allein
+reichen nicht. Laufrichtung wechselt jede Einheit. Ohne Bahn: Feldweg, dann Rad oder
+Rudern nach Zeit, Straße zuletzt.
+
+### Volumen und Überlauf
+
+Aerobe Minuten dürfen um höchstens 10 % pro Makrozyklus wachsen, Laufminuten nur um 8 %.
+**Wächst das aerobe Ziel schneller, als das Laufen es hergibt, landet die Differenz auf
+Rad oder Rudergerät — das Ziel wird nicht gekürzt.** Das ist der strukturelle Kern.
+
+Die Ober- und Untergrenzen je Einheit sind Anteile des Phasenziels, keine festen Minuten:
+25 min als Untergrenze ist in P0 sinnvoll und in P3 absurd, 150 min als Obergrenze
+umgekehrt. Ein Zone-1/2-Anteil von mindestens 80 % steht über allen Volumenzielen.
+
+### Der Erholungswert stuft ab — und wechselt zuerst den Modus
+
+> **Die erste Abstufungsstufe ist immer der Moduswechsel, nicht die Intensitätsreduktion.**
+
+Bei mäßiger Erholung, aber intakter Motivation ist dieselbe Einheit auf dem Rad die
+bessere Antwort als ein abgeschwächter Lauf: der aerobe Reiz bleibt vollständig, nur die
+orthopädische Last fällt weg. Ein Moduswechsel senkt die Mindestanforderung um **20
+Punkte**, weil genau die Stoßbelastung wegfällt, gegen die die Mindestwerte schützen —
+sonst wäre der Wechsel nie erreichbar und die Kette spränge direkt zum lockeren Ausrollen.
+
+Ketten: intensiv → **dasselbe auf dem Rad** → Schwelle → Z2 locker → Regeneration ·
+lang → **lang auf dem Rad** → verkürzt → Regeneration · Kraft schwer → moderat →
+beinfrei → Regeneration.
+
+**Schmerz beim Gehen** ist keine Zahl in einer Formel: die Einheit entfällt. Das ist genau
+der Unterschied zwischen Muskelkater und einer Verletzung.
+
+### WHOOP: zwei Fallstricke
+
+**Der physiologische Zyklus passt nicht auf den Kalendertag.** Jede Schlafperiode wird dem
+Zyklustag explizit zugeordnet — Ende vor Mittag zählt zum Aufwachtag, sonst zum Starttag —
+und der Vorschlaf 15:00–17:30 wird an seinem Fenster als Nap erkannt, nicht an seiner
+Länge.
+
+**Absolute Recovery-Schwellen sind unbrauchbar.** Bewertet wird die Abweichung vom
+28-Tage-Mittel **dieses Zyklustags**. 45 % am Schlaftag bei einer Baseline von 48 % ist ein
+normaler Schlaftag, keine Warnung. Unter 28 Tagen Historie arbeitet die App im manuellen
+Modus ganz ohne automatische Abstufung.
+
+### Optionale Volumenerweiterung
+
+25 bis 30 Wochenstunden sind mit vier Fenstern pro Zyklus **nicht erreichbar**. Die App
+sagt das einmal offen und wiederholt es nicht. Ab P2 und nach drei Makrozyklen ohne
+Abstufung lassen sich zusätzliche Fenster einschalten — alle in Zone 1 oder 2, denn
+Zusatzvolumen wird nie über Intensität erzeugt. Der Tagschichttag bleibt auch dann frei.
+
+### Wo die Vorgabe nachgerechnet werden musste
+
+| Vorgabe | Umsetzung | Grund |
+| --- | --- | --- |
+| Erholungswert 65 → Rad in gleicher Intensität | Moduswechsel senkt die Anforderung um 20 | Sonst wäre die Radvariante bei 65 unerreichbar, weil sie dieselbe Mindestanforderung trägt |
+| Abschnitt 7 (Krafttraining) | ohne Überschrift in der Vorlage | Der Abschnitt beginnt mitten im Text nach 6b |
+| P2/P3 erreichen ihr aerobes Ziel | 540 von 600 bzw. mit Deload weniger | Vier Fenster tragen das Ziel nicht — genau der Punkt, den 6b benennt |
 
 ## 5. Hybrid Score
 

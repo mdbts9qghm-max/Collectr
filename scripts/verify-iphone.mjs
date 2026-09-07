@@ -48,6 +48,29 @@ for (const d of DEVICES) {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForTimeout(900);
 
+  /*
+   * Schichten anlegen, sonst plant die App korrekt nichts — und der Check würde
+   * einen leeren Trainingstab vermessen und dabei nichts finden.
+   */
+  await page.evaluate(async () => {
+    const iso = (o) => {
+      const d = new Date();
+      d.setDate(d.getDate() + o);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const req = indexedDB.open('hybrid-athlete');
+    const db = await new Promise((r) => { req.onsuccess = () => r(req.result); });
+    const tx = db.transaction('shifts', 'readwrite');
+    const store = tx.objectStore('shifts');
+    const rot = ['shift_day', 'shift_night', 'shift_sleep_day', 'shift_off', 'shift_off'];
+    for (let i = -20; i <= 20; i++) {
+      store.put({ date: iso(i), shiftTypeId: rot[((i % 5) + 5) % 5], source: 'manual' });
+    }
+    await new Promise((r) => { tx.oncomplete = r; });
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(900);
+
   // Check-in überspringen, damit wir auf den Tagesbildschirm kommen
   const skip = page.getByRole('button', { name: 'Überspringen' });
   if (await skip.count()) { await skip.click(); await page.waitForTimeout(700); }
@@ -81,13 +104,12 @@ for (const d of DEVICES) {
     await page.screenshot({ path: `${DIR}/91-${d.name}-sheet.png` });
   }
 
-  // Kleinste Tap-Ziele messen. Der Trainingstab wird gerade neu gebaut, also
-  // misst der Check hier die Bildschirme, die es gibt.
-  await page.goto(`${BASE}/#/habits`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.check');
+  // Kleinste Tap-Ziele messen — auf dem Trainingstab, wo die meisten sitzen.
+  await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.cycle-day');
   await page.waitForTimeout(500);
   const smallest = await page.evaluate(() => {
-    const sel = '.tabbar-item, .check, .stepper > button, .chip';
+    const sel = '.tabbar-item, .check, .stepper > button, .chip, .cycle-day-head, .mode-chip';
     let min = Infinity; let which = '';
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();
@@ -98,7 +120,7 @@ for (const d of DEVICES) {
     }
     return { min: Math.round(min), which };
   });
-  await page.screenshot({ path: `${DIR}/92-${d.name}-habits.png` });
+  await page.screenshot({ path: `${DIR}/92-${d.name}-training.png` });
 
   // Apple's guideline is 44 pt; 40 is the practical floor used here.
   if (smallest.min < 40) failures++;

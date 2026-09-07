@@ -59,7 +59,20 @@ src/
 │   ├── review.ts            Wochenrückblick mit generierter Bewertung
 │   ├── insights.ts          Inhalte für Benachrichtigungen und Briefing
 │   ├── coach.ts             regelbasierte Antworten auf eigene Daten
-│   └── cycle/               Zyklusplaner: plant den 5-Tage-Rhythmus statt der Woche
+│   ├── aerobic/             Aerober Planer — die aktuelle Trainingslogik
+│   │   ├── zones.ts             fünf Zonen aus der Schwellenherzfrequenz
+│   │   ├── catalogue.ts         Einheiten, Modi, Abstufungsketten (Modus zuerst)
+│   │   ├── phases.ts            P0–P3, Blockrotation ohne Endpunkt
+│   │   ├── intervals.ts         Bahnstufen I–V, Laufrichtung, Ersatzreihenfolge
+│   │   ├── template.ts          Zyklusvorlage A/B je Phase
+│   │   ├── volume.ts            Verteilung mit Überlauf auf Rad und Rudern
+│   │   ├── extension.ts         optionale Volumenerweiterung ab P2
+│   │   ├── recovery.ts          Abstufungsfilter mit WHOOP-Baseline je Zyklustag
+│   │   ├── whoop.ts             Schlafzuordnung, rollierende Baselines
+│   │   ├── rules.ts             harte Regeln als einzeln zitierbare Objekte
+│   │   ├── windows.ts           Schlaf- und Trainingsfenster
+│   │   └── planner.ts           die neun Schritte
+│   └── cycle/               Vorgänger, noch für Analytics und Coach in Gebrauch
 │       ├── types.ts             Zyklustage, Fenster, Tagesform, Planereinstellungen
 │       ├── catalogue.ts         sieben Einheiten mit Last, Mindesterholung, Abstufung
 │       ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag

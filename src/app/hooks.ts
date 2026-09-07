@@ -9,6 +9,7 @@ import {
   buildScore,
   buildWeek,
   buildCyclePlan,
+  buildAerobicPlan,
   makeDayContextFn,
 } from '../data/derived.ts';
 import { today as todayIso } from '../domain/date.ts';
@@ -52,6 +53,13 @@ export function useWeek(anchor: ISODate) {
   const data = useData();
   const idx = useIndexes();
   return useMemo(() => buildWeek(data, idx, anchor), [data, idx, anchor]);
+}
+
+/** The aerobic plan: one macrocycle — two cycles, ten days. */
+export function useAerobicPlan(anchor: ISODate, cycles = 2) {
+  const data = useData();
+  const idx = useIndexes();
+  return useMemo(() => buildAerobicPlan(data, idx, anchor, cycles), [data, idx, anchor, cycles]);
 }
 
 /** The cycle plan around a date: the current rotation plus the next two. */

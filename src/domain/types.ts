@@ -8,6 +8,8 @@
  */
 
 import type { PlannerSettings } from './cycle/types.ts';
+import type { ThresholdTest } from './aerobic/zones.ts';
+import type { ExtensionSettings } from './aerobic/extension.ts';
 
 /** 'YYYY-MM-DD' in local time. The primary key for everything day-shaped. */
 export type ISODate = string;
@@ -414,6 +416,11 @@ export interface DailyCheckIn {
    * Undefined means not asked; false costs 15 recovery points.
    */
   napTaken?: boolean;
+  /**
+   * Pain while walking. Not a deduction in a formula — it cancels the session.
+   * The difference between soreness and an injury is exactly this question.
+   */
+  painWhileWalking?: boolean;
   restingHr?: number;
   hrvMs?: number;
   /** WHOOP recovery percentage, if entered or imported. */
@@ -506,6 +513,17 @@ export interface AppSettings {
   recovery: RecoverySettings;
   /** Tuning for the cycle planner. Type-only import, so no runtime cycle. */
   planner: PlannerSettings;
+  /** Measured threshold heart rates, newest last. */
+  thresholdTests: ThresholdTest[];
+  /** The optional volume extension from section 6b, off by default. */
+  volumeExtension: ExtensionSettings;
+  /**
+   * Modes the athlete switched by hand, keyed by "date:slot".
+   *
+   * Kept in settings rather than on the session, because the session does not
+   * exist yet — this is a change to the plan, made before anything is logged.
+   */
+  modeOverrides: Record<string, 'run' | 'bike' | 'row'>;
   notifications: NotificationSettings;
   theme: 'dark' | 'light' | 'system';
   weekStartsOn: 0 | 1;

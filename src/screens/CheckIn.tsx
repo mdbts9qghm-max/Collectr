@@ -234,6 +234,34 @@ export function CheckIn() {
               low="frisch"
               high="erschöpft"
             />
+            {/*
+              Not a slider. Pain while walking is the one answer that cancels the
+              session outright, because that is exactly where soreness ends and
+              an injury begins.
+            */}
+            <div className="rate">
+              <div className="t-heading">Tut beim Gehen etwas weh?</div>
+              <div className="row gap-2 mt-2">
+                <Button
+                  variant={draft.painWhileWalking === false ? 'primary' : 'outline'}
+                  onClick={() => patch({ painWhileWalking: false })}
+                >
+                  Nein
+                </Button>
+                <Button
+                  variant={draft.painWhileWalking === true ? 'danger' : 'outline'}
+                  onClick={() => patch({ painWhileWalking: true })}
+                >
+                  Ja
+                </Button>
+              </div>
+              {draft.painWhileWalking && (
+                <div className="t-caption bad mt-2">
+                  Die Einheit von heute entfällt. Muskelkater ist kein Schmerz beim Gehen.
+                </div>
+              )}
+            </div>
+
             <Rate
               label="Muskelkater"
               value={draft.soreness}

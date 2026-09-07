@@ -25,6 +25,12 @@ import { effectiveDuration, loadStateOn, periodStats, sessionLoad, weekStats } f
 import { buildDayShapes, detectCycle } from '../domain/cycle/detect.ts';
 import { planCycle } from '../domain/cycle/planner.ts';
 import { cycleLoadFromSrpe } from '../domain/cycle/catalogue.ts';
+import { computeAcwr } from '../domain/cycle/acwr.ts';
+import type { DayInput } from '../domain/aerobic/planner.ts';
+import { planAerobic } from '../domain/aerobic/planner.ts';
+import { computeRecovery as computeAerobicRecovery } from '../domain/aerobic/recovery.ts';
+import { baselineFor } from '../domain/aerobic/whoop.ts';
+import { vShiftWindows, windowsFor } from '../domain/aerobic/windows.ts';
 
 /** Indexes built once per render pass and shared by every derived computation. */
 export interface Indexes {
@@ -399,3 +405,122 @@ function restingHrBaseline(idx: Indexes, date: ISODate): number | null {
 }
 
 export type CyclePlanView = ReturnType<typeof buildCyclePlan>;
+
+/* ------------------------------------------------------------------ *
+ * The aerobic planner
+ * ------------------------------------------------------------------ */
+
+/**
+ * Everything the aerobic planner needs, assembled from what is already entered.
+ *
+ * The shift roster gives the cycle position and therefore the windows; the
+ * morning check-in and WHOOP give the recovery inputs; completed sessions give
+ * the load history. Nothing extra has to be logged.
+ */
+export function buildAerobicPlan(data: AppData, idx: Indexes, anyDate: ISODate, cycleCount = 2) {
+  const settings = data.settings;
+  const wake = settings.planner.dayShiftWakeMinutes;
+
+  // Open on a whole cycle rather than mid-rotation.
+  const probe = detectCycle(addDays(anyDate, -8), anyDate, idx.shiftAssignments, idx.shiftTypes);
+  let start = anyDate;
+  for (let i = probe.length - 1; i >= 0; i--) {
+    if (probe[i].cycleDay === 1) {
+      start = probe[i].date;
+      break;
+    }
+    if (probe[i].date <= addDays(anyDate, -6)) break;
+  }
+  const end = addDays(start, cycleCount * 5 - 1);
+  const detected = detectCycle(start, end, idx.shiftAssignments, idx.shiftTypes);
+
+  const today = todayIso();
+  const history = detectCycle(addDays(start, -180), addDays(start, -1), idx.shiftAssignments, idx.shiftTypes);
+  const cycleOffset = history.filter((d) => d.cycleDay === 1).length;
+
+  // Load and known days from what was actually completed.
+  const loadByDate = new Map<ISODate, number>();
+  for (const session of data.sessions) {
+    if (session.status !== 'completed') continue;
+    const load = cycleLoadFromSrpe(sessionLoad(session));
+    if (load > 0) loadByDate.set(session.date, (loadByDate.get(session.date) ?? 0) + load);
+  }
+
+  /*
+   * Baselines are computed per cycle day, because that is the only comparison
+   * that says anything under shift work: a sleep day's recovery belongs next to
+   * other sleep days, not next to a rest day's.
+   */
+  const cycleDayByDate = new Map(history.concat(detected).map((d) => [d.date, d.cycleDay]));
+  const metricHistory = (pick: (c: DailyCheckIn) => number | undefined) =>
+    lastNDays(today, 120).map((date) => ({
+      date,
+      cycleDay: cycleDayByDate.get(date) ?? null,
+      value: idx.checkIns.get(date) ? pick(idx.checkIns.get(date)!) : undefined,
+    }));
+  const recoveryHistory = metricHistory((c) => c.whoopRecovery);
+  const restingHrHistory = metricHistory((c) => c.restingHr);
+
+  const days: DayInput[] = detected.map((d) => {
+    const w = d.cycleDay ? (d.isVShift ? vShiftWindows() : windowsFor(d.cycleDay, wake)) : null;
+    const checkIn = idx.checkIns.get(d.date);
+    return {
+      date: d.date,
+      cycleDay: d.cycleDay,
+      isVShift: d.isVShift,
+      outOfRotation: d.outOfRotation,
+      recovery: computeAerobicRecovery({
+        date: d.date,
+        cycleDay: d.cycleDay,
+        isVShift: d.isVShift,
+        outOfRotation: d.outOfRotation,
+        sleepTargetMinutes: w?.sleepTargetMinutes ?? 8 * 60,
+        napExpected: !!w?.nap,
+        napTaken: checkIn?.napTaken,
+        sleepHours: checkIn?.sleepHours,
+        wellbeing: checkIn?.wellbeing,
+        soreness: checkIn?.soreness,
+        painWhileWalking: checkIn?.painWhileWalking,
+        recoveryPct: checkIn?.whoopRecovery,
+        recoveryBaseline: baselineFor(recoveryHistory, d.cycleDay),
+        restingHr: checkIn?.restingHr,
+        restingHrBaseline: baselineFor(restingHrHistory, d.cycleDay),
+      }),
+    };
+  });
+
+  const acwrState = computeAcwr(today, loadByDate, new Set(loadByDate.keys()));
+
+  return planAerobic({
+    days,
+    cycleOffset,
+    dayShiftWakeMinutes: wake,
+    previousAerobicMinutes: aerobicMinutesInWindow(data, addDays(start, -10), addDays(start, -1)),
+    previousRunMinutes: aerobicMinutesInWindow(data, addDays(start, -10), addDays(start, -1), 'run'),
+    cleanHistory: [],
+    intensitySessionCount: data.sessions.filter(
+      (s) => s.status === 'completed' && s.plannedIntensity === 'vo2',
+    ).length,
+    acwr: acwrState.ratio,
+    loadByDate,
+    extension: settings.volumeExtension,
+    modeOverrides: new Map(Object.entries(settings.modeOverrides ?? {})),
+  });
+}
+
+/** Completed aerobic minutes in a date range, optionally only running. */
+function aerobicMinutesInWindow(
+  data: AppData,
+  from: ISODate,
+  to: ISODate,
+  onlyRun?: 'run',
+): number | null {
+  const inRange = data.sessions.filter(
+    (s) => s.status === 'completed' && s.date >= from && s.date <= to,
+  );
+  if (inRange.length === 0) return null;
+  const matching = onlyRun ? inRange.filter((s) => s.sport === 'run') : inRange;
+  return matching.reduce((sum, s) => sum + effectiveDuration(s), 0);
+}
+
+export type AerobicPlanView = ReturnType<typeof buildAerobicPlan>;
