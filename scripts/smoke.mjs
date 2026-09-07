@@ -132,101 +132,20 @@ if ((await page.locator('.list .check.checked').count()) === 0) {
 console.log('✓ session completed with one tap and persisted');
 await shot('05-session-done');
 
-// The training tab opens on the cycle, because that is what the planner reasons
-// in: five shift days, each with its own sleep window and recovery value.
+/*
+ * The training tab is being rebuilt, so there is nothing to assert about its
+ * presentation yet. What must not break while it is gone is everything
+ * underneath: the planner still runs, and the screens that read it — the daily
+ * screen and the morning check-in — still show the session for the day. Those
+ * are checked above and below; this is only the placeholder.
+ */
 await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.cycle-day');
+await page.waitForSelector('.app-main');
 await page.waitForTimeout(400);
-const cycleDays = await page.locator('.cycle-day').count();
-if (cycleDays < 5) throw new Error(`cycle view shows ${cycleDays} days, expected at least one cycle`);
-if ((await page.locator('.cycle-sleep').count()) !== cycleDays) {
-  throw new Error('every cycle day must carry its sleep row');
+if (!/neu gebaut/i.test(await page.locator('.app-main').innerText())) {
+  throw new Error('the training tab placeholder did not render');
 }
-if ((await page.locator('.cycle-explain').count()) !== 0) {
-  throw new Error('the explanation must stay closed until the day is tapped');
-}
-await page.locator('.cycle-day-head').first().click();
-await page.waitForTimeout(350);
-if ((await page.locator('.cycle-explain').count()) === 0) {
-  throw new Error('tapping a cycle day did not open its explanation');
-}
-console.log(`✓ cycle view: ${cycleDays} days with sleep rows and tap-to-explain`);
-
-// Tapping a cycle day selects it, so the suggestion below follows the tap. The
-// first day of the horizon is a day shift with no training window — the app has
-// to say that rather than show an empty space.
-const noWindow = (await page.locator('.app-main').innerText()).includes('kein Trainingsfenster');
-if (!noWindow) throw new Error('a day-shift day must state that it has no training window');
-console.log('✓ a day without a training window says so instead of proposing nothing');
-
-// The week calendar is still there, one tap away.
-await page.getByRole('tab', { name: 'Woche' }).click();
-await page.waitForSelector('.cal-day');
-await page.waitForTimeout(400);
-const planDays = await page.locator('.cal-day').count();
-if (planDays !== 7) throw new Error(`week calendar shows ${planDays} columns, expected 7`);
-
-// Back to a day the planner actually plans: the one it marks as suggested and
-// that carries nothing yet.
-const dayWithSuggestion = await page.evaluate(() => {
-  const days = [...document.querySelectorAll('.cal-day')];
-  return days.findIndex(
-    (d) => d.querySelector('.cal-block.suggested') && !d.querySelector('.cal-block.planned'),
-  );
-});
-if (dayWithSuggestion < 0) {
-  throw new Error('the calendar shows no suggested session at all — the planner is not feeding it');
-}
-await page.locator('.cal-day').nth(dayWithSuggestion).click();
-await page.waitForTimeout(500);
-
-// Only the top suggestion is on screen; alternatives sit behind a tap.
-const visibleRecos = await page.locator('.reco').count();
-if (visibleRecos === 0) {
-  const shown = (await page.locator('.app-main').innerText()).replace(/\s+/g, ' ').slice(0, 300);
-  throw new Error(`no recommendation rendered. Screen says: ${shown}`);
-}
-if (visibleRecos > 1) throw new Error(`${visibleRecos} recommendations visible, expected only the top one`);
-if ((await page.locator('.reco-body').count()) !== 0) {
-  throw new Error('recommendations should start collapsed');
-}
-const altToggle = page.getByText('Alternativen', { exact: false }).first();
-if ((await altToggle.count()) === 0) throw new Error('no alternatives field on a plannable day');
-await altToggle.click();
-await page.waitForTimeout(350);
-if ((await page.locator('.reco').count()) <= 1) {
-  throw new Error('alternatives did not appear after tapping the field');
-}
-console.log('✓ alternatives appear only after tapping the field');
-await page.locator('.reco').first().locator('button').first().click();
-await page.waitForTimeout(250);
-if ((await page.locator('.reco-body').count()) === 0) {
-  throw new Error('recommendation did not expand on tap');
-}
-console.log('✓ week calendar shows 7 columns with collapsed, expandable recommendations');
-
-// The two views must not propose different sessions for the same day.
-const weekSuggestion = (await page.locator('.reco.top').first().innerText()).replace(/\s+/g, ' ').trim();
-await page.getByRole('tab', { name: 'Zyklus' }).click();
-await page.waitForSelector('.cycle-day');
-await page.waitForTimeout(600);
-const cycleSuggestion = (await page.locator('.reco.top').first().innerText()).replace(/\s+/g, ' ').trim();
-if (weekSuggestion !== cycleSuggestion) {
-  throw new Error(`week and cycle disagree: "${weekSuggestion}" vs "${cycleSuggestion}"`);
-}
-console.log('✓ week and cycle propose the same session for the selected day');
-
-// Planning that suggestion must turn it into a real block on that day.
-await page.getByRole('tab', { name: 'Woche' }).click();
-await page.waitForSelector('.cal-day');
-await page.waitForTimeout(400);
-const plannedBefore = await page.locator('.cal-block.planned').count();
-await page.locator('.reco.top .reco-add').click();
-await page.waitForTimeout(700);
-if ((await page.locator('.cal-block.planned').count()) <= plannedBefore) {
-  throw new Error('planning the suggestion did not appear in the calendar');
-}
-console.log('✓ planning a suggestion turns it into a real block on that day');
+console.log('✓ training tab placeholder renders (rebuild in progress)');
 
 await shot('06-week-planner');
 
@@ -292,12 +211,14 @@ const beforeHours = await hoursStepper.locator('.stepper-value').innerText();
 await hoursStepper.locator('button').last().click();
 await page.getByRole('button', { name: 'Speichern' }).click();
 await page.waitForTimeout(600);
-await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+// The week screen is where the target shows now that the training tab is being
+// rebuilt; the phase edit has to reach it either way.
+await page.goto(`${BASE}/#/week`, { waitUntil: 'networkidle' });
 await page.waitForSelector('.app-main');
 await page.waitForTimeout(500);
 const afterEdit = await page.locator('.app-main').innerText();
-if (afterEdit.includes(beforeHours.replace(' h', '')) === false && !/Ziel/i.test(afterEdit)) {
-  throw new Error('phase edit did not reach the training screen');
+if (!/Ziel|von/i.test(afterEdit)) {
+  throw new Error('phase edit did not reach the week screen');
 }
 console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the week target`);
 

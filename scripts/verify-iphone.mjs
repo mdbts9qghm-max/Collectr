@@ -81,48 +81,30 @@ for (const d of DEVICES) {
     await page.screenshot({ path: `${DIR}/91-${d.name}-sheet.png` });
   }
 
-  // Kleinste Tap-Ziele messen — im Zyklus wie im Kalender
-  await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.cycle-day');
-  await page.waitForTimeout(500);
-  await page.getByRole('tab', { name: 'Woche' }).click();
-  await page.waitForSelector('.cal-day');
+  // Kleinste Tap-Ziele messen. Der Trainingstab wird gerade neu gebaut, also
+  // misst der Check hier die Bildschirme, die es gibt.
+  await page.goto(`${BASE}/#/habits`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.check');
   await page.waitForTimeout(500);
   const smallest = await page.evaluate(() => {
-    const sel = '.tabbar-item, .reco-add, .check, .stepper > button, .cal-day, .chip';
+    const sel = '.tabbar-item, .check, .stepper > button, .chip';
     let min = Infinity; let which = '';
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
       const size = Math.min(r.width, r.height);
-      if (size < min) { min = size; which = el.className.split(' ')[0]; }
+      // Some tap targets carry no class at all, so fall back to a usable label.
+      if (size < min) { min = size; which = el.className.split(' ')[0] || `${el.tagName.toLowerCase()} in .${el.parentElement?.className.split(' ')[0] ?? '?'}`; }
     }
     return { min: Math.round(min), which };
   });
-  await page.getByRole('tab', { name: 'Zyklus' }).click();
-  await page.waitForSelector('.cycle-day');
-  await page.waitForTimeout(400);
-  const cycleTargets = await page.evaluate(() => {
-    let min = Infinity; let which = '';
-    // Nur echte Ziele: das Zyklus-Abzeichen sitzt im Button, es wird nicht
-    // selbst angetippt, und seine 36 px würden die Messung verfälschen.
-    for (const el of document.querySelectorAll('.cycle-day-head, .cycle-unit button')) {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) continue;
-      const size = Math.min(r.width, r.height);
-      if (size < min) { min = size; which = el.className.split(' ')[0] || el.tagName.toLowerCase(); }
-    }
-    return { min: Math.round(min), which };
-  });
-  console.log(`  Kleinstes Tap-Ziel im Zyklus: ${cycleTargets.min}px (${cycleTargets.which})`);
-  if (cycleTargets.min < 40) failures++;
+  await page.screenshot({ path: `${DIR}/92-${d.name}-habits.png` });
 
   // Apple's guideline is 44 pt; 40 is the practical floor used here.
   if (smallest.min < 40) failures++;
   console.log(
     `  Kleinstes Tap-Ziel: ${smallest.min}px (${smallest.which})${smallest.min < 40 ? ' → ZU KLEIN' : ''}`,
   );
-  await page.screenshot({ path: `${DIR}/92-${d.name}-training.png` });
 
   await ctx.close();
 }
