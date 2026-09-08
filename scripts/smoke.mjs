@@ -6,6 +6,13 @@
 import { launchChromium } from './launch-browser.mjs';
 
 const BASE = process.env.SMOKE_URL ?? 'http://localhost:4173';
+
+/*
+ * Die harte Regel nennt Rad, Rudergerät und Crosstrainer, um sie zu verbieten.
+ * Sie wird deshalb aus dem Text herausgeschnitten, bevor er darauf geprüft wird,
+ * dass keine andere Sportart vorgeschlagen wird.
+ */
+const HARD_RULE = /Das gesamte Ausdauervolumen[\s\S]*?weniger Laufen oder Ruhe\./;
 const errors = [];
 
 const browser = await launchChromium();
@@ -139,18 +146,49 @@ console.log('✓ session completed with one tap and persisted');
 await shot('05-session-done');
 
 /*
- * The training tab is being rebuilt, so there is nothing to assert about its
- * presentation. What must not break while it is gone is everything underneath —
- * the planner still runs and the screens that read it still work, which the
- * checks above and below cover.
+ * Der Coach-Tab. Geprüft wird, was die Anforderung ausmacht: die Anweisung steht
+ * ganz oben, die Begründung liegt hinter einem Knopf, und das Blickfeld reicht
+ * über Wochen in beide Richtungen und sagt pro Tag, warum er noch zählt.
  */
 await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.app-main');
+await page.waitForSelector('.coach-headline');
 await page.waitForTimeout(400);
-if (!/neu gebaut/i.test(await page.locator('.app-main').innerText())) {
-  throw new Error('the training tab placeholder did not render');
+
+const headline = (await page.locator('.coach-headline').innerText()).trim();
+if (headline.length < 5) throw new Error('the coach has no headline');
+
+// Die Begründung darf erst nach einem Tap sichtbar sein.
+if ((await page.locator('.coach-reasons').count()) > 0) {
+  throw new Error('the reasons must start hidden behind a button');
 }
-console.log('✓ training tab placeholder renders (rebuild in progress)');
+await page.getByRole('button', { name: /Warum heute das/ }).click();
+await page.waitForSelector('.coach-reasons');
+const reasons = await page.locator('.coach-reasons li').count();
+if (reasons === 0) throw new Error('the coach gave no reason');
+console.log(`✓ coach: "${headline}" — ${reasons} Begründungen hinter dem Knopf`);
+
+// Das Blickfeld: 55 Tage, der Ankertag markiert, jeder Tag antippbar.
+const horizonDays = await page.locator('.horizon-day').count();
+if (horizonDays !== 55) {
+  throw new Error(`the horizon shows ${horizonDays} days, expected 55 (−27 … +27)`);
+}
+if ((await page.locator('.horizon-day.is-anchor').count()) !== 1) {
+  throw new Error('the horizon does not mark today');
+}
+await page.locator('.horizon-day').nth(30).click();
+await page.waitForSelector('.horizon-detail');
+const detail = await page.locator('.horizon-detail').innerText();
+if (!/verbindet|beeinflusst heute nichts/.test(detail)) {
+  throw new Error('a horizon day does not say why it still matters');
+}
+console.log(`✓ Blickfeld: ${horizonDays} Tage, jeder nennt seine Verbindung zu heute`);
+
+// Es wird gelaufen: kein Rad, kein Rudergerät, kein Crosstrainer als Vorschlag.
+const coachText = await page.locator('.app-main').innerText();
+if (/\b(Radfahren|Rudern|Crosstrainer|Ergometer)\b/.test(coachText.replace(HARD_RULE, ''))) {
+  throw new Error('the coach must never propose another sport');
+}
+console.log('✓ nur Laufen, Kraft, Gehen und Ruhe');
 
 /*
  * The sleep tab: four tracks, every recommendation tappable with its reason, no

@@ -10,6 +10,7 @@
 import type { PlannerSettings } from './cycle/types.ts';
 import type { ThresholdTest } from './aerobic/zones.ts';
 import type { ExtensionSettings } from './aerobic/extension.ts';
+import type { ZoneBounds } from './coach/zones.ts';
 
 /** 'YYYY-MM-DD' in local time. The primary key for everything day-shaped. */
 export type ISODate = string;
@@ -515,6 +516,14 @@ export interface AppSettings {
   planner: PlannerSettings;
   /** Measured threshold heart rates, newest last. */
   thresholdTests: ThresholdTest[];
+  /**
+   * Die Herzfrequenzzonen des Coaches, in Schlägen.
+   *
+   * Optional, damit gespeicherte Einstellungen ohne Migration weiterlaufen —
+   * fehlt der Wert, gelten die gemessenen Grenzen. Geschrieben wird er nur,
+   * wenn ein Nachkalibrierungstest angenommen wurde.
+   */
+  coachZones?: ZoneBounds;
   /** The optional volume extension from section 6b, off by default. */
   volumeExtension: ExtensionSettings;
   /**

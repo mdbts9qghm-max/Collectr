@@ -1150,3 +1150,200 @@
   color: var(--text-muted);
   padding-top: 2px;
 }
+
+/* ------------------------------------------------------------------ *
+ * Coach
+ *
+ * Der Bildschirm hat eine Hierarchie und nur eine: was heute zu tun ist, ist
+ * das Größte darauf. Begründungen sind vollständig, aber eingeklappt — sie
+ * dürfen nie mit der Anweisung um Aufmerksamkeit konkurrieren.
+ * ------------------------------------------------------------------ */
+
+.coach-headline {
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 650;
+}
+@media (max-width: 380px) {
+  .coach-headline { font-size: 22px; }
+}
+
+.coach-facts {
+  display: flex;
+  gap: var(--s6);
+  flex-wrap: wrap;
+}
+.coach-fact-value {
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.coach-steps {
+  margin: 0;
+  list-style: decimal;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  color: var(--text-secondary);
+}
+.coach-steps li::marker {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-blockers {
+  background: var(--bad-soft);
+  border-radius: var(--r-sm);
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.coach-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.coach-reasons li {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+}
+.coach-effect {
+  flex: none;
+  width: 66px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-top: 3px;
+  font-weight: 700;
+}
+.coach-effect-set { color: var(--text-muted); }
+.coach-effect-limit { color: var(--warn); }
+.coach-effect-block { color: var(--bad); }
+
+.coach-blocks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.coach-meter {
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.coach-meter-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-full);
+}
+
+/* ---- Das Blickfeld ---- */
+
+.horizon-scroll {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin: var(--s3) calc(-1 * var(--s3)) 0;
+  padding: 0 var(--s3) var(--s2);
+}
+.horizon-scroll::-webkit-scrollbar { display: none; }
+
+.horizon-day {
+  flex: none;
+  /* 40 px ist der praktische Boden für ein Tap-Ziel. Das Blickfeld wird dadurch
+     breit — es scrollt, und der Ankertag steht beim Öffnen in der Mitte. */
+  width: 40px;
+  min-height: 44px; /* Apples Richtwert für Tap-Ziele */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: var(--s1) 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+}
+.horizon-day.is-selected { background: var(--surface-2); }
+.horizon-day.is-anchor { background: var(--accent-soft); }
+
+.horizon-bar-track {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.horizon-bar {
+  width: 16px;
+  border-radius: 2px 2px 0 0;
+  display: block;
+}
+.horizon-cycle {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.horizon-date {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.horizon-day.is-anchor .horizon-cycle,
+.horizon-day.is-anchor .horizon-date {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.horizon-detail {
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding: var(--s3);
+}
+
+/* ---- Zonenband ---- */
+
+.zone-bar {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.zone-seg {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+/* Die Färbung liegt in einer eigenen Ebene, damit das Blassmachen der
+   inaktiven Zonen nicht auch ihre Beschriftung unlesbar macht. */
+.zone-seg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--seg);
+  opacity: 0.28;
+}
+.zone-seg > * { position: relative; }
+.zone-seg.is-active {
+  color: var(--text-inverse);
+}
+.zone-seg.is-active::before {
+  opacity: 1;
+}

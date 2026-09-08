@@ -127,13 +127,17 @@ for (const d of DEVICES) {
     await page.screenshot({ path: `${DIR}/91-${d.name}-sheet.png` });
   }
 
-  // Kleinste Tap-Ziele messen. Der Trainingstab wird gerade neu gebaut, also
-  // misst der Check den Schlaftab — dort sitzen jetzt die meisten Ziele.
-  await page.goto(`${BASE}/#/sleep`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.advice-row');
+  /*
+   * Kleinste Tap-Ziele messen — auf beiden dichten Bildschirmen. Der Coach-Tab
+   * hat mit dem Blickfeld 55 Tagesspalten nebeneinander; genau dort entsteht der
+   * Druck, sie schmaler zu machen, als ein Daumen treffen kann.
+   */
+  for (const [route, wait] of [['/#/training', '.horizon-day'], ['/#/sleep', '.advice-row']]) {
+  await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
+  await page.waitForSelector(wait);
   await page.waitForTimeout(500);
   const smallest = await page.evaluate(() => {
-    const sel = '.tabbar-item, .check, .stepper > button, .chip, .advice-row';
+    const sel = '.tabbar-item, .check, .stepper > button, .chip, .advice-row, .horizon-day';
     let min = Infinity; let which = '';
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();
@@ -144,13 +148,14 @@ for (const d of DEVICES) {
     }
     return { min: Math.round(min), which };
   });
-  await page.screenshot({ path: `${DIR}/92-${d.name}-sleep.png` });
+  await page.screenshot({ path: `${DIR}/92-${d.name}-${route.slice(3)}.png` });
 
   // Apple's guideline is 44 pt; 40 is the practical floor used here.
   if (smallest.min < 40) failures++;
   console.log(
-    `  Kleinstes Tap-Ziel: ${smallest.min}px (${smallest.which})${smallest.min < 40 ? ' → ZU KLEIN' : ''}`,
+    `  Kleinstes Tap-Ziel auf ${route.slice(3)}: ${smallest.min}px (${smallest.which})${smallest.min < 40 ? ' → ZU KLEIN' : ''}`,
   );
+  }
 
   await ctx.close();
 }

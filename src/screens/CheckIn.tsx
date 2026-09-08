@@ -5,14 +5,13 @@ import { addDays, nowTimestamp } from '../domain/date.ts';
 import { formatDateLong, formatDuration, SPORT_META, weekdayLong, weekdayShort } from '../domain/format.ts';
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
 import { shiftSleepMinutes } from '../domain/shifts.ts';
-import { CATALOGUE } from '../domain/cycle/catalogue.ts';
-import { RECOVERY_BAND_META } from '../domain/cycle/recovery.ts';
-import { formatClock } from '../domain/cycle/windows.ts';
-import { suggestAdjustment, wellbeingBaseline } from '../domain/cycle/adjust.ts';
-import { sessionFromUnit, shapeOf } from '../domain/cycle/toSession.ts';
+import { CATALOGUE } from '../domain/coach/catalogue.ts';
+import { RECOVERY_BAND_META } from '../domain/aerobic/recovery.ts';
+import { formatClock, windowsFor } from '../domain/aerobic/windows.ts';
+import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
-import { useCyclePlan, useDayView, useToday } from '../app/hooks.ts';
+import { useCoach, useDayView, useToday } from '../app/hooks.ts';
 import { Button, Card, Pill, ReasonList, TextInput } from '../ui/primitives.tsx';
 import { Ring } from '../ui/charts.tsx';
 import { IconChevronLeft, IconCheck, IconPlus } from '../ui/icons.tsx';
@@ -49,8 +48,9 @@ export function CheckIn() {
 
   const view = useDayView(today);
   const todayShiftId = shifts[today]?.shiftTypeId;
-  const cycleToday = useCyclePlan(today, 1);
-  const hasNap = !!cycleToday.days.find((d) => d.shape.date === today)?.shape.nap;
+  const coachToday = useCoach(today);
+  const cycleDayToday = coachToday.timeline.days.find((d) => d.date === today)?.cycleDay ?? null;
+  const hasNap = cycleDayToday != null && !!windowsFor(cycleDayToday, 5 * 60 + 30).nap;
 
   // Seed the sleep field from what the shift plan makes possible, so the
   // common case is confirming a number rather than dialling one in.
@@ -329,7 +329,7 @@ export function CheckIn() {
         )}
 
         {step === 'result' && (
-          <Result view={view} draft={draft} onPlan={saveSession} onDone={finish} today={today} />
+          <Result view={view} onPlan={saveSession} onDone={finish} today={today} />
         )}
       </div>
 
@@ -490,63 +490,58 @@ function UpcomingShifts({ today }: { today: ISODate }) {
 
 function Result({
   view,
-  draft,
   onPlan,
   onDone,
   today,
 }: {
   view: ReturnType<typeof useDayView>;
-  draft: DailyCheckIn;
   onPlan: (s: TrainingSession) => unknown;
   onDone: () => void;
   today: ISODate;
 }) {
   const toast = useStore((s) => s.toast);
-  const checkIns = useStore((s) => s.checkIns);
   const [planned, setPlanned] = useState(false);
   const meta = READINESS_LEVEL_META[view.readiness.level];
 
-  // One cycle is enough here: the check-in only ever asks about today.
-  const cycle = useCyclePlan(today, 1);
-  const day = cycle.days.find((d) => d.shape.date === today) ?? null;
-  const unit = day?.units[0] ?? null;
-
-  // The draft holds what was just tapped in, which may not be saved yet, so the
-  // suggestion reacts to the answer rather than to the previous state.
-  const baseline = useMemo(
-    () => wellbeingBaseline(new Map(Object.entries(checkIns)), today),
-    [checkIns, today],
-  );
-  const adjustment = suggestAdjustment(unit, draft.wellbeing, baseline, day?.recovery.value);
-
-  // Null until the athlete answers: neither button is pre-selected, because the
-  // app proposes the change but does not decide it.
-  const [accepted, setAccepted] = useState<boolean | null>(null);
-  const shownKind = accepted === true && adjustment ? adjustment.to : unit?.kind;
-  const spec = shownKind ? CATALOGUE[shownKind] : null;
+  /*
+   * Dieselbe Antwort wie im Coach-Tab und auf dem Tagesbildschirm. Der Entwurf
+   * ist vor diesem Schritt schon gespeichert, also steckt das, was gerade
+   * eingetippt wurde, bereits im Erholungswert — und der Coach hat die
+   * Abstufung schon vorgenommen.
+   *
+   * Es gibt hier bewusst keinen zweiten Abstufungsvorschlag. Zwei Stellen, die
+   * über Abstufungen entscheiden, sind der Weg, auf dem ein Plan anfängt, sich
+   * selbst zu widersprechen.
+   */
+  const coach = useCoach(today);
+  const decision = coach.today;
+  const coachDay = coach.timeline.days.find((d) => d.date === today) ?? null;
+  const band: 'red' | 'amber' | 'green' =
+    coachDay == null || coachDay.recovery < 45 ? 'red' : coachDay.recovery < 75 ? 'amber' : 'green';
+  const spec = decision.kind === 'ruhe' ? null : CATALOGUE[decision.kind];
 
   const plan = () => {
-    if (!unit || !shownKind) {
+    const stamp = nowTimestamp();
+    const run = sessionFromDecision(decision, {
+      id: makeId('ses'),
+      createdAt: stamp,
+      updatedAt: stamp,
+    });
+    if (!run) {
       onDone();
       return;
     }
-    // The adjusted session keeps the slot the planner found; only the kind and
-    // its duration change, so the day's windows still hold.
-    const target = CATALOGUE[shownKind];
-    const stamp = nowTimestamp();
-    onPlan(
-      sessionFromUnit(
-        {
-          ...unit,
-          kind: shownKind,
-          load: target.load,
-          durationMinutes: Math.min(unit.durationMinutes, target.maxMinutes),
-        },
-        { id: makeId('ses'), createdAt: stamp, updatedAt: stamp },
-      ),
-    );
+    onPlan(run);
+    if (decision.strength?.kind) {
+      const strength = sessionFromStrength(today, decision.strength, {
+        id: makeId('ses'),
+        createdAt: stamp,
+        updatedAt: stamp,
+      });
+      if (strength) onPlan(strength);
+    }
     setPlanned(true);
-    toast(`${target.label} eingeplant`, 'good');
+    toast(`${CATALOGUE[decision.kind].label} eingeplant`, 'good');
   };
 
   return (
@@ -574,12 +569,12 @@ function Result({
         <div className="t-small muted mt-2">{meta.description}</div>
       </div>
 
-      {day && (
+      {coachDay && (
         <Card hero accentEdge>
           <div className="row between">
             <div className="t-label">Dein Training heute</div>
-            <Pill tone={day.recovery.band === 'green' ? 'good' : day.recovery.band === 'amber' ? 'warn' : 'bad'}>
-              Erholung {day.recovery.value}
+            <Pill tone={band === 'green' ? 'good' : band === 'amber' ? 'warn' : 'bad'}>
+              Erholung {coachDay.recovery}
             </Pill>
           </div>
 
@@ -587,57 +582,52 @@ function Result({
             <>
               <div className="row gap-3 mt-3">
                 <span style={{ fontSize: 28, lineHeight: 1 }}>
-                  {SPORT_META[shapeOf(spec.kind).sport].icon}
+                  {SPORT_META[shapeOf(decision.kind).sport].icon}
                 </span>
                 <div className="grow">
                   <div className="t-title">{spec.label}</div>
                   <div className="t-small secondary mt-2">
                     {[
-                      formatDuration(Math.min(unit!.durationMinutes, spec.maxMinutes)),
-                      spec.description,
-                      `ab ${formatClock(unit!.start)}`,
-                    ].join(' · ')}
+                      formatDuration(decision.minutes),
+                      decision.zoneLabel,
+                      decision.startMinutes != null ? `ab ${formatClock(decision.startMinutes)}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </div>
                 </div>
               </div>
 
+              {decision.stepsDown > 0 && (
+                <div className={`callout mt-4 warn`}>
+                  <div className="t-heading">
+                    {decision.stepsDown === 1
+                      ? 'Eine Stufe zurück'
+                      : `${decision.stepsDown} Stufen zurück`}
+                  </div>
+                  <div className="t-small secondary mt-2">
+                    Geplant war {CATALOGUE[decision.plannedKind].label}. Deine Antworten von eben
+                    stecken schon in diesem Wert — abgestuft wird an genau einer Stelle, und das ist
+                    der Coach.
+                  </div>
+                </div>
+              )}
+
               <div className="divider mt-4" />
               <div className="t-label mb-3">Warum</div>
               <ReasonList
-                reasons={unit!.reasons.slice(0, 3).map((text) => ({ text, impact: 'neutral' as const }))}
+                reasons={decision.reasons.slice(0, 4).map((r) => ({
+                  text: `${r.title}: ${r.detail}`,
+                  impact:
+                    r.effect === 'sperrt' || r.effect === 'stuft ab' || r.effect === 'begrenzt'
+                      ? ('negative' as const)
+                      : ('neutral' as const),
+                }))}
               />
             </>
           ) : (
             <div className="t-small secondary mt-3">
-              Heute steht keine Einheit an. {RECOVERY_BAND_META[day.recovery.band].advice}
-            </div>
-          )}
-
-          {adjustment && !planned && (
-            <div className={`callout mt-4 ${adjustment.direction === 'down' ? 'warn' : 'good'}`}>
-              <div className="t-heading">
-                {adjustment.direction === 'down' ? 'Abstufen?' : 'Aufstufen?'}
-              </div>
-              <div className="t-small secondary mt-2">
-                {adjustment.reason} Vorschlag: {CATALOGUE[adjustment.from].label} →{' '}
-                {CATALOGUE[adjustment.to].label}.
-              </div>
-              <div className="row gap-2 mt-3">
-                <Button
-                  variant={accepted === true ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setAccepted(true)}
-                >
-                  Übernehmen
-                </Button>
-                <Button
-                  variant={accepted === false ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setAccepted(false)}
-                >
-                  Beim Plan bleiben
-                </Button>
-              </div>
+              {decision.headline} {RECOVERY_BAND_META[band].advice}
             </div>
           )}
 

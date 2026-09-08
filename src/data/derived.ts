@@ -35,6 +35,11 @@ import { buildSleepDay } from '../domain/sleep/day.ts';
 import { sleepSignals } from '../domain/sleep/debt.ts';
 import type { SleepNight } from '../domain/sleep/debt.ts';
 import { medicalFlags } from '../domain/sleep/medical.ts';
+import type { DayContext as CoachDayContext } from '../domain/coach/coach.ts';
+import type { SessionKind as CoachSessionKind } from '../domain/coach/catalogue.ts';
+import { buildCoachPlan } from '../domain/coach/coach.ts';
+import { HORIZON_BACK, HORIZON_FORWARD } from '../domain/coach/horizon.ts';
+import { FIXED_ZONES } from '../domain/coach/zones.ts';
 
 /** Indexes built once per render pass and shared by every derived computation. */
 export interface Indexes {
@@ -541,6 +546,131 @@ function aerobicMinutesInWindow(
 }
 
 export type AerobicPlanView = ReturnType<typeof buildAerobicPlan>;
+
+/* ------------------------------------------------------------------ *
+ * Der Coach
+ * ------------------------------------------------------------------ */
+
+/**
+ * Der Coach für einen Tag — mit dem ganzen Blickfeld darum herum.
+ *
+ * Es wird bewusst das gesamte Einflussfenster geladen, 27 Tage in jede
+ * Richtung, und nicht ein Zyklus: der Coach entscheidet den Tag aus den Tagen
+ * davor und danach, und was er nicht sieht, kann er nicht begründen. Alles
+ * jenseits davon fehlt nicht — es ist nachweislich ohne Einfluss.
+ */
+export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
+  const wake = data.settings.planner.dayShiftWakeMinutes;
+  const from = addDays(anchor, -HORIZON_BACK);
+  const to = addDays(anchor, HORIZON_FORWARD);
+
+  const detected = detectCycle(from, to, idx.shiftAssignments, idx.shiftTypes);
+  const cycleDayByDate = new Map(detected.map((d) => [d.date, d.cycleDay]));
+
+  // Baselines je Zyklustag: unter Schichtarbeit sagt ein absoluter Wert nichts.
+  const metricHistory = (pick: (c: DailyCheckIn) => number | undefined) =>
+    lastNDays(anchor, 120).map((date) => ({
+      date,
+      cycleDay: cycleDayByDate.get(date) ?? null,
+      value: idx.checkIns.get(date) ? pick(idx.checkIns.get(date)!) : undefined,
+    }));
+  const recoveryHistory = metricHistory((c) => c.whoopRecovery);
+  const restingHrHistory = metricHistory((c) => c.restingHr);
+  const sleep = sleepSignalsFor(data, idx, anchor);
+
+  const days: CoachDayContext[] = detected.map((d) => {
+    const w = d.cycleDay ? (d.isVShift ? vShiftWindows() : windowsFor(d.cycleDay, wake)) : null;
+    const checkIn = idx.checkIns.get(d.date);
+    const recovery = computeAerobicRecovery({
+      date: d.date,
+      cycleDay: d.cycleDay,
+      isVShift: d.isVShift,
+      outOfRotation: d.outOfRotation,
+      sleepTargetMinutes: w?.sleepTargetMinutes ?? 8 * 60,
+      napExpected: !!w?.nap,
+      napTaken: checkIn?.napTaken,
+      sleepHours: checkIn?.sleepHours,
+      wellbeing: checkIn?.wellbeing,
+      soreness: checkIn?.soreness,
+      painWhileWalking: checkIn?.painWhileWalking,
+      recoveryPct: checkIn?.whoopRecovery,
+      recoveryBaseline: baselineFor(recoveryHistory, d.cycleDay),
+      restingHr: checkIn?.restingHr,
+      restingHrBaseline: baselineFor(restingHrHistory, d.cycleDay),
+      sleepPenalties: sleep.blockHardAfter.includes(addDays(d.date, -1))
+        ? [{ label: 'Tagschlaf gestern unter 5 h', delta: -25 }]
+        : undefined,
+    });
+
+    return {
+      date: d.date,
+      cycleDay: d.cycleDay,
+      isVShift: d.isVShift,
+      outOfRotation: d.outOfRotation,
+      recovery: recovery.value,
+      done: d.date < anchor,
+      actual: actualFor(idx, d.date),
+    };
+  });
+
+  // Zyklen seit Trainingsbeginn: jeder erkannte Tagschichttag beginnt einen.
+  const history = detectCycle(addDays(from, -365), addDays(from, -1), idx.shiftAssignments, idx.shiftTypes);
+  const cyclesBefore = history.filter((d) => d.cycleDay === 1).length;
+  const cyclesToAnchor = detected.filter((d) => d.cycleDay === 1 && d.date <= anchor).length;
+
+  return buildCoachPlan({
+    anchor,
+    days,
+    dayShiftWakeMinutes: wake,
+    cycleIndex: cyclesBefore + Math.max(0, cyclesToAnchor - 1),
+    previousRunMinutes: runMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
+    zones: data.settings.coachZones ?? FIXED_ZONES,
+  });
+}
+
+/** Was an einem vergangenen Tag tatsächlich gelaufen und gehoben wurde. */
+function actualFor(idx: Indexes, date: ISODate): CoachDayContext['actual'] {
+  const sessions = (idx.sessionsByDate.get(date) ?? []).filter((s) => s.status === 'completed');
+  if (!sessions.length) return undefined;
+  const run = sessions.find((s) => s.sport === 'run');
+  const strength = sessions.find((s) => s.sport === 'strength');
+  if (!run && !strength) return undefined;
+  return {
+    kind: run ? runKindOf(run) : 'ruhe',
+    minutes: run ? effectiveDuration(run) : 0,
+    strengthKind: strength ? 'kraft_ganzkoerper' : undefined,
+    strengthMinutes: strength ? effectiveDuration(strength) : undefined,
+  };
+}
+
+/**
+ * Aus einer erfassten Einheit die Katalogform ableiten.
+ *
+ * Es wird an der Intensität und der Dauer festgemacht, nicht am Titel: der
+ * Titel ist frei getippt, die Intensität kommt aus dem Formular.
+ */
+function runKindOf(session: TrainingSession): CoachSessionKind {
+  const minutes = effectiveDuration(session);
+  const intensity = session.plannedIntensity;
+  if (intensity === 'vo2' || intensity === 'max') return minutes >= 50 ? 'intervall' : 'intervall_kurz';
+  if (intensity === 'threshold') return 'intervall_kurz';
+  if (minutes >= 70) return 'longrun';
+  if (minutes >= 50) return 'longrun_verkuerzt';
+  if (minutes >= 40) return 'grundlagenlauf';
+  return 'lockerer_lauf';
+}
+
+/** Tatsächlich gelaufene Minuten in einem Zeitraum. Null ohne jede Einheit. */
+function runMinutesInWindow(data: AppData, from: ISODate, to: ISODate): number | null {
+  const inRange = data.sessions.filter(
+    (s) => s.status === 'completed' && s.sport === 'run' && s.date >= from && s.date <= to,
+  );
+  if (!inRange.length) return null;
+  return inRange.reduce((sum, s) => sum + effectiveDuration(s), 0);
+}
+
+export type CoachView = ReturnType<typeof buildCoach>;
+
 
 /* ------------------------------------------------------------------ *
  * Sleep and recovery coaching

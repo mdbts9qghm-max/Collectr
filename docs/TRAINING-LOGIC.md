@@ -197,198 +197,159 @@ umgesetzt werden, und verschiebt die Bewertung um maximal ±6 Punkte. Bewusst kl
 Vorliebe darf eine knappe Entscheidung kippen, aber niemals eine Erholungsregel
 überstimmen.
 
-## 4b. Aerober Planer
+## 4b. Der Coach
 
 ### Das Ziel bestimmt die Struktur
 
-Der Nutzer trainiert **nicht auf einen Wettkampf hin**. Das Ziel ist ein dauerhaft
-leistungsfähiges Herz-Kreislauf-System; 100 km laufen zu können ist ein gewünschtes
-Nebenprodukt. Daraus folgt:
+Es gibt **kein Rennen, kein Zieldatum und kein Tapering**. Das Ziel ist ein dauerhaft
+belastbares Herz-Kreislauf-System. Die 100 km sind ein Nebenprodukt davon, kein
+Trainingsziel. Daraus folgt:
 
-- **Kein Zieltermin, kein Taper.** Der Plan läuft unbefristet in rotierenden Blöcken.
-- **Die Steuergröße ist der aerobe Reiz, nicht der Laufkilometer.** Gerechnet wird in
-  Trainingsminuten und Herzfrequenzzonen.
-- Fortschritt misst sich an physiologischen Markern, nicht an Zeiten.
+- **Die Steuergröße ist der aerobe Reiz, nicht die Kilometerzahl.** Gerechnet wird in
+  Laufminuten und Herzfrequenzzonen.
+- Fortschritt misst sich an **VO2max, Schwellenherzfrequenz, Ruhepuls, HRV und der
+  Herzfrequenz-Erholung nach einer Minute** — nicht an Bestzeiten und nicht an
+  Wochenkilometern.
+- Der Plan läuft unbefristet weiter. Es gibt keine Zielwoche, auf die er zuläuft.
 
-**Der entscheidende Punkt:** Wenn das Ziel ein starkes Herz ist und kein Laufwettkampf,
-muss der aerobe Reiz nicht aus dem Laufen kommen. Rad und Rudergerät erzeugen dieselben
-zentralen Anpassungen — größeres Schlagvolumen, mehr Plasmavolumen, mehr Mitochondrien —
-bei einem Bruchteil der orthopädischen Belastung. Progressionsgrenzen im Laufen sind
-damit **keine Bremse fürs Herz**, sondern eine Aufteilungsfrage.
+### Es wird gelaufen
 
-### Zonen aus der Schwelle
+> Das gesamte Ausdauervolumen entsteht durch Laufen. Rad, Rudergerät und Crosstrainer sind
+> keine zulässigen Trainingsformen und auch keine Ausweichoption bei schlechter Erholung.
+> Die einzige Alternative zum Laufen ist weniger Laufen oder Ruhe.
 
-Fünf Zonen auf Basis der **Schwellenherzfrequenz**, nicht der Maximalfrequenz: Formeln
-für die Maximalfrequenz liegen um zehn Schläge und mehr daneben, und das ist breiter als
-die Zonen selbst.
+Der Einheitenkatalog kennt deshalb keinen Modus. Er kennt Läufe, Krafteinheiten, Gehen und
+Ruhe. Eine Abstufung geht immer innerhalb derselben Sache nach unten:
 
-| Zone | Anteil der Schwelle | Zweck |
-| --- | --- | --- |
-| Z1 | < 82 % | Regeneration |
-| Z2 | 82–89 % | Grundlage, Hauptzone |
-| Z3 | 90–94 % | Tempo, sparsam |
-| Z4 | 95–102 % | Schwelle |
-| Z5 | > 102 % | VO2max |
+```
+Intensität → kürzere Intensität → lockerer Lauf → Gehen → Ruhe
+Longrun    → verkürzter Longrun → lockerer Lauf → Gehen → Ruhe
+Kraft      → Oberkörper         → Mobilität und Rumpf     → Ruhe
+```
 
-Bestimmt über ein 30-Minuten-Zeitfahren, Durchschnitt der letzten 20 Minuten. Erstmals
-nach P0, danach alle 10 bis 12 Wochen. Bis dahin steuert die App **ausschließlich
-subjektiv**: Zone 2 ist die Intensität, bei der ein vollständiger Satz sprechbar bleibt.
+**Gehen ist die letzte Stufe vor Ruhe, nicht eine andere Sportart.**
 
-### Phasen und Blöcke
+### Das Einflussfenster
 
-| Phase | ab Makrozyklus | aerobe Minuten je 10 Tage | Laufanteil |
+Der eigentliche Kern. Ein Tag steht nie für sich: er wird von dem beeinflusst, was davor
+lag, und er beeinflusst, was danach kommt — über Zyklus- und Wochengrenzen hinweg. Aber
+dieser Einfluss ist endlich. Jede Regel deklariert in `coach/horizon.ts` ihre Reichweite in
+Tagen, und das Blickfeld des Coaches ist das Maximum darüber. Was weiter weg liegt, ist
+nachweislich ohne Einfluss und wird verworfen.
+
+| Regel | zurück | voraus | warum genau so weit |
 | --- | --- | --- | --- |
-| P0 Einstieg | 0 | 300 → 420 | 40 % |
-| P1 Volumen | 6 | 420 → 600 | 50 % |
-| P2 Kapazität | 18 | 600 → 750 | 60 % |
-| P3 Dauerbetrieb | 30 | 700–850 | 60–75 % |
+| Abstand zur Schlafphase | 0 | 0 | betrifft nur die Uhrzeit innerhalb eines Tages |
+| Beinkraft vor Intensität | 1 | 1 | die 24-Stunden-Sperre ist am übernächsten Tag abgelaufen |
+| 48 h zwischen harten Läufen | 2 | 2 | vorgestern lässt heute wieder eine harte Einheit zu |
+| Ruhetag je Zyklus | 4 | 4 | der Zyklus ist fünf Tage lang |
+| Schlüsseleinheiten je Zyklus | 4 | 4 | dasselbe Zyklusbudget |
+| Zone-2-Anteil | 9 | 9 | das Zehn-Tage-Fenster ist rollend |
+| Longrun-Schritt | 10 | 10 | ein Schritt ist ein Makrozyklus |
+| Bahnstufe | 9 | 9 | zwei saubere Zyklen sind zehn Tage |
+| Volumenwachstum | 19 | 9 | der Vergleich braucht zwei Zehn-Tage-Fenster, nach vorn nur eines |
+| Abstiegsserie | 19 | 19 | zwei Blöcke à zehn Tage |
+| Deload-Rhythmus | 19 | 19 | vier Zyklen sind zwanzig Tage |
+| Belastungsverhältnis | 27 | 27 | der 28-Tage-Nenner ist die längste Regel — er spannt das Blickfeld auf |
 
-Ab P3 rotieren Volumen-, VO2max- und Schwellenblock dauerhaft, je drei Makrozyklen. P3
-steigt nicht endlos linear, sondern schwingt über sechs Makrozyklen durch sein Band —
-endloses Wachstum ist kein Plan, sondern ein Countdown.
+Das Blickfeld ist damit **27 Tage zurück und 27 voraus**. Im Coach-Tab ist es als Zeitleiste
+sichtbar; jeder Tag lässt sich antippen und nennt die Regeln, über die er heute noch wirkt.
+Tage außerhalb werden blass dargestellt, und der Coach kann auch das Vergessen begründen.
 
-### Vorlage
+### Zonen
 
-Ein Makrozyklus sind zwei Zyklen, zehn Tage, acht Fenster: **6 aerobe Einheiten +
-2 Krafteinheiten**, davon eine Intensitäts- und eine lange Einheit.
+Fest, in Schlägen, gemessen statt gerechnet:
 
-| Tag | Zyklus A | Zyklus B |
+| Zone | Schläge | Zweck |
 | --- | --- | --- |
-| 1 Tagschicht | Ruhe | Ruhe |
-| 2 Nachtschicht | Lauf Z2 locker | Lauf Z2 + Bergsprints |
-| 3 Schlaftag | Kraft | Kraft |
-| 4 Frei | **Intensitätseinheit** | **lange Einheit Z2** |
-| 5 Frei | Rad/Rudern (ab P2: Z1 regenerativ) | Rad/Rudern, ab P2 Lauf Z2 |
+| Z1 | 114–138 | Aufwärmen, Auslaufen, aktive Erholung |
+| Z2 | 139–160 | aerobe Grundlage |
+| Z3 | 161–175 | der Bereich dazwischen |
+| Z4 | 176–190 | Schwelle |
+| Z5 | 191–205 | VO2max |
 
-Tag 5 ist bis P2 kein Lauftag: der Tag nach der harten oder langen Einheit trägt die
-höchste Verletzungsanfälligkeit, und Rad oder Rudern liefern dort denselben aeroben Reiz
-bei null Stoßbelastung.
+Sie ändern sich nur über den 30-Minuten-Test alle 10 bis 12 Wochen, und auch dann nur, wenn
+der Vorschlag angenommen wird. Die App verschiebt keine Zone im Hintergrund: eine Zone, die
+sich unbemerkt verschiebt, macht jeden Vergleich mit den Wochen davor wertlos. Unter drei
+Schlägen Unterschied meldet der Vorschlag ausdrücklich Messrauschen statt Anpassung.
 
-### Intervalle auf der Bahn ab Zyklus 1
+### Phasen — in Laufminuten je zehn Tage
 
-Die Intensitätseinheit gibt es **ab dem ersten Zyklus**. Was in Stufen steigt, ist ihre
-Form, nicht ihre Existenz. Auf der Bahn, weil Tartan nachgiebiger und gleichmäßig eben ist
-und weil die exakte Distanzkontrolle den häufigsten Anfängerfehler sofort sichtbar macht:
-die erste Wiederholung zu schnell.
-
-| Stufe | ab Makrozyklus | Einheit |
+| Phase | Zeitraum | Laufminuten / 10 Tage |
 | --- | --- | --- |
-| I | 0 | 8 × 100 m, 100 m gehen |
-| II | 3 | 10 × 200 m |
-| III | 6 | 8 × 400 m |
-| IV | 9 | 6 × 800 m |
-| V | 18 | nach Blockschwerpunkt |
+| P0 | Woche 1–8 | 300 → 420 |
+| P1 | Monat 3–6 | 420 → 600 |
+| P2 | Monat 7–10 | 600 → 750 |
+| P3 | ab Monat 11 | 700 → 850, nach oben offen |
 
-Ein Stufenwechsel verlangt **zwei Makrozyklen ohne Abstufung** — Kalenderwochen allein
-reichen nicht. Laufrichtung wechselt jede Einheit. Ohne Bahn: Feldweg, dann Rad oder
-Rudern nach Zeit, Straße zuletzt.
+> Verlangt das Phasenziel mehr, gilt die Grenze. Das Ziel wird nach hinten verschoben, nicht
+> die Grenze gedehnt. Es gibt keinen Ersatzweg, um Volumen schneller aufzubauen.
 
-### Crosstraining: nur als Abstufung, nicht geplant
+Genau so ist es gebaut: das Phasenziel ist eine Absicht, die 8-%-Wachstumsgrenze ist ein
+Gesetz. Wo beide sich widersprechen, gewinnt die Grenze.
 
-Der Athlet plant kein Rad. Die Vorlage besteht deshalb ausschließlich aus Laufeinheiten,
-und Zyklustag 5 — der Tag nach der harten oder langen Einheit — trägt einen **kurzen,
-lockeren Lauf** statt einer Radeinheit, gedeckelt auf 35 Minuten: ein zweiter Lauf auf
-müden Beinen ist die Verletzung, nicht die Anpassung.
+### Bahnstufen
 
-Crosstraining ist damit nicht verschwunden, sondern verschoben. Es bleibt die **erste Stufe
-jeder Abstufungskette**: trägt ein Morgen die geplante Einheit nicht, ist dieselbe Arbeit
-auf dem Rad weiter die bessere Antwort als ein verwässerter Lauf. Es ist nur nicht mehr
-geplant — es ist die Notbremse.
+`8 × 100 m → 8 × 200 m → 6 × 400 m → 5 × 800 m → 4 × 4 Minuten`
 
-**Die Folge benennt die App offen:** Ohne Ausweichmöglichkeit entscheidet die 8-%-Grenze
-fürs Laufen über das aerobe Volumen. Der Fehlbetrag gegenüber dem Phasenziel steht in der
-Zonenkarte, statt in einer Zahl zu verschwinden.
+Intervalle laufen von Beginn an mit, aber nicht sofort in der Zielform. Eine Stufe wird erst
+verlassen, wenn **zwei Zyklen sauber** durchlaufen wurden — ohne Abstufung, ohne Abbruch.
+Ein unsauberer Zyklus setzt den Zähler zurück, wirft die Stufe aber nicht weg.
 
-Der Laufanteil aus dem Phasenmodell greift dabei **nicht mehr**: er teilt zwischen Laufen
-und Crosstraining auf, und ohne Crosstraining gibt es nichts aufzuteilen. Das Ziel um 60 %
-zu kürzen, weil ein Anteil „60 % Laufen" sagt, hieße die Zahl rückwärts zu lesen.
+### Die Rollenverteilung im Makrozyklus
 
-### Eine Intervalleinheit ist nicht eine Zone
+Zehn Tage, zwei Zyklen. Die Rollen liegen fest, weil die Rotation feststeht — ein
+Optimierer würde aus derselben Ausgangslage jedes Mal einen anderen Plan bauen, und
+Anpassung entsteht aus der Wiederholung ähnlicher Reize.
 
-18 Minuten Aufwärmen und 5 Minuten Auslaufen liegen in Zone 1 bis 2; nur die
-Arbeitsintervalle sitzen in Zone 4 oder 5. Die ganze Einheit nach ihrer Arbeitszone zu
-zählen unterschätzt den Grundlagenanteil erheblich — eine 39-Minuten-Bahneinheit würde 39
-harte Minuten buchen, obwohl nur 16 davon hart sind, und die 80-Prozent-Regel würde auf
-einem Plan anschlagen, der sie tatsächlich einhält.
+| Tag | Schicht | Einheit | Fenster |
+| --- | --- | --- | --- |
+| 1 | T1 Tagschicht | Ruhe | — |
+| 2 | T2 Nachtschicht | lockerer Lauf + Kraft | 09:00–13:30 |
+| 3 | T3 Schlaftag | Grundlagenlauf + Kraft Oberkörper | 16:00–20:00 |
+| 4 | T4 frei | **Intervalle** | 08:00–19:00 |
+| 5 | T5 frei | Grundlagenlauf + Kraft | 08:00–19:00 |
+| 6 | T1 Tagschicht | Ruhe | — |
+| 7 | T2 Nachtschicht | lockerer Lauf + Kraft | 09:00–13:30 |
+| 8 | T3 Schlaftag | Grundlagenlauf + Kraft | 16:00–20:00 |
+| 9 | T4 frei | Grundlagenlauf | 08:00–19:00 |
+| 10 | T5 frei | **Longrun** | 08:00–19:00 |
 
-### Volumen und Überlauf
+Die 48 Stunden zwischen den harten Einheiten stecken schon darin. Kraft steht an Tag 3
+bewusst ohne Beine — Tag 4 ist die Bahn. An Tag 9 steht keine Kraft, weil Tag 10 der
+Longrun ist.
 
-Aerobe Minuten dürfen um höchstens 10 % pro Makrozyklus wachsen, Laufminuten nur um 8 %.
-**Wächst das aerobe Ziel schneller, als das Laufen es hergibt, landet die Differenz auf
-Rad oder Rudergerät — das Ziel wird nicht gekürzt.** Das ist der strukturelle Kern.
+Die **V-Schicht** überschreibt den Tag: 30 bis 60 Minuten locker im Dienst. Das ist kein
+Abschreiben des Tages, aber keine Intensität.
 
-Die Ober- und Untergrenzen je Einheit sind Anteile des Phasenziels, keine festen Minuten:
-25 min als Untergrenze ist in P0 sinnvoll und in P3 absurd, 150 min als Obergrenze
-umgekehrt. Ein Zone-1/2-Anteil von mindestens 80 % steht über allen Volumenzielen.
+### Krafttraining
 
-### Der Erholungswert stuft ab — und wechselt zuerst den Modus
+Kraft geht immer. Sie konkurriert nicht um Laufminuten und wird deshalb nicht weggelassen,
+wenn es eng wird — sie wird leichter. Die Intensität wird gerechnet, nicht gewählt:
+Ausgangspunkt ist der Erholungswert, Abzüge kommen von einer harten Laufeinheit heute,
+gestern oder morgen, vom Deload und von einer Krafteinheit am Vortag. Daraus fallen
+Einheitenart, RPE, Richtwert in Prozent des Maximums und die Wiederholungen in Reserve.
 
-> **Die erste Abstufungsstufe ist immer der Moduswechsel, nicht die Intensitätsreduktion.**
+Die einzige harte Grenze ist die Nachbarschaft: **schwere Beinkraft liegt nie in den 24
+Stunden vor einer Intensitäts- oder Longrun-Einheit.** Sie schiebt nicht die Last nach
+unten, sondern die Übungen nach oben — Oberkörper geht auch am Tag vor der Bahn.
 
-Bei mäßiger Erholung, aber intakter Motivation ist dieselbe Einheit auf dem Rad die
-bessere Antwort als ein abgeschwächter Lauf: der aerobe Reiz bleibt vollständig, nur die
-orthopädische Last fällt weg. Ein Moduswechsel senkt die Mindestanforderung um **20
-Punkte**, weil genau die Stoßbelastung wegfällt, gegen die die Mindestwerte schützen —
-sonst wäre der Wechsel nie erreichbar und die Kette spränge direkt zum lockeren Ausrollen.
+### Deload
 
-Ketten: intensiv → **dasselbe auf dem Rad** → Schwelle → Z2 locker → Regeneration ·
-lang → **lang auf dem Rad** → verkürzt → Regeneration · Kraft schwer → moderat →
-beinfrei → Regeneration.
-
-**Schmerz beim Gehen** ist keine Zahl in einer Formel: die Einheit entfällt. Das ist genau
-der Unterschied zwischen Muskelkater und einer Verletzung.
-
-### WHOOP: zwei Fallstricke
-
-**Der physiologische Zyklus passt nicht auf den Kalendertag.** Jede Schlafperiode wird dem
-Zyklustag explizit zugeordnet — Ende vor Mittag zählt zum Aufwachtag, sonst zum Starttag —
-und der Vorschlaf 15:00–17:30 wird an seinem Fenster als Nap erkannt, nicht an seiner
-Länge.
-
-**Absolute Recovery-Schwellen sind unbrauchbar.** Bewertet wird die Abweichung vom
-28-Tage-Mittel **dieses Zyklustags**. 45 % am Schlaftag bei einer Baseline von 48 % ist ein
-normaler Schlaftag, keine Warnung. Unter 28 Tagen Historie arbeitet die App im manuellen
-Modus ganz ohne automatische Abstufung.
-
-### WHOOP-Anbindung
-
-Vier Serverfunktionen unter `api/whoop/`, weil die App keinen anderen Weg hat: die
-Content-Security-Policy erlaubt `connect-src 'self'`, der Browser darf also gar nicht direkt
-zu WHOOP telefonieren. Das ist beabsichtigt — eine kompromittierte Abhängigkeit kann die
-Gesundheitsdaten nirgendwohin schicken. Der Preis dafür ist dieser Proxy.
-
-Die Aufteilung: **das App-Geheimnis liegt auf dem Server**, weil es die App identifiziert
-und nie aus einem Browser extrahierbar sein darf. **Die Tokens des Athleten liegen auf
-seinem Gerät**, weil sie genau das sind — seine Zugangsdaten für seine Daten. Kein Konto,
-keine Datenbank.
-
-Die Tokens kommen im **Fragment** der Rückleitung zurück, nicht im Query-String: ein
-Fragment wird nie an einen Server geschickt und landet in keinem Log oder Referrer-Header.
-Der Datenproxy leitet nur Pfade aus einer festen Liste weiter — ein offener Proxy, der ein
-Bearer-Token an eine beliebige URL weiterreicht, ist ein Datenleck, das nur darauf wartet,
-bemerkt zu werden.
-
-Alle Endpunkte stehen in `api/whoop/_config.ts`. Verifiziert sind Token-Endpunkt, Basis-URL
-und die v2-Pfade; **nicht** wörtlich verifiziert sind der Autorisierungspfad und ob alle
-Scope-Namen unverändert aus v1 übernommen wurden — die Doku-Domain ist aus dieser
-Build-Umgebung nicht erreichbar. Beides ist eine Zeile in dieser Datei.
-
-Ohne WHOOP läuft alles weiter über den Check-in. Nichts ist davon abhängig.
-
-### Optionale Volumenerweiterung
-
-25 bis 30 Wochenstunden sind mit vier Fenstern pro Zyklus **nicht erreichbar**. Die App
-sagt das einmal offen und wiederholt es nicht. Ab P2 und nach drei Makrozyklen ohne
-Abstufung lassen sich zusätzliche Fenster einschalten — alle in Zone 1 oder 2, denn
-Zusatzvolumen wird nie über Intensität erzeugt. Der Tagschichttag bleibt auch dann frei.
+Jeder vierte **Zyklus** — nicht Makrozyklus — ist ein Deload: 40 % weniger Laufminuten in
+diesen fünf Tagen, keine Intensität, Longrun halbiert. Der Bahntag fällt dabei nicht weg, er
+wird ein Grundlagenlauf.
 
 ### Wo die Vorgabe nachgerechnet werden musste
 
 | Vorgabe | Umsetzung | Grund |
 | --- | --- | --- |
-| Erholungswert 65 → Rad in gleicher Intensität | Moduswechsel senkt die Anforderung um 20 | Sonst wäre die Radvariante bei 65 unerreichbar, weil sie dieselbe Mindestanforderung trägt |
-| Abschnitt 7 (Krafttraining) | ohne Überschrift in der Vorlage | Der Abschnitt beginnt mitten im Text nach 6b |
-| P2/P3 erreichen ihr aerobes Ziel | 540 von 600 bzw. mit Deload weniger | Vier Fenster tragen das Ziel nicht — genau der Punkt, den 6b benennt |
+| „Zone 2 mindestens 80 % der Laufminuten" | gezählt wird Zone 1 **und** 2 | Wörtlich genommen fielen Ein- und Auslaufen einer korrekt gelaufenen Intervalleinheit gegen die Regel. Eine Regel, die richtiges Aufwärmen bestraft, misst nicht, was sie messen soll. |
+| Volumenwachstum ≤ 8 % je 10 Tage | Fenster mit Deload-Tagen sind ausgenommen | Sonst bestraft die Regel den geplanten Einbruch und zieht das Volumen bei jedem vierten Zyklus dauerhaft nach unten. |
+| Longrun ≤ 10 min Wachstum pro Schritt | der halbierte Deload-Longrun steht nicht in der Schrittfolge | Sonst gälte der Rücksprung danach als Steigerung um vierzig Minuten. |
+| Zehn-Tage-Regeln allgemein | schweigen, wenn ein vergangener Trainingstag ohne Eintrag im Fenster liegt | Eine Datenlücke ist keine Regelverletzung. Der Coach sagt lieber nichts als etwas Falsches. |
+| Phasen nach Monaten | umgerechnet auf Wochen (P1 ab Woche 9, P2 ab 27, P3 ab 44) | Der Zyklus läuft in Tagen, und ein Monat ist keine ganze Zahl von Zyklen. |
+
 
 ## 4c. Schlaf und Regeneration
 
