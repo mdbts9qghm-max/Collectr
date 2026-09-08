@@ -276,12 +276,6 @@
 }
 .stat-sub { font-size: 12px; color: var(--text-secondary); }
 
-.stat-tile {
-  background: var(--surface-2);
-  border-radius: var(--r-md);
-  padding: var(--s3);
-  border: 1px solid transparent;
-}
 
 /* ---------- Progress ---------- */
 
@@ -476,26 +470,6 @@
   color: var(--accent-ink);
 }
 
-.scale-picker {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--s2);
-}
-.scale-picker > button {
-  padding: 11px 0;
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  font-weight: 640;
-  font-size: 15px;
-  color: var(--text-secondary);
-  transition: all var(--t-fast);
-}
-.scale-picker > button.active {
-  background: var(--accent);
-  border-color: transparent;
-  color: var(--accent-ink);
-}
 
 .switch {
   width: 46px;

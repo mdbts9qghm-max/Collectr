@@ -107,42 +107,6 @@ export function Pill({
   );
 }
 
-export function Dot({ color }: { color: string }) {
-  return <span className="dot" style={{ background: color }} />;
-}
-
-/* ---------- Stat ---------- */
-
-export function Stat({
-  label,
-  value,
-  sub,
-  size,
-  tone,
-}: {
-  label: string;
-  value: ReactNode;
-  sub?: ReactNode;
-  size?: 'sm' | 'lg';
-  tone?: 'good' | 'warn' | 'bad' | 'accent';
-}) {
-  return (
-    <div className="stat">
-      <div className="stat-label">{label}</div>
-      <div className={`stat-value ${size ?? ''} ${tone ? tone : ''}`}>{value}</div>
-      {sub != null && <div className="stat-sub">{sub}</div>}
-    </div>
-  );
-}
-
-export function StatTile(props: Parameters<typeof Stat>[0]) {
-  return (
-    <div className="stat-tile">
-      <Stat {...props} />
-    </div>
-  );
-}
-
 /* ---------- Progress ---------- */
 
 export function ProgressBar({
@@ -165,22 +129,6 @@ export function ProgressBar({
     <div className={`bar-track ${thickness ?? ''}`}>
       <div className="bar-fill" style={{ width: `${pct}%`, background: color }} />
       {markerPct != null && <div className="bar-marker" style={{ left: `${markerPct}%` }} />}
-    </div>
-  );
-}
-
-export function SegmentedBar({ segments }: { segments: { value: number; color: string; label?: string }[] }) {
-  const total = segments.reduce((s, x) => s + x.value, 0);
-  if (total <= 0) return <div className="bar-track" />;
-  return (
-    <div className="segmented-bar">
-      {segments.map((s, i) => (
-        <span
-          key={i}
-          style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
-          title={s.label}
-        />
-      ))}
     </div>
   );
 }
@@ -300,40 +248,6 @@ export function Segmented<T extends string>({
           {o.label}
         </button>
       ))}
-    </div>
-  );
-}
-
-export function ScalePicker({
-  value,
-  onChange,
-  labels,
-}: {
-  value: number | undefined;
-  onChange: (v: number) => void;
-  labels?: [string, string];
-}) {
-  return (
-    <div className="col gap-2">
-      <div className="scale-picker">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={value === n ? 'active' : ''}
-            onClick={() => onChange(n)}
-            aria-pressed={value === n}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-      {labels && (
-        <div className="row between t-caption muted">
-          <span>{labels[0]}</span>
-          <span>{labels[1]}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -498,25 +412,6 @@ export function Empty({
       {hint && <div className="t-small" style={{ maxWidth: 320 }}>{hint}</div>}
       {action}
     </div>
-  );
-}
-
-export function IconBadge({
-  children,
-  color,
-  small,
-}: {
-  children: ReactNode;
-  color?: string;
-  small?: boolean;
-}) {
-  return (
-    <span
-      className={`icon-badge ${small ? 'sm' : ''}`}
-      style={color ? { background: `color-mix(in srgb, ${color} 18%, transparent)` } : undefined}
-    >
-      {children}
-    </span>
   );
 }
 
