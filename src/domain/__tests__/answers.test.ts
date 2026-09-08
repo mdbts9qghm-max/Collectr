@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { askCoach } from '../coach.ts';
+import { askCoach } from '../answers.ts';
 import { buildIndexes } from '../../data/derived.ts';
 import type { AppData } from '../../data/store.ts';
 import {

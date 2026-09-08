@@ -7,9 +7,7 @@
  * importer can be added without a data migration.
  */
 
-import type { PlannerSettings } from './cycle/types.ts';
-import type { ThresholdTest } from './aerobic/zones.ts';
-import type { ExtensionSettings } from './aerobic/extension.ts';
+import type { PlannerSettings } from './rotation/types.ts';
 import type { ZoneBounds } from './coach/zones.ts';
 
 /** 'YYYY-MM-DD' in local time. The primary key for everything day-shaped. */
@@ -514,8 +512,6 @@ export interface AppSettings {
   recovery: RecoverySettings;
   /** Tuning for the cycle planner. Type-only import, so no runtime cycle. */
   planner: PlannerSettings;
-  /** Measured threshold heart rates, newest last. */
-  thresholdTests: ThresholdTest[];
   /**
    * Die Herzfrequenzzonen des Coaches, in Schlägen.
    *
@@ -524,8 +520,6 @@ export interface AppSettings {
    * wenn ein Nachkalibrierungstest angenommen wurde.
    */
   coachZones?: ZoneBounds;
-  /** The optional volume extension from section 6b, off by default. */
-  volumeExtension: ExtensionSettings;
   /**
    * Modes the athlete switched by hand, keyed by "date:slot".
    *

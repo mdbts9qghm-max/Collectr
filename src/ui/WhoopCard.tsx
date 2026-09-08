@@ -9,7 +9,7 @@ import {
 } from '../data/whoopClient.ts';
 import type { WhoopTokens } from '../data/whoopClient.ts';
 import { useStore } from '../data/store.ts';
-import { BASELINE_READY_DAYS } from '../domain/aerobic/whoop.ts';
+import { BASELINE_READY_DAYS } from '../domain/coach/whoop.ts';
 import { Button, Card, Pill } from './primitives.tsx';
 
 /**

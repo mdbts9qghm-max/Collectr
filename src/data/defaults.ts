@@ -8,8 +8,7 @@ import type {
 } from '../domain/types.ts';
 import { addDays, nowTimestamp, today } from '../domain/date.ts';
 import { makeId } from '../domain/ids.ts';
-import { DEFAULT_PLANNER_SETTINGS } from '../domain/cycle/types.ts';
-import { NO_EXTENSION } from '../domain/aerobic/extension.ts';
+import { DEFAULT_PLANNER_SETTINGS } from '../domain/rotation/types.ts';
 
 export const SETTINGS_VERSION = 4;
 
@@ -198,8 +197,6 @@ export function defaultSettings(): AppSettings {
     units: 'metric',
     shiftRotation: ['shift_day', 'shift_day', 'shift_night', 'shift_sleep_day', 'shift_off', 'shift_off'],
     planner: { ...DEFAULT_PLANNER_SETTINGS },
-    thresholdTests: [],
-    volumeExtension: { ...NO_EXTENSION },
     modeOverrides: {},
     sleepCoaching: {
       offerCoffeeNap: false,
@@ -229,8 +226,7 @@ export function migrateSettings(stored: AppSettings): AppSettings {
     recovery: { ...base.recovery, ...stored.recovery },
     notifications: { ...base.notifications, ...stored.notifications },
     planner: { ...base.planner, ...stored.planner },
-    thresholdTests: stored.thresholdTests ?? base.thresholdTests,
-    volumeExtension: { ...base.volumeExtension, ...stored.volumeExtension },
+    coachZones: stored.coachZones ?? base.coachZones,
     modeOverrides: stored.modeOverrides ?? {},
     sleepCoaching: { ...base.sleepCoaching, ...stored.sleepCoaching },
     version: SETTINGS_VERSION,

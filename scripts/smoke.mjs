@@ -241,13 +241,22 @@ for (const [path, name] of [
   console.log(`✓ ${path} rendered (${text.length} chars)`);
 }
 
-// Coach must answer from stored data.
+/*
+ * Die Frage-Antwort-Seite muss dasselbe sagen wie der Coach-Tab. Zwei Stellen,
+ * die verschiedene Einheiten vorschlagen, sind der Fehler, an dem man aufhört,
+ * dem Plan zu glauben — deshalb steht der Abgleich hier fest im Test.
+ */
 await page.goto(`${BASE}/#/coach`, { waitUntil: 'networkidle' });
 await page.getByText('Was soll ich heute trainieren?').click();
 await page.waitForSelector('.bubble.coach');
 const answer = await page.locator('.bubble.coach').first().innerText();
 if (answer.length < 20) throw new Error('coach answer too short');
-console.log('✓ coach answered:', answer.split('\n')[0]);
+if (!answer.includes(headline)) {
+  throw new Error(
+    `the answer screen and the coach tab disagree:\n  Tab:    ${headline}\n  Antwort: ${answer.split('\n')[0]}`,
+  );
+}
+console.log(`✓ Frage-Antwort deckt sich mit dem Coach-Tab: ${answer.split('\n')[0]}`);
 await shot('13-coach-answer');
 
 // Habits: tick one and confirm it persists across a reload.

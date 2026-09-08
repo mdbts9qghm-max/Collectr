@@ -6,8 +6,8 @@ import { formatDateLong, formatDuration, SPORT_META, weekdayLong, weekdayShort }
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
 import { shiftSleepMinutes } from '../domain/shifts.ts';
 import { CATALOGUE } from '../domain/coach/catalogue.ts';
-import { RECOVERY_BAND_META } from '../domain/aerobic/recovery.ts';
-import { formatClock, windowsFor } from '../domain/aerobic/windows.ts';
+import { RECOVERY_BAND_META } from '../domain/coach/recovery.ts';
+import { formatClock, windowsFor } from '../domain/coach/windows.ts';
 import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';

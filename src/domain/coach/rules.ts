@@ -11,7 +11,7 @@ import {
 import { CATALOGUE, HARD_LOAD, HARTE_REGEL_LAUFEN } from './catalogue.ts';
 import { MAX_GROWTH } from './phases.ts';
 import { addDays, diffDays } from '../date.ts';
-import { formatClock } from '../aerobic/windows.ts';
+import { formatClock } from './windows.ts';
 
 /**
  * Die harten Regeln.

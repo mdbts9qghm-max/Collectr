@@ -12,9 +12,9 @@ import {
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
 import type { TodayDecision } from '../domain/coach/coach.ts';
 import { CATALOGUE } from '../domain/coach/catalogue.ts';
-import { formatClock } from '../domain/aerobic/windows.ts';
+import { formatClock } from '../domain/coach/windows.ts';
 import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
-import { RECOVERY_BAND_META } from '../domain/aerobic/recovery.ts';
+import { RECOVERY_BAND_META } from '../domain/coach/recovery.ts';
 import { statusOn } from '../domain/habits.ts';
 import { summarise, tasksForDay } from '../domain/tasks.ts';
 import { makeId } from '../domain/ids.ts';

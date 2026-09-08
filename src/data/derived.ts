@@ -21,16 +21,11 @@ import { learnPreferences } from '../domain/personalization.ts';
 import { currentMetrics } from '../domain/metrics.ts';
 import { computeHybridScore } from '../domain/score.ts';
 import { overallCompletion } from '../domain/habits.ts';
-import { effectiveDuration, loadStateOn, periodStats, sessionLoad, weekStats } from '../domain/load.ts';
-import { buildDayShapes, detectCycle } from '../domain/cycle/detect.ts';
-import { planCycle } from '../domain/cycle/planner.ts';
-import { cycleLoadFromSrpe } from '../domain/cycle/catalogue.ts';
-import { computeAcwr } from '../domain/cycle/acwr.ts';
-import type { DayInput } from '../domain/aerobic/planner.ts';
-import { planAerobic } from '../domain/aerobic/planner.ts';
-import { computeRecovery as computeAerobicRecovery } from '../domain/aerobic/recovery.ts';
-import { baselineFor } from '../domain/aerobic/whoop.ts';
-import { vShiftWindows, windowsFor } from '../domain/aerobic/windows.ts';
+import { effectiveDuration, loadStateOn, periodStats, weekStats } from '../domain/load.ts';
+import { detectCycle } from '../domain/rotation/detect.ts';
+import { computeRecovery as computeAerobicRecovery } from '../domain/coach/recovery.ts';
+import { baselineFor } from '../domain/coach/whoop.ts';
+import { vShiftWindows, windowsFor } from '../domain/coach/windows.ts';
 import { buildSleepDay } from '../domain/sleep/day.ts';
 import { sleepSignals } from '../domain/sleep/debt.ts';
 import type { SleepNight } from '../domain/sleep/debt.ts';
@@ -321,86 +316,14 @@ export function weeklySeries(data: AppData, endDate: ISODate, weeks: number) {
   return out;
 }
 
-/* ------------------------------------------------------------------ *
- * Cycle planner
- * ------------------------------------------------------------------ */
 
 /**
- * Everything the cycle planner needs, assembled from data the athlete already
- * enters: the shift roster gives the cycle position and therefore the sleep and
- * training windows, completed sessions give the load, and the morning check-in
- * gives sleep and wellbeing. Nothing extra has to be logged for this to work.
+ * Die Signale des Schlafmoduls, so wie der Erholungswert sie braucht.
+ *
+ * Das Schlafmodul stuft nie selbst ab. Es liefert Signale, und diese eine Stelle
+ * macht daraus Abzüge auf den Erholungswert — ein einziger Ort entscheidet über
+ * Abstufungen.
  */
-export function buildCyclePlan(data: AppData, idx: Indexes, anyDate: ISODate, cycles = 3) {
-  const settings = data.settings.planner;
-
-  // Walk back to the start of the cycle the date sits in, so the view always
-  // opens on a whole cycle rather than mid-rotation.
-  const probe = detectCycle(addDays(anyDate, -8), anyDate, idx.shiftAssignments, idx.shiftTypes);
-  let start = anyDate;
-  for (let i = probe.length - 1; i >= 0; i--) {
-    if (probe[i].cycleDay === 1) {
-      start = probe[i].date;
-      break;
-    }
-    if (probe[i].date <= addDays(anyDate, -6)) break;
-  }
-  const end = addDays(start, cycles * 5 - 1);
-
-  // One day past the end, because a day's sleep window depends on whether a day
-  // shift follows it.
-  const detected = detectCycle(start, addDays(end, 1), idx.shiftAssignments, idx.shiftTypes);
-  const byDate = new Map(detected.map((d) => [d.date, d]));
-  const shapes = buildDayShapes(
-    detected.filter((d) => d.date <= end),
-    settings,
-    (date) => byDate.get(addDays(date, 1)),
-  );
-
-  /*
-   * Which cycle number this horizon starts on.
-   *
-   * A and B alternate and the deload falls on every fourth cycle, so the count
-   * has to be continuous across app restarts. Counting the day shifts already
-   * behind us derives it from the roster instead of storing a counter that
-   * could drift out of step with the shifts themselves.
-   */
-  const history = detectCycle(addDays(start, -180), addDays(start, -1), idx.shiftAssignments, idx.shiftTypes);
-  const cycleOffset = history.filter((d) => d.cycleDay === 1).length;
-
-  // Load per day from what was actually completed, on the planner's scale.
-  const completedLoadByDate = new Map<ISODate, number>();
-  const knownDates = new Set<ISODate>();
-  const today = todayIso();
-  for (const [date, assignment] of idx.shiftAssignments) {
-    // A day with a shift entered is a day we know happened, even at load zero.
-    if (date <= today && assignment) knownDates.add(date);
-  }
-  for (const session of data.sessions) {
-    if (session.status !== 'completed') continue;
-    const load = cycleLoadFromSrpe(sessionLoad(session));
-    if (load <= 0) continue;
-    completedLoadByDate.set(session.date, (completedLoadByDate.get(session.date) ?? 0) + load);
-    knownDates.add(session.date);
-  }
-
-  // The resting-heart-rate norm: the median of the last 30 entered mornings,
-  // falling back to the profile value while there is not enough history.
-  const restingHrNorm = restingHrBaseline(idx, today) ?? data.settings.profile.restingHr ?? null;
-
-  return planCycle({
-    shapes,
-    completedLoadByDate,
-    knownDates,
-    checkIns: idx.checkIns,
-    settings,
-    cycleOffset,
-    restingHrNorm,
-    today,
-  });
-}
-
-/** The sleep module's signals, in the shape the aerobic planner consumes. */
 function sleepSignalsFor(data: AppData, idx: Indexes, date: ISODate) {
   const { signals } = buildSleepView(data, idx, date, 0);
   return {
@@ -411,141 +334,6 @@ function sleepSignalsFor(data: AppData, idx: Indexes, date: ISODate) {
     warnings: signals.warnings,
   };
 }
-
-/** Median resting heart rate over the last 30 days, or null below five entries. */
-function restingHrBaseline(idx: Indexes, date: ISODate): number | null {
-  const values: number[] = [];
-  for (let i = 1; i <= 30; i++) {
-    const value = idx.checkIns.get(addDays(date, -i))?.restingHr;
-    if (value != null && value > 0) values.push(value);
-  }
-  if (values.length < 5) return null;
-  values.sort((a, b) => a - b);
-  const mid = Math.floor(values.length / 2);
-  return values.length % 2 === 1 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
-}
-
-export type CyclePlanView = ReturnType<typeof buildCyclePlan>;
-
-/* ------------------------------------------------------------------ *
- * The aerobic planner
- * ------------------------------------------------------------------ */
-
-/**
- * Everything the aerobic planner needs, assembled from what is already entered.
- *
- * The shift roster gives the cycle position and therefore the windows; the
- * morning check-in and WHOOP give the recovery inputs; completed sessions give
- * the load history. Nothing extra has to be logged.
- */
-export function buildAerobicPlan(data: AppData, idx: Indexes, anyDate: ISODate, cycleCount = 2) {
-  const settings = data.settings;
-  const wake = settings.planner.dayShiftWakeMinutes;
-
-  // Open on a whole cycle rather than mid-rotation.
-  const probe = detectCycle(addDays(anyDate, -8), anyDate, idx.shiftAssignments, idx.shiftTypes);
-  let start = anyDate;
-  for (let i = probe.length - 1; i >= 0; i--) {
-    if (probe[i].cycleDay === 1) {
-      start = probe[i].date;
-      break;
-    }
-    if (probe[i].date <= addDays(anyDate, -6)) break;
-  }
-  const end = addDays(start, cycleCount * 5 - 1);
-  const detected = detectCycle(start, end, idx.shiftAssignments, idx.shiftTypes);
-
-  const today = todayIso();
-  const history = detectCycle(addDays(start, -180), addDays(start, -1), idx.shiftAssignments, idx.shiftTypes);
-  const cycleOffset = history.filter((d) => d.cycleDay === 1).length;
-
-  // Load and known days from what was actually completed.
-  const loadByDate = new Map<ISODate, number>();
-  for (const session of data.sessions) {
-    if (session.status !== 'completed') continue;
-    const load = cycleLoadFromSrpe(sessionLoad(session));
-    if (load > 0) loadByDate.set(session.date, (loadByDate.get(session.date) ?? 0) + load);
-  }
-
-  /*
-   * Baselines are computed per cycle day, because that is the only comparison
-   * that says anything under shift work: a sleep day's recovery belongs next to
-   * other sleep days, not next to a rest day's.
-   */
-  const cycleDayByDate = new Map(history.concat(detected).map((d) => [d.date, d.cycleDay]));
-  const metricHistory = (pick: (c: DailyCheckIn) => number | undefined) =>
-    lastNDays(today, 120).map((date) => ({
-      date,
-      cycleDay: cycleDayByDate.get(date) ?? null,
-      value: idx.checkIns.get(date) ? pick(idx.checkIns.get(date)!) : undefined,
-    }));
-  const recoveryHistory = metricHistory((c) => c.whoopRecovery);
-  const restingHrHistory = metricHistory((c) => c.restingHr);
-
-  const days: DayInput[] = detected.map((d) => {
-    const w = d.cycleDay ? (d.isVShift ? vShiftWindows() : windowsFor(d.cycleDay, wake)) : null;
-    const checkIn = idx.checkIns.get(d.date);
-    return {
-      date: d.date,
-      cycleDay: d.cycleDay,
-      isVShift: d.isVShift,
-      outOfRotation: d.outOfRotation,
-      recovery: computeAerobicRecovery({
-        date: d.date,
-        cycleDay: d.cycleDay,
-        isVShift: d.isVShift,
-        outOfRotation: d.outOfRotation,
-        sleepTargetMinutes: w?.sleepTargetMinutes ?? 8 * 60,
-        napExpected: !!w?.nap,
-        napTaken: checkIn?.napTaken,
-        sleepHours: checkIn?.sleepHours,
-        wellbeing: checkIn?.wellbeing,
-        soreness: checkIn?.soreness,
-        painWhileWalking: checkIn?.painWhileWalking,
-        recoveryPct: checkIn?.whoopRecovery,
-        recoveryBaseline: baselineFor(recoveryHistory, d.cycleDay),
-        restingHr: checkIn?.restingHr,
-        restingHrBaseline: baselineFor(restingHrHistory, d.cycleDay),
-      }),
-    };
-  });
-
-  const acwrState = computeAcwr(today, loadByDate, new Set(loadByDate.keys()));
-
-  return planAerobic({
-    days,
-    cycleOffset,
-    dayShiftWakeMinutes: wake,
-    previousAerobicMinutes: aerobicMinutesInWindow(data, addDays(start, -10), addDays(start, -1)),
-    previousRunMinutes: aerobicMinutesInWindow(data, addDays(start, -10), addDays(start, -1), 'run'),
-    cleanHistory: [],
-    intensitySessionCount: data.sessions.filter(
-      (s) => s.status === 'completed' && s.plannedIntensity === 'vo2',
-    ).length,
-    acwr: acwrState.ratio,
-    loadByDate,
-    extension: settings.volumeExtension,
-    sleep: sleepSignalsFor(data, idx, today),
-    modeOverrides: new Map(Object.entries(settings.modeOverrides ?? {})),
-  });
-}
-
-/** Completed aerobic minutes in a date range, optionally only running. */
-function aerobicMinutesInWindow(
-  data: AppData,
-  from: ISODate,
-  to: ISODate,
-  onlyRun?: 'run',
-): number | null {
-  const inRange = data.sessions.filter(
-    (s) => s.status === 'completed' && s.date >= from && s.date <= to,
-  );
-  if (inRange.length === 0) return null;
-  const matching = onlyRun ? inRange.filter((s) => s.sport === 'run') : inRange;
-  return matching.reduce((sum, s) => sum + effectiveDuration(s), 0);
-}
-
-export type AerobicPlanView = ReturnType<typeof buildAerobicPlan>;
 
 /* ------------------------------------------------------------------ *
  * Der Coach

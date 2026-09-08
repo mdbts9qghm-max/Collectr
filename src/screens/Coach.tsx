@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { COACH_SUGGESTIONS, askCoach } from '../domain/coach.ts';
-import type { CoachAnswer } from '../domain/coach.ts';
+import { COACH_SUGGESTIONS, askCoach } from '../domain/answers.ts';
+import type { CoachAnswer } from '../domain/answers.ts';
 import { useData, useIndexes, useToday } from '../app/hooks.ts';
 import { Button, Card, Pill, TextInput } from '../ui/primitives.tsx';
 import { IconChevronRight } from '../ui/icons.tsx';

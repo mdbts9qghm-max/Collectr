@@ -9,7 +9,7 @@ import { DISCLAIMER, MELATONIN, REFERRAL, substanceAnswer } from '../sleep/subst
 import { medicalFlags } from '../sleep/medical.ts';
 import { caffeineHint, sleepSignals } from '../sleep/debt.ts';
 import type { SleepNight } from '../sleep/debt.ts';
-import { windowsFor } from '../aerobic/windows.ts';
+import { windowsFor } from '../coach/windows.ts';
 import { addDays } from '../date.ts';
 
 const START: ISODate = '2026-09-07';

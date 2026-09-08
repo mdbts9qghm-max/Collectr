@@ -65,20 +65,22 @@ src/
 │   ├── metrics.ts           Kennzahlen aus Rohdaten, PR-Erkennung
 │   ├── review.ts            Wochenrückblick mit generierter Bewertung
 │   ├── insights.ts          Inhalte für Benachrichtigungen und Briefing
-│   ├── coach.ts             regelbasierte Antworten auf eigene Daten
-│   ├── aerobic/             Aerober Planer — die aktuelle Trainingslogik
-│   │   ├── zones.ts             fünf Zonen aus der Schwellenherzfrequenz
-│   │   ├── catalogue.ts         Einheiten, Modi, Abstufungsketten (Modus zuerst)
-│   │   ├── phases.ts            P0–P3, Blockrotation ohne Endpunkt
-│   │   ├── intervals.ts         Bahnstufen I–V, Laufrichtung, Ersatzreihenfolge
-│   │   ├── template.ts          Zyklusvorlage A/B je Phase
-│   │   ├── volume.ts            Verteilung mit Überlauf auf Rad und Rudern
-│   │   ├── extension.ts         optionale Volumenerweiterung ab P2
+│   ├── answers.ts           regelbasierte Antworten auf eigene Daten (Frage-Antwort-Tab)
+│   ├── coach/               die Trainingslogik — ein Ort, eine Antwort
+│   │   ├── horizon.ts           das Einflussfenster: Reichweite je Regel in Tagen
+│   │   ├── zones.ts             feste Zonen in Schlägen, 30-Minuten-Nachkalibrierung
+│   │   ├── catalogue.ts         Läufe, Kraft, Gehen, Ruhe — Abstufung endet auf Gehen
+│   │   ├── phases.ts            P0–P3 in Laufminuten, 8-%-Grenze über dem Phasenziel
+│   │   ├── intervals.ts         Bahnstufen 8×100 m bis 4×4, zwei saubere Zyklen je Stufe
+│   │   ├── template.ts          Rollen im Makrozyklus, Verteilung, Deload je Zyklus
+│   │   ├── strength.ts          Kraft dort, wo sie passt; Intensität gerechnet
+│   │   ├── rules.ts             die harten Regeln als einzeln zitierbare Objekte
 │   │   ├── recovery.ts          Abstufungsfilter mit WHOOP-Baseline je Zyklustag
 │   │   ├── whoop.ts             Schlafzuordnung, rollierende Baselines
-│   │   ├── rules.ts             harte Regeln als einzeln zitierbare Objekte
-│   │   ├── windows.ts           Schlaf- und Trainingsfenster
-│   │   └── planner.ts           die neun Schritte
+│   │   ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag
+│   │   ├── types.ts             der Tag, wie der Coach ihn sieht
+│   │   ├── toSession.ts         Übersetzung der Entscheidung in eine Session
+│   │   └── coach.ts             die Entscheidung über das ganze Blickfeld
 │   ├── sleep/               Schlafcoaching — Licht, Koffein, Ernährung, Substanzen
 │   │   ├── types.ts             die vier Spuren, Empfehlung mit Begründung
 │   │   ├── light.ts             Lichtplan je Zyklustag
@@ -89,20 +91,10 @@ src/
 │   │   ├── medical.ts           wann sie zur ärztlichen Abklärung rät
 │   │   ├── debt.ts              Schlafschuld als Signal an die Trainingsplanung
 │   │   └── day.ts               die vier Spuren eines Tages zusammengesetzt
-│   └── cycle/               Vorgänger, noch für Analytics und Coach in Gebrauch
-│       ├── types.ts             Zyklustage, Fenster, Tagesform, Planereinstellungen
-│       ├── catalogue.ts         sieben Einheiten mit Last, Mindesterholung, Abstufung
-│       ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag
-│       ├── template.ts          feste Vorlage A/B, Makrozyklus, Deload
-│       ├── acwr.ts              Belastungsverhältnis akut zu chronisch
-│       ├── detect.ts            Zyklusposition aus den eingetragenen Schichten
-│       ├── recovery.ts          Erholungswert 0–100, reiner Abstufungsfilter
-│       ├── rules.ts             die harten Regeln als letzte Prüfschicht
-│       ├── planner.ts           Vorlage laden, Filter anwenden, Regeln prüfen
-│       ├── slots.ts             Platzierung einer Einheit im Tagesfenster
-│       ├── options.ts           Vorschlag, Alternativen und Ausschlüsse je Tag
-│       ├── adjust.ts            Auf-/Abstufung bei abweichendem Befinden
-│       └── toSession.ts         Übersetzung einer geplanten Einheit in eine Session
+│   └── rotation/            die Fünf-Tage-Schicht­rotation, keine Trainingslogik
+│       ├── types.ts             Zyklustage, Fenster, Tagesform
+│       ├── windows.ts           Tagesform aus einer Schichtart
+│       └── detect.ts            Zyklusposition aus den eingetragenen Schichten
 ├── data/            Persistenz und abgeleiteter Zustand
 │   ├── db.ts                IndexedDB-Wrapper
 │   ├── whoopClient.ts       Tokens auf dem Gerät, Abruf über den Proxy

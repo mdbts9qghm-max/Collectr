@@ -4,7 +4,7 @@ import type { CoachView } from '../data/derived.ts';
 import type { SessionKind } from '../domain/coach/catalogue.ts';
 import { CATALOGUE, HARTE_REGEL_LAUFEN } from '../domain/coach/catalogue.ts';
 import { FIXED_ZONES, TEST_PROTOCOL, retestState, zoneRanges } from '../domain/coach/zones.ts';
-import { CYCLE_DAY_META, formatClock } from '../domain/aerobic/windows.ts';
+import { CYCLE_DAY_META, formatClock } from '../domain/coach/windows.ts';
 import { cyclesUntilDeload } from '../domain/coach/phases.ts';
 import { useCoach, useToday } from '../app/hooks.ts';
 import { useStore } from '../data/store.ts';

@@ -1,5 +1,6 @@
 import type { ISODate } from '../types.ts';
 import type { Baseline } from './whoop.ts';
+import type { CycleDayNumber } from './types.ts';
 
 /**
  * The recovery value **does not plan, it downgrades**.
@@ -8,8 +9,6 @@ import type { Baseline } from './whoop.ts';
  * morning, decides how much of it survives — and the first step it takes is
  * always a change of mode, not a cut in intensity.
  */
-
-export type CycleDayNumber = 1 | 2 | 3 | 4 | 5;
 
 const BASE_BY_CYCLE_DAY: Record<number, { value: number; why: string }> = {
   4: { value: 100, why: 'Freier Tag nach zwei Nächten regulärem Schlaf' },

@@ -19,7 +19,7 @@ import { planStrength } from './strength.ts';
 import { RULES, checkAll } from './rules.ts';
 import { loadOf } from './types.ts';
 import { addDays, diffDays } from '../date.ts';
-import { formatClock, vShiftWindows, windowsFor } from '../aerobic/windows.ts';
+import { formatClock, vShiftWindows, windowsFor } from './windows.ts';
 
 /**
  * # Zielsetzung

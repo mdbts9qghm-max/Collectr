@@ -3,7 +3,7 @@ import type { Advice, Track } from '../domain/sleep/types.ts';
 import { TRACK_META } from '../domain/sleep/types.ts';
 import { UNIVERSAL_RULES } from '../domain/sleep/rules.ts';
 import { DISCLAIMER, REFERRAL, SUBSTANCES } from '../domain/sleep/substances.ts';
-import { CYCLE_DAY_META } from '../domain/aerobic/windows.ts';
+import { CYCLE_DAY_META } from '../domain/coach/windows.ts';
 import { useSleepView, useToday } from '../app/hooks.ts';
 import { useStore } from '../data/store.ts';
 import { Card, Disclosure, Pill, SectionTitle, SettingRow, Switch } from '../ui/primitives.tsx';

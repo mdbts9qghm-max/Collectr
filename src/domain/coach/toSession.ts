@@ -3,7 +3,7 @@ import type { SessionKind } from './catalogue.ts';
 import type { StrengthPlan } from './strength.ts';
 import type { TodayDecision } from './coach.ts';
 import { CATALOGUE } from './catalogue.ts';
-import { formatClock } from '../aerobic/windows.ts';
+import { formatClock } from './windows.ts';
 
 /**
  * Aus der Entscheidung des Coaches eine Einheit machen, die abgehakt werden kann.

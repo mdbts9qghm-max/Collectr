@@ -3,12 +3,15 @@ import type { AppData } from '../data/store.ts';
 import type { Indexes } from '../data/derived.ts';
 import {
   activeHabits,
+  buildCoach,
   buildDayView,
   buildMetrics,
   buildScore,
   entriesFor,
   makeDayContextFn,
 } from '../data/derived.ts';
+import { CATALOGUE as COACH_CATALOGUE } from './coach/catalogue.ts';
+import { shapeOf } from './coach/toSession.ts';
 import { addDays, dateRange, lastNDays, startOfMonth, startOfWeek } from './date.ts';
 import {
   SPORT_META,
@@ -161,47 +164,56 @@ export function askCoach(
  * Answers
  * ------------------------------------------------------------------ */
 
+/**
+ * Was heute ansteht — aus dem Coach, nicht aus einer zweiten Rechnung.
+ *
+ * Diese Antwort muss Wort für Wort zu dem passen, was im Coach-Tab und auf dem
+ * Tagesbildschirm steht. Eine Frage anders zu beantworten als der Plan sie
+ * beantwortet, ist genau der Fehler, der einen Plan unbrauchbar macht: man weiß
+ * dann nicht mehr, welchem der beiden Bildschirme man glauben soll.
+ */
 function answerToday(data: AppData, idx: Indexes, today: ISODate): CoachAnswer {
   const view = buildDayView(data, idx, today);
-  const top = view.recommendation.recommended[0];
-  if (!top) {
+  const plan = buildCoach(data, idx, today);
+  const decision = plan.today;
+
+  const reasonLines = decision.reasons
+    .slice(0, 3)
+    .map((r) => `• ${r.title}: ${r.detail}`)
+    .join('\n');
+
+  if (decision.kind === 'ruhe') {
     return {
-      text: 'Für heute finde ich keine passende Einheit — jede Option ist durch Schicht, Erholung oder Belastung ausgeschlossen. Das spricht für einen Ruhetag.',
-      facts: [{ label: 'Schicht', value: view.shift.type?.label ?? 'nicht gesetzt' }],
+      text:
+        `${decision.headline}\n\nWarum:\n${reasonLines || '• Dieser Schichttag hat kein Trainingsfenster.'}`,
+      facts: [
+        { label: 'Schicht', value: view.shift.type?.label ?? 'nicht gesetzt' },
+        { label: 'Phase', value: `${plan.target.phase.id} — ${plan.target.phase.label}` },
+      ],
+      followUps: ['Wie ist meine Belastung gerade?', 'Wie war meine letzte Woche?'],
     };
   }
 
-  const reasonLines = top.reasons
-    .filter((r) => r.impact === 'positive')
-    .slice(0, 3)
-    .map((r) => `• ${r.text}`)
-    .join('\n');
-
-  const alt = view.recommendation.alternatives[0];
-  const outlook = view.outlook;
-  const ahead =
-    outlook.restOfWeekComplete && outlook.restOfWeekFreeMinutes >= 0
-      ? `\n\nRestwoche: ${formatDuration(outlook.restOfWeekFreeMinutes)} nutzbare Trainingszeit` +
-        (outlook.bestLongDay
-          ? `, bester Tag für eine lange Einheit ist ${weekdayLong(outlook.bestLongDay.date)}.`
-          : ', kein Tag mit Platz für eine lange Einheit.')
-      : '';
+  const strength = decision.strength?.kind
+    ? `\n\nDazu ${COACH_CATALOGUE[decision.strength.kind].label}: ${formatDuration(
+        decision.strength.minutes,
+      )}, RPE ${decision.strength.rpe}.`
+    : '';
 
   return {
     text:
-      `${SPORT_META[top.template.sport].icon} ${top.template.title}` +
-      (top.template.durationMin > 0 ? ` · ${formatDuration(top.template.durationMin)}` : '') +
-      `\n\nWarum:\n${reasonLines || '• Passt zu Schicht und Erholung'}` +
-      (alt ? `\n\nAlternative: ${alt.template.title}.` : '') +
-      ahead +
-      `\n\nFokus heute: ${view.recommendation.focus}.`,
+      `${SPORT_META[shapeOf(decision.kind).sport].icon} ${decision.headline}` +
+      (decision.zoneLabel ? `\n${decision.zoneLabel} bpm` : '') +
+      strength +
+      `\n\nWarum:\n${reasonLines}` +
+      (decision.stepsDown > 0
+        ? `\n\nGeplant war ${COACH_CATALOGUE[decision.plannedKind].label} — die Erholung trägt das heute nicht.`
+        : ''),
     facts: [
       { label: 'Schicht', value: view.shift.type?.label ?? 'nicht gesetzt' },
-      {
-        label: 'Readiness',
-        value: view.readiness.score != null ? `${view.readiness.score}` : 'kein Check-in',
-      },
-      { label: 'Woche', value: `${formatDuration(view.week.total.minutes)} / ${formatDuration(view.target.minutes)}` },
+      { label: 'Dauer', value: formatDuration(decision.minutes) },
+      { label: 'Phase', value: `${plan.target.phase.id}, ${plan.target.runMinutes} min / 10 Tage` },
+      { label: 'Bahnstufe', value: plan.stage.stage.label },
     ],
     followUps: ['Wie ist meine Belastung gerade?', 'Wie war meine letzte Woche?'],
   };

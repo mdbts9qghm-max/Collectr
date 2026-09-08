@@ -8,8 +8,6 @@ import {
   buildMetrics,
   buildScore,
   buildWeek,
-  buildCyclePlan,
-  buildAerobicPlan,
   buildCoach,
   buildSleepView,
   makeDayContextFn,
@@ -76,13 +74,6 @@ export function useSleepView(date: ISODate) {
   return useMemo(() => buildSleepView(data, idx, date, nowMinutes), [data, idx, date, nowMinutes]);
 }
 
-/** The aerobic plan: one macrocycle — two cycles, ten days. */
-export function useAerobicPlan(anchor: ISODate, cycles = 2) {
-  const data = useData();
-  const idx = useIndexes();
-  return useMemo(() => buildAerobicPlan(data, idx, anchor, cycles), [data, idx, anchor, cycles]);
-}
-
 /**
  * Der Coach für einen Tag, mit dem ganzen Einflussfenster darum.
  *
@@ -93,13 +84,6 @@ export function useCoach(anchor: ISODate) {
   const data = useData();
   const idx = useIndexes();
   return useMemo(() => buildCoach(data, idx, anchor), [data, idx, anchor]);
-}
-
-/** The cycle plan around a date: the current rotation plus the next two. */
-export function useCyclePlan(anchor: ISODate, cycles = 3) {
-  const data = useData();
-  const idx = useIndexes();
-  return useMemo(() => buildCyclePlan(data, idx, anchor, cycles), [data, idx, anchor, cycles]);
 }
 
 export function useMetrics(date: ISODate) {
