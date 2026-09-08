@@ -44,6 +44,15 @@ export interface RecoveryInput {
   soreness?: number;
   /** Pain while walking. Not a deduction — it cancels the session. */
   painWhileWalking?: boolean;
+  /**
+   * Penalties handed over by the sleep module, already computed there.
+   *
+   * They arrive as finished numbers rather than as raw sleep data, because the
+   * sleep module never decides about training — it produces signals and this one
+   * place turns them into a recovery value. Two places deciding is how a plan
+   * starts contradicting itself.
+   */
+  sleepPenalties?: { label: string; delta: number }[];
 }
 
 export interface RecoveryValue {
@@ -134,10 +143,6 @@ export function computeRecovery(input: RecoveryInput): RecoveryValue {
     }
   }
 
-  if (input.napExpected && input.napTaken === false) {
-    add('Vorschlaf vor dem Nachtdienst ausgefallen', -15);
-  }
-
   const hrReady = input.restingHrBaseline?.ready && input.restingHrBaseline.value != null;
   if (input.restingHr != null && hrReady) {
     const above = input.restingHr - input.restingHrBaseline!.value!;
@@ -152,6 +157,10 @@ export function computeRecovery(input: RecoveryInput): RecoveryValue {
 
   if (input.soreness != null && input.soreness >= 3) {
     add(`Muskelkater ${input.soreness}/5`, -15);
+  }
+
+  for (const penalty of input.sleepPenalties ?? []) {
+    add(penalty.label, penalty.delta);
   }
 
   const clamped = Math.max(0, Math.min(100, Math.round(value)));

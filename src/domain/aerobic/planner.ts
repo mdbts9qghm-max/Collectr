@@ -24,6 +24,8 @@ import { anyEnabled, extensionAvailable, extensionSlots, EXTENSION_MIN_RECOVERY,
 import type { ExtensionSettings } from './extension.ts';
 import type { SlotRequest } from './volume.ts';
 import { checkMacrocycle, checkUnit } from './rules.ts';
+import { ACWR_UPPER } from '../cycle/acwr.ts';
+import { addDays } from '../date.ts';
 import type { PlacedUnit } from './rules.ts';
 import { windowsFor, vShiftWindows } from './windows.ts';
 import type { DayWindows } from './windows.ts';
@@ -64,6 +66,18 @@ export interface PlanInput {
   modeOverrides?: Map<string, Mode>;
   /** The optional volume extension, off unless switched on deliberately. */
   extension?: ExtensionSettings;
+  /**
+   * Signals from the sleep module. It never downgrades anything itself — it
+   * hands over what it observed and this planner decides what follows.
+   */
+  sleep?: {
+    debtHours: number;
+    downgradeNextHard: boolean;
+    forceDeload: boolean;
+    /** Dates after which no hard session may be planned. */
+    blockHardAfter: ISODate[];
+    warnings: string[];
+  };
 }
 
 export interface PlannedUnit {
@@ -147,6 +161,46 @@ export function planAerobic(input: PlanInput): AerobicPlan {
     warnings.push(`Volumenerweiterung noch nicht aktiv: ${availability.reason}`);
   }
 
+  /*
+   * Sleep debt reaches the plan here and nowhere else.
+   *
+   * Above eight hours it forces a deload regardless of where the cycle rhythm
+   * stands; above five it costs the next hard session one step. The sleep module
+   * only reported the numbers — this is the single place that acts on them.
+   */
+  const sleep = input.sleep;
+  if (sleep) warnings.push(...sleep.warnings);
+  const sleepForcesDeload = !!sleep?.forceDeload;
+
+  /*
+   * Which days may not carry a hard session, and why — one sentence per reason,
+   * resolved here so every session on the day gets the same answer.
+   */
+  const acwrHot = input.acwr != null && input.acwr > ACWR_UPPER;
+  let hardBudgetSpent = false;
+  const forcedStepFor = (date: ISODate, wantedKind: SessionKind): string | null => {
+    const yesterday = addDays(date, -1);
+    if (sleep?.blockHardAfter.includes(yesterday)) {
+      return 'Tagschlaf gestern unter 5 h — heute keine harte Einheit';
+    }
+
+    /*
+     * The ratio and the sleep debt each cost the *next hard session* one step —
+     * not the next session of any kind. Spending the budget on an easy run would
+     * leave the intensity session untouched, which is the opposite of the point.
+     */
+    if (hardBudgetSpent || CATALOGUE[wantedKind].load < 60) return null;
+    if (acwrHot) {
+      hardBudgetSpent = true;
+      return `Belastungsverhältnis ${input.acwr?.toFixed(2)} über dem Zielband — eine Stufe zurück`;
+    }
+    if (sleep?.downgradeNextHard) {
+      hardBudgetSpent = true;
+      return `Schlafschuld ${sleep.debtHours.toFixed(1)} h im Makrozyklus — eine Stufe zurück`;
+    }
+    return null;
+  };
+
   /* 2 · Load the template for each cycle in the horizon. */
   const cycleTemplates = groups.map((group, i) => {
     const cycleIndex = firstCycleIndex + i;
@@ -154,7 +208,7 @@ export function planAerobic(input: PlanInput): AerobicPlan {
       group,
       cycleIndex,
       type: cycleTypeFor(cycleIndex),
-      isDeload: isDeloadCycle(cycleIndex),
+      isDeload: isDeloadCycle(cycleIndex) || sleepForcesDeload,
       slots: [
         ...templateFor(target.phase.key, cycleTypeFor(cycleIndex)),
         // Extra windows only where the athlete switched them on and earned them.
@@ -256,6 +310,7 @@ export function planAerobic(input: PlanInput): AerobicPlan {
             (cycle.isDeload ? DELOAD_VOLUME_FACTOR : 1),
         ),
         deload: cycle.isDeload,
+        forceStepDown: effectiveSlot.kind ? forcedStepFor(day.date, effectiveSlot.kind) : null,
         interval: isIntensitySlot && !day.isVShift ? interval : undefined,
         override: input.modeOverrides?.get(`${day.date}:${slot.id}`),
       });
@@ -381,6 +436,8 @@ function buildUnit(args: {
   interval?: IntervalSession;
   override?: Mode;
   deload?: boolean;
+  /** One forced step down, and the sentence that explains it. */
+  forceStepDown?: string | null;
 }): PlannedUnit | null {
   const { day, slot, windows, recovery } = args;
   const reasons = [slot.reason];
@@ -415,9 +472,21 @@ function buildUnit(args: {
    * always the mode change. Manual mode is the exception: while the baselines
    * are still filling, the app makes no automatic downgrades at all.
    */
+  /*
+   * A forced step down comes from outside the recovery value: a load ratio
+   * running hot, sleep debt over five hours, or a day sleep under five hours
+   * yesterday. It is expressed as a ban on hard sessions rather than as a
+   * subtraction, because the reason is not that the day feels worse — it is that
+   * a hard session is the wrong thing to do today whatever the day feels like.
+   */
+  if (args.forceStepDown) reasons.push(args.forceStepDown);
+
   const step = recovery.manualMode
     ? { kind: wantedKind, mode: wantedMode, durationFactor: 1, why: 'wie geplant' }
-    : downgradeUntil(wantedKind, wantedMode, (s) => recovery.value >= minRecoveryFor(s, wantedMode));
+    : downgradeUntil(wantedKind, wantedMode, (s) => {
+        if (args.forceStepDown && CATALOGUE[s.kind].load >= 60) return false;
+        return recovery.value >= minRecoveryFor(s, wantedMode);
+      });
 
   if (!step) return null;
   if (recovery.manualMode) {

@@ -206,8 +206,40 @@ console.log('✓ progress view shows markers, not badges');
 
 await shot('06-week-planner');
 
+/*
+ * The sleep tab: four tracks, every recommendation tappable with its reason, no
+ * dose for melatonin, and nothing that turns sleep into a score.
+ */
+await page.goto(`${BASE}/#/sleep`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.tl-track');
+await page.waitForTimeout(500);
+const tracks = await page.locator('.tl-track').count();
+if (tracks !== 4) throw new Error(`sleep timeline shows ${tracks} tracks, expected 4`);
+if ((await page.locator('.tl-bar').count()) === 0) throw new Error('the timeline has no bars');
+
+const beforeTap = (await page.locator('.app-main').innerText()).length;
+await page.locator('.advice-row').nth(2).click();
+await page.waitForTimeout(350);
+if ((await page.locator('.app-main').innerText()).length <= beforeTap) {
+  throw new Error('tapping a recommendation did not reveal its reason');
+}
+console.log(`✓ sleep tab: ${tracks} tracks, recommendations explain themselves on tap`);
+
+const sleepText = await page.locator('.app-main').innerText();
+if (/\d+\s?(mg|µg|mcg)/i.test(sleepText)) {
+  throw new Error('the sleep tab must not name a dose for any substance');
+}
+if (!/Apotheke|Hausarzt/.test(sleepText)) throw new Error('missing the referral to a pharmacy or doctor');
+if (!/Keine Diagnose/.test(sleepText)) throw new Error('missing the disclaimer');
+const sleepGamified = await page.evaluate(
+  () => document.querySelectorAll('.badge, .streak, .streak-dot, .trophy').length,
+);
+if (sleepGamified > 0) throw new Error('sleep metrics must not be gamified');
+console.log('✓ substances explained without a dose, referral and disclaimer present, no gamification');
+
 for (const [path, name] of [
   ['#/training', '05-training'],
+  ['#/sleep', '05b-sleep'],
   ['#/week', '06-week'],
   ['#/habits', '07-habits'],
   ['#/tasks', '08-tasks'],

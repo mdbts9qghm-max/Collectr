@@ -10,6 +10,7 @@ import {
   buildWeek,
   buildCyclePlan,
   buildAerobicPlan,
+  buildSleepView,
   makeDayContextFn,
 } from '../data/derived.ts';
 import { today as todayIso } from '../domain/date.ts';
@@ -53,6 +54,25 @@ export function useWeek(anchor: ISODate) {
   const data = useData();
   const idx = useIndexes();
   return useMemo(() => buildWeek(data, idx, anchor), [data, idx, anchor]);
+}
+
+/** Sleep coaching for a date: the four tracks, the debt signals, medical flags. */
+export function useSleepView(date: ISODate) {
+  const data = useData();
+  const idx = useIndexes();
+  const [nowMinutes, setNow] = useState(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  useEffect(() => {
+    // The caffeine countdown has to actually count.
+    const timer = window.setInterval(() => {
+      const d = new Date();
+      setNow(d.getHours() * 60 + d.getMinutes());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return useMemo(() => buildSleepView(data, idx, date, nowMinutes), [data, idx, date, nowMinutes]);
 }
 
 /** The aerobic plan: one macrocycle — two cycles, ten days. */

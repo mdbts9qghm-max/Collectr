@@ -1186,3 +1186,70 @@
   color: var(--text);
   font-weight: 600;
 }
+
+/* ------------------------------------------------------------------ *
+ * Sleep tab — day timeline over four tracks
+ * ------------------------------------------------------------------ */
+.tl-hours {
+  position: relative;
+  height: 12px;
+  margin-left: 26px;
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tl-hours > span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.tl-hours > span:first-child { transform: none; }
+.tl-hours > span:last-child { transform: translateX(-100%); }
+.tl-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.tl-label { width: 20px; font-size: 13px; text-align: center; }
+.tl-lane {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.tl-bar {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 3px;
+  border: 1.5px solid transparent;
+  opacity: 0.8;
+  min-width: 4px;
+}
+/* A "do not" is drawn as an outline, so avoiding and doing never look alike. */
+.tl-bar.avoid {
+  border-style: dashed;
+  opacity: 0.9;
+}
+.tl-bar.open {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.advice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 44px; /* Apples Richtwert für Tap-Ziele */
+  padding: var(--s2) var(--s3);
+  text-align: left;
+}
+.advice-time {
+  flex: none;
+  width: 40px;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 2px;
+}

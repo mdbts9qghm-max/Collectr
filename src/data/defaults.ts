@@ -11,7 +11,7 @@ import { makeId } from '../domain/ids.ts';
 import { DEFAULT_PLANNER_SETTINGS } from '../domain/cycle/types.ts';
 import { NO_EXTENSION } from '../domain/aerobic/extension.ts';
 
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 /**
  * Shift templates modelled on the user's rotation. Every field here is editable
@@ -201,6 +201,12 @@ export function defaultSettings(): AppSettings {
     thresholdTests: [],
     volumeExtension: { ...NO_EXTENSION },
     modeOverrides: {},
+    sleepCoaching: {
+      offerCoffeeNap: false,
+      daytimeSleepiness: false,
+      involuntarySleepOnset: false,
+      observedApnea: false,
+    },
     updatedAt: nowTimestamp(),
   };
 }
@@ -226,6 +232,7 @@ export function migrateSettings(stored: AppSettings): AppSettings {
     thresholdTests: stored.thresholdTests ?? base.thresholdTests,
     volumeExtension: { ...base.volumeExtension, ...stored.volumeExtension },
     modeOverrides: stored.modeOverrides ?? {},
+    sleepCoaching: { ...base.sleepCoaching, ...stored.sleepCoaching },
     version: SETTINGS_VERSION,
   };
 }

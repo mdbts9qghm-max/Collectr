@@ -9,6 +9,7 @@ import { Button } from './ui/primitives.tsx';
 import { Today } from './screens/Today.tsx';
 import { CheckIn } from './screens/CheckIn.tsx';
 import { Training } from './screens/Training.tsx';
+import { Sleep } from './screens/Sleep.tsx';
 import { Week } from './screens/Week.tsx';
 import { Habits } from './screens/Habits.tsx';
 import { Tasks } from './screens/Tasks.tsx';
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/today" element={<Today />} />
           <Route path="/checkin" element={<CheckIn />} />
           <Route path="/training" element={<Training />} />
+          <Route path="/sleep" element={<Sleep />} />
           <Route path="/week" element={<Week />} />
           <Route path="/habits" element={<Habits />} />
           <Route path="/tasks" element={<Tasks />} />

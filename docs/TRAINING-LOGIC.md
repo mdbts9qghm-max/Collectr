@@ -337,6 +337,86 @@ Zusatzvolumen wird nie über Intensität erzeugt. Der Tagschichttag bleibt auch 
 | Abschnitt 7 (Krafttraining) | ohne Überschrift in der Vorlage | Der Abschnitt beginnt mitten im Text nach 6b |
 | P2/P3 erreichen ihr aerobes Ziel | 540 von 600 bzw. mit Deload weniger | Vier Fenster tragen das Ziel nicht — genau der Punkt, den 6b benennt |
 
+## 4c. Schlaf und Regeneration
+
+Eigenes Modul, eigener Tab. Es gibt **Verhaltensempfehlungen auf Basis schlafmedizinischer
+Standardliteratur** — keine Diagnose, kein Ersatz für ärztliche Beratung.
+
+### Warum es nicht optional ist
+
+Schichtarbeit erzeugt eine dauerhafte Fehlstellung zwischen innerer Uhr und Arbeitszeit.
+Auflösen lässt sie sich nicht, abmildern schon. Die drei Stellschrauben, in dieser
+Reihenfolge:
+
+1. **Licht** — der mit Abstand stärkste Taktgeber
+2. **Schlaf-Timing** — feste Ankerzeiten schlagen hohe Gesamtdauer
+3. **Koffein-Timing** — der Zeitpunkt entscheidet, nicht die Menge
+
+Für das Trainingsziel ist das kein Beiwerk: Schlaf ist der Zeitraum, in dem Sehnen- und
+Knochenanpassung stattfindet — genau die begrenzende Größe im aeroben Aufbau.
+
+### Licht
+
+Die Regel unter jeder Zeile: helles Licht am **Ende** der Wachphase verschiebt die innere
+Uhr nach hinten, am **Beginn** nach vorne. Im Nachtdienst will man beides, zu
+unterschiedlichen Stunden — deshalb ist das eine Tabelle und kein „geh mehr raus".
+
+Zwei Punkte erklärt die App aktiv:
+
+- Die **Sonnenbrille auf dem Heimweg um 07:00** ist die wirksamste Einzelmaßnahme für den
+  Tagschlaf. Morgenlicht nach der Nachtschicht schiebt die Uhr in die falsche Richtung und
+  unterdrückt Melatonin genau vor dem geplanten Schlaf.
+- **Kein helles Licht nach 04:00.** Es verschiebt die Uhr nach hinten und erschwert die
+  Rückkehr zum Nachtschlaf an den freien Tagen.
+
+### Koffein
+
+Halbwertszeit rund 5 bis 6 Stunden. Der Nachtschichttag hat **zwei** Grenzen, nicht eine
+durchgehende: 10:00, damit der Vorschlaf gelingt, und 01:00 während des Dienstes, damit der
+Tagschlaf gelingt. Beides in eine Zahl zu pressen würde entweder den Vorschlaf zerstören
+oder Koffein genau dann verbieten, wenn es am meisten nützt.
+
+Die App zählt zur jeweils nächsten Grenze herunter und erinnert 30 Minuten vorher.
+
+### Kopplung an die Trainingsplanung
+
+| Signal | Wirkung |
+| --- | --- |
+| Vorschlaf ausgefallen | Erholungswert −15 |
+| Tagschlaf unter 5 h | −15, am Folgetag keine harte Einheit |
+| Koffeingrenze wiederholt überschritten | Hinweis, **keine** Abstufung |
+| Schlafschuld über 5 h | nächste harte Einheit eine Stufe zurück |
+| Schlafschuld über 8 h | Deload, unabhängig vom Zyklusrhythmus |
+
+**Das Schlafmodul stuft nie selbst ab.** Es liefert Signale, der aerobe Planer entscheidet.
+Ein einziger Ort entscheidet über Abstufungen — zwei Orte wären der Anfang eines Plans, der
+sich selbst widerspricht.
+
+Dabei fiel auf, dass der Abzug an der ersten *Einheit* verbraucht wurde statt an der ersten
+*harten*: der lockere Lauf am Zyklustag 2 hat die Abstufung aufgebraucht und die
+Intensitätseinheit blieb unangetastet — das Gegenteil des Zwecks.
+
+### Substanzen
+
+Zu Koffein plant die App, weil es ein Alltagsmittel und das Timing planungsrelevant ist. Zu
+allem anderen erklärt sie die Wirkweise und verweist an Apotheke oder Arzt — **keine
+Dosierung, kein Produkt, kein Einnahmeplan.** Zu Melatonin darf sie sagen, dass es
+chronobiologisch wirkt und kein Schlafmittel ist.
+
+### Ärztliche Abklärung
+
+Die App rät dazu bei anhaltender Tagesschläfrigkeit trotz genug Schlaf, Einschlafen gegen
+den Willen, beobachteten Atemaussetzern, Schlaf dauerhaft unter 6 h, oder wenn die Qualität
+über mehr als vier Wochen absinkt. Diese Hinweise stehen **oben** auf dem Bildschirm, über
+allem Verhaltensrat.
+
+### Keine Gamification auf Schlafdaten
+
+Punkte und Serien auf Schlafmetriken fördern Orthosomnie — die Verschlechterung des Schlafs
+durch dessen Überwachung. Das ist die eine Fehlwirkung, die ein Modul wie dieses ganz
+allein verursachen kann. Der Smoke-Test prüft bei jedem Lauf, dass keine Abzeichen
+auftauchen.
+
 ## 5. Hybrid Score
 
 Sechs Säulen, jede 0–100:

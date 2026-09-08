@@ -31,6 +31,10 @@ import { planAerobic } from '../domain/aerobic/planner.ts';
 import { computeRecovery as computeAerobicRecovery } from '../domain/aerobic/recovery.ts';
 import { baselineFor } from '../domain/aerobic/whoop.ts';
 import { vShiftWindows, windowsFor } from '../domain/aerobic/windows.ts';
+import { buildSleepDay } from '../domain/sleep/day.ts';
+import { sleepSignals } from '../domain/sleep/debt.ts';
+import type { SleepNight } from '../domain/sleep/debt.ts';
+import { medicalFlags } from '../domain/sleep/medical.ts';
 
 /** Indexes built once per render pass and shared by every derived computation. */
 export interface Indexes {
@@ -391,6 +395,18 @@ export function buildCyclePlan(data: AppData, idx: Indexes, anyDate: ISODate, cy
   });
 }
 
+/** The sleep module's signals, in the shape the aerobic planner consumes. */
+function sleepSignalsFor(data: AppData, idx: Indexes, date: ISODate) {
+  const { signals } = buildSleepView(data, idx, date, 0);
+  return {
+    debtHours: signals.debtHours,
+    downgradeNextHard: signals.downgradeNextHard,
+    forceDeload: signals.forceDeload,
+    blockHardAfter: signals.blockHardAfter,
+    warnings: signals.warnings,
+  };
+}
+
 /** Median resting heart rate over the last 30 days, or null below five entries. */
 function restingHrBaseline(idx: Indexes, date: ISODate): number | null {
   const values: number[] = [];
@@ -504,6 +520,7 @@ export function buildAerobicPlan(data: AppData, idx: Indexes, anyDate: ISODate, 
     acwr: acwrState.ratio,
     loadByDate,
     extension: settings.volumeExtension,
+    sleep: sleepSignalsFor(data, idx, today),
     modeOverrides: new Map(Object.entries(settings.modeOverrides ?? {})),
   });
 }
@@ -524,3 +541,66 @@ function aerobicMinutesInWindow(
 }
 
 export type AerobicPlanView = ReturnType<typeof buildAerobicPlan>;
+
+/* ------------------------------------------------------------------ *
+ * Sleep and recovery coaching
+ * ------------------------------------------------------------------ */
+
+/** The sleep signals for a date, and the day's four advice tracks. */
+export function buildSleepView(data: AppData, idx: Indexes, date: ISODate, nowMinutes: number) {
+  const wake = data.settings.planner.dayShiftWakeMinutes;
+  const detected = detectCycle(addDays(date, -13), date, idx.shiftAssignments, idx.shiftTypes);
+  const todayEntry = detected.find((d) => d.date === date);
+  const ctx = { cycleDay: todayEntry?.cycleDay ?? null, isVShift: !!todayEntry?.isVShift };
+
+  const windows = ctx.cycleDay
+    ? ctx.isVShift
+      ? vShiftWindows()
+      : windowsFor(ctx.cycleDay, wake)
+    : null;
+
+  const day = buildSleepDay(
+    ctx,
+    windows
+      ? {
+          start: windows.sleepStart,
+          end: windows.sleepEnd,
+          targetMinutes: windows.sleepTargetMinutes,
+          nap: windows.nap,
+        }
+      : null,
+    nowMinutes,
+    { offerCoffeeNap: data.settings.sleepCoaching?.offerCoffeeNap ?? false },
+  );
+
+  /*
+   * Sleep debt is measured over the macrocycle — ten days — because that is the
+   * span the training plan itself balances on.
+   */
+  const nights: SleepNight[] = detected.slice(-10).map((d) => {
+    const w = d.cycleDay ? (d.isVShift ? vShiftWindows() : windowsFor(d.cycleDay, wake)) : null;
+    const checkIn = idx.checkIns.get(d.date);
+    return {
+      date: d.date,
+      targetHours: (w?.sleepTargetMinutes ?? 8 * 60) / 60,
+      actualHours: checkIn?.sleepHours ?? null,
+      cycleDay: d.cycleDay,
+      napTaken: checkIn?.napTaken,
+      napExpected: !!w?.nap,
+    };
+  });
+  const signals = sleepSignals(nights, date);
+
+  const history = lastNDays(date, 28).map((d) => idx.checkIns.get(d));
+  const flags = medicalFlags({
+    sleepHours: history.map((c) => c?.sleepHours ?? null),
+    sleepQuality: history.map((c) => c?.sleepQuality ?? null),
+    daytimeSleepinessDespiteSleep: data.settings.sleepCoaching?.daytimeSleepiness ?? false,
+    involuntarySleepOnset: data.settings.sleepCoaching?.involuntarySleepOnset ?? false,
+    observedApnea: data.settings.sleepCoaching?.observedApnea ?? false,
+  });
+
+  return { ctx, day, signals, flags, nights };
+}
+
+export type SleepView = ReturnType<typeof buildSleepView>;

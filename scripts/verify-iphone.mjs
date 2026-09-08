@@ -89,6 +89,29 @@ for (const d of DEVICES) {
   if (!barOk) failures++;
   console.log(`  Tableiste unten bündig: ${barOk ? 'OK' : 'FEHLER'}`);
 
+  /*
+   * Prüfen: Passt die Tableiste? Sechs Einträge sind auf dem SE 62 px breit —
+   * eng genug, dass ein zu langes Label umbricht oder überläuft, und das fällt
+   * in einem Desktop-Browser nicht auf.
+   */
+  const tabs = await page.evaluate(() => {
+    const items = [...document.querySelectorAll('.tabbar-item')];
+    return items.map((el) => {
+      const label = el.querySelector('span:last-child') ?? el;
+      return {
+        width: Math.round(el.getBoundingClientRect().width),
+        overflow: label.scrollWidth > label.clientWidth + 1,
+        text: (el.textContent ?? '').trim(),
+      };
+    });
+  });
+  const clipped = tabs.filter((i) => i.overflow);
+  if (clipped.length > 0) failures++;
+  console.log(
+    `  Tableiste: ${tabs.length} Einträge à ${tabs[0]?.width ?? '?'}px` +
+      (clipped.length ? ` → ABGESCHNITTEN: ${clipped.map((c) => c.text).join(', ')}` : ' → passt'),
+  );
+
   // Prüfen: Eingabefeld-Schriftgröße (unter 16px zoomt iOS)
   await page.goto(`${BASE}/#/tasks`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);

@@ -104,6 +104,9 @@ export const IconProfile = (p: IconProps = {}) =>
     p,
   );
 
+export const IconSleep = (p: IconProps = {}) =>
+  svg(<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />, p);
+
 export const IconPlus = (p: IconProps = {}) => svg(<path d="M12 5v14M5 12h14" />, p);
 export const IconMinus = (p: IconProps = {}) => svg(<path d="M5 12h14" />, p);
 export const IconCheck = (p: IconProps = {}) => svg(<path d="M20 6 9 17l-5-5" />, p);

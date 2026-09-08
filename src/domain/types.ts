@@ -524,6 +524,13 @@ export interface AppSettings {
    * exist yet — this is a change to the plan, made before anything is logged.
    */
   modeOverrides: Record<string, 'run' | 'bike' | 'row'>;
+  /** Answers the sleep module needs but cannot observe. */
+  sleepCoaching: {
+    offerCoffeeNap: boolean;
+    daytimeSleepiness: boolean;
+    involuntarySleepOnset: boolean;
+    observedApnea: boolean;
+  };
   notifications: NotificationSettings;
   theme: 'dark' | 'light' | 'system';
   weekStartsOn: 0 | 1;

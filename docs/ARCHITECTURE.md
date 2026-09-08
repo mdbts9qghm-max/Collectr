@@ -72,6 +72,16 @@ src/
 │   │   ├── rules.ts             harte Regeln als einzeln zitierbare Objekte
 │   │   ├── windows.ts           Schlaf- und Trainingsfenster
 │   │   └── planner.ts           die neun Schritte
+│   ├── sleep/               Schlafcoaching — Licht, Koffein, Ernährung, Substanzen
+│   │   ├── types.ts             die vier Spuren, Empfehlung mit Begründung
+│   │   ├── light.ts             Lichtplan je Zyklustag
+│   │   ├── caffeine.ts          Grenzen, Countdown, Kaffee-Nap
+│   │   ├── rules.ts             Schlafregeln allgemein und je Zyklustag
+│   │   ├── nutrition.ts         Mahlzeiten rund um den Nachtdienst
+│   │   ├── substances.ts        was die App sagen darf und was nicht
+│   │   ├── medical.ts           wann sie zur ärztlichen Abklärung rät
+│   │   ├── debt.ts              Schlafschuld als Signal an die Trainingsplanung
+│   │   └── day.ts               die vier Spuren eines Tages zusammengesetzt
 │   └── cycle/               Vorgänger, noch für Analytics und Coach in Gebrauch
 │       ├── types.ts             Zyklustage, Fenster, Tagesform, Planereinstellungen
 │       ├── catalogue.ts         sieben Einheiten mit Last, Mindesterholung, Abstufung

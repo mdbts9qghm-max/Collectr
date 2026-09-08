@@ -380,3 +380,62 @@ describe('Der Plan endet nicht', () => {
     expect(phaseFor(1000).key).toBe('P3');
   });
 });
+
+describe('Signale aus dem Schlafmodul', () => {
+  it('löst bei Schlafschuld über 8 h einen Deload aus, unabhängig vom Rhythmus', () => {
+    const p = plan({
+      sleep: {
+        debtHours: 9,
+        downgradeNextHard: true,
+        forceDeload: true,
+        blockHardAfter: [],
+        warnings: ['Schlafschuld 9.0 h im Makrozyklus — ein Deload wird ausgelöst.'],
+      },
+    });
+    // Every cycle in the horizon is a deload, whatever the four-cycle rhythm says.
+    expect(p.cycles.every((c) => c.isDeload)).toBe(true);
+    expect(p.warnings.join(' ')).toMatch(/Deload/);
+    for (const unit of allUnits(p)) expect(unit.kind).not.toBe('vo2_intervals');
+  });
+
+  it('stuft bei Schlafschuld über 5 h genau die nächste harte Einheit ab', () => {
+    const p = plan({
+      sleep: {
+        debtHours: 6,
+        downgradeNextHard: true,
+        forceDeload: false,
+        blockHardAfter: [],
+        warnings: [],
+      },
+    });
+    const key = unitsOn(p, 3)[0];
+    expect(key.kind).not.toBe('vo2_intervals');
+    expect(key.reasons.join(' ')).toMatch(/Schlafschuld/);
+    // Only the next one: the long session of the second cycle stays.
+    const second = unitsOn(p, 8)[0];
+    expect(second.reasons.join(' ')).not.toMatch(/Schlafschuld/);
+  });
+
+  it('lässt nach einem Tagschlaf unter 5 h am Folgetag keine harte Einheit zu', () => {
+    const p = plan({
+      sleep: {
+        debtHours: 0,
+        downgradeNextHard: false,
+        forceDeload: false,
+        blockHardAfter: [addDays(START, 2)],
+        warnings: [],
+      },
+    });
+    const dayAfter = unitsOn(p, 3)[0];
+    expect(CATALOGUE[dayAfter.kind].load).toBeLessThan(60);
+    expect(dayAfter.reasons.join(' ')).toMatch(/Tagschlaf gestern unter 5 h/);
+  });
+
+  it('ändert ohne Signale nichts', () => {
+    const withSignals = plan({
+      sleep: { debtHours: 2, downgradeNextHard: false, forceDeload: false, blockHardAfter: [], warnings: [] },
+    });
+    const without = plan();
+    expect(allUnits(withSignals).map((u) => u.kind)).toEqual(allUnits(without).map((u) => u.kind));
+  });
+});

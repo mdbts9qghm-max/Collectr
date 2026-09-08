@@ -7,6 +7,7 @@ import {
   IconGoal,
   IconHabits,
   IconProfile,
+  IconSleep,
   IconTasks,
   IconToday,
   IconTraining,
@@ -24,6 +25,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/today', label: 'Heute', shortLabel: 'Heute', icon: IconToday, primary: true },
   { to: '/training', label: 'Training', shortLabel: 'Training', icon: IconTraining, primary: true },
+  { to: '/sleep', label: 'Schlaf & Erholung', shortLabel: 'Schlaf', icon: IconSleep, primary: true },
   { to: '/habits', label: 'Habits', shortLabel: 'Habits', icon: IconHabits, primary: true },
   { to: '/tasks', label: 'Aufgaben', shortLabel: 'Tasks', icon: IconTasks, primary: true },
   // Everything numeric lives here, off the daily screen.
