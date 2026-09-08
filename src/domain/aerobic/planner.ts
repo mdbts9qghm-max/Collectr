@@ -129,6 +129,8 @@ export interface MacrocyclePlan {
   runMinutes: number;
   crossMinutes: number;
   spilledToCross: number;
+  /** Minutes the phase asked for that no session can carry. */
+  shortfallMinutes: number;
   baseShare: number;
   notes: string[];
 }
@@ -240,6 +242,10 @@ export function planAerobic(input: PlanInput): AerobicPlan {
     runSessionCount: runSlots.length,
     stageChange: !stage.heldBack && stage.stage.fromMacrocycle === macroIndex && macroIndex > 0,
     isDeload: false,
+    // Cross-training only appears in the plan if some slot actually asks for it.
+    crossPlanned: cycleTemplates.some((c) =>
+      c.slots.some((slot) => slot.kind && slot.mode && slot.mode !== 'run'),
+    ),
   });
   warnings.push(...volume.notes);
 
@@ -330,10 +336,28 @@ export function planAerobic(input: PlanInput): AerobicPlan {
   }
 
   /* 7 · Zone share across the macrocycle. */
+  /*
+   * An interval session is not one zone.
+   *
+   * Eighteen minutes of warm-up and five of cool-down are zone 1 to 2; only the
+   * work intervals sit in zone 4 or 5. Counting the whole session as its work
+   * zone understates the base share badly — a 39-minute track session would
+   * book 39 hard minutes when only 16 of them are hard, and the 80 % rule would
+   * then fire on a plan that actually satisfies it.
+   */
   const share = baseShare(
     units
       .filter((u) => CATALOGUE[u.kind].discipline === 'aerobic')
-      .map((u) => ({ minutes: u.durationMinutes, isBase: BASE_ZONES.includes(u.zone) })),
+      .flatMap((u) => {
+        if (!u.interval) {
+          return [{ minutes: u.durationMinutes, isBase: BASE_ZONES.includes(u.zone) }];
+        }
+        const work = Math.min(u.durationMinutes, u.interval.workMinutes);
+        return [
+          { minutes: work, isBase: false },
+          { minutes: u.durationMinutes - work, isBase: true },
+        ];
+      }),
   );
 
   /* 8 · The hard rules, as the last layer, over the finished plan. */
@@ -414,6 +438,13 @@ export function planAerobic(input: PlanInput): AerobicPlan {
         .filter((u) => u.mode === 'bike' || u.mode === 'row')
         .reduce((sum, u) => sum + u.durationMinutes, 0),
       spilledToCross: volume.spilledToCross,
+      shortfallMinutes: Math.max(
+        0,
+        target.aerobicMinutes -
+          units
+            .filter((u) => CATALOGUE[u.kind].discipline === 'aerobic')
+            .reduce((sum, u) => sum + u.durationMinutes, 0),
+      ),
       baseShare: share,
       notes: volume.notes,
     },

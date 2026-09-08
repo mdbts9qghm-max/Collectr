@@ -36,7 +36,7 @@ export function buildSleepDay(
   options: { offerCoffeeNap?: boolean } = {},
 ): SleepDay {
   const advice: Advice[] = [
-    ...sleepFromWindow(sleep, ctx),
+    ...sleepFromWindow(sleep),
     ...sleepAdvice(ctx),
     ...lightPlan(ctx),
     ...caffeineAdvice(ctx),
@@ -61,7 +61,7 @@ export function buildSleepDay(
 }
 
 /** The planned sleep itself, so it appears on the timeline like everything else. */
-function sleepFromWindow(sleep: SleepWindow | null, ctx: DayContext): Advice[] {
+function sleepFromWindow(sleep: SleepWindow | null): Advice[] {
   if (!sleep) return [];
   const out: Advice[] = [
     {

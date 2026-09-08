@@ -41,6 +41,14 @@ export interface VolumeInput {
   stageChange: boolean;
   /** True in a deload macrocycle. */
   isDeload: boolean;
+  /**
+   * Whether the plan contains cross-training sessions at all.
+   *
+   * When it does not, the overflow has nowhere to land and the aerobic target
+   * genuinely has to be cut to what running allows. That is a real loss, not a
+   * rounding detail, so it is stated rather than absorbed.
+   */
+  crossPlanned: boolean;
 }
 
 export interface VolumePlan {
@@ -49,6 +57,8 @@ export interface VolumePlan {
   crossMinutes: number;
   /** Minutes that wanted to be run but landed on the bike or rower instead. */
   spilledToCross: number;
+  /** Minutes the phase asked for that no session can carry. */
+  shortfallMinutes: number;
   notes: string[];
 }
 
@@ -85,8 +95,16 @@ export function planVolume(input: VolumeInput): VolumePlan {
     notes.push('Deload-Zyklus — Gesamtvolumen 40 % niedriger, keine Intensitätseinheit');
   }
 
-  // What the run share asks for, before the running limits are applied.
-  const wantedRun = Math.round(aerobic * input.targetRunShare);
+  /*
+   * What the run share asks for, before the running limits are applied.
+   *
+   * The share exists to split the aerobic volume between running and
+   * cross-training. With no cross-training planned there is nothing to split,
+   * so it does not apply — cutting the target by 60 % because a share says
+   * "60 % running" would be reading the number backwards. What still applies is
+   * the 8 % growth ceiling, which is the limit that actually protects tissue.
+   */
+  const wantedRun = input.crossPlanned ? Math.round(aerobic * input.targetRunShare) : aerobic;
   let run = wantedRun;
 
   if (input.previousRunMinutes) {
@@ -111,8 +129,33 @@ export function planVolume(input: VolumeInput): VolumePlan {
   }
 
   const spilled = Math.max(0, wantedRun - run);
-  const cross = aerobic - run;
 
+  if (!input.crossPlanned) {
+    /*
+     * Without cross-training the aerobic target is whatever running can carry.
+     * The plan does not pretend otherwise: the shortfall against the phase
+     * target is named, because it is the direct cost of training one discipline
+     * only, and the athlete should see the size of it.
+     */
+    const shortfall = aerobic - run;
+    if (shortfall > 0) {
+      notes.push(
+        `Ohne geplantes Crosstraining ist das aerobe Ziel auf ${run} min begrenzt — ` +
+          `${shortfall} min weniger, als die Phase vorsieht. Die 8-%-Grenze fürs Laufen entscheidet, ` +
+          'weil es nichts gibt, worauf die Differenz ausweichen könnte.',
+      );
+    }
+    return {
+      aerobicMinutes: run,
+      runMinutes: run,
+      crossMinutes: 0,
+      spilledToCross: 0,
+      shortfallMinutes: Math.max(0, shortfall),
+      notes,
+    };
+  }
+
+  const cross = aerobic - run;
   if (spilled > 0) {
     notes.push(
       `${spilled} min, die das Laufen nicht hergibt, laufen auf Rad oder Rudergerät weiter — ` +
@@ -120,7 +163,14 @@ export function planVolume(input: VolumeInput): VolumePlan {
     );
   }
 
-  return { aerobicMinutes: aerobic, runMinutes: run, crossMinutes: cross, spilledToCross: spilled, notes };
+  return {
+    aerobicMinutes: aerobic,
+    runMinutes: run,
+    crossMinutes: cross,
+    spilledToCross: spilled,
+    shortfallMinutes: 0,
+    notes,
+  };
 }
 
 /* ------------------------------------------------------------------ *

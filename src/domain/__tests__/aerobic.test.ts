@@ -121,6 +121,7 @@ describe('Volumen und Überlauf auf Rad und Rudern', () => {
       runSessionCount: 4,
       stageChange: false,
       isDeload: false,
+      crossPlanned: true,
     });
     expect(v.aerobicMinutes).toBe(660);
     expect(v.runMinutes).toBe(324); // 300 × 1,08
@@ -139,6 +140,7 @@ describe('Volumen und Überlauf auf Rad und Rudern', () => {
       runSessionCount: 4,
       stageChange: true,
       isDeload: false,
+      crossPlanned: true,
     });
     expect(v.aerobicMinutes).toBe(450);
     expect(v.notes.join(' ')).toMatch(/Stufenwechsel/);
@@ -154,6 +156,7 @@ describe('Volumen und Überlauf auf Rad und Rudern', () => {
       runSessionCount: 4,
       stageChange: false,
       isDeload: false,
+      crossPlanned: true,
     });
     expect(v.runMinutes).toBeLessThanOrEqual(120 * 1.08);
   });
@@ -437,5 +440,51 @@ describe('Signale aus dem Schlafmodul', () => {
     });
     const without = plan();
     expect(allUnits(withSignals).map((u) => u.kind)).toEqual(allUnits(without).map((u) => u.kind));
+  });
+});
+
+describe('Ohne geplantes Crosstraining', () => {
+  it('plant jede Einheit als Lauf', () => {
+    const p = plan();
+    for (const unit of allUnits(p)) {
+      if (CATALOGUE[unit.kind].discipline !== 'aerobic') continue;
+      expect(unit.mode).toBe('run');
+    }
+    expect(p.macrocycle.crossMinutes).toBe(0);
+  });
+
+  it('kürzt das aerobe Ziel auf die Laufgrenze und sagt es', () => {
+    const p = plan({ previousAerobicMinutes: 400, previousRunMinutes: 160 });
+    // Ohne Ausweichmöglichkeit entscheidet die 8-%-Grenze fürs Laufen.
+    expect(p.macrocycle.crossMinutes).toBe(0);
+    expect(p.macrocycle.shortfallMinutes).toBeGreaterThan(0);
+    expect(p.warnings.join(' ')).toMatch(/Ohne geplantes Crosstraining/);
+  });
+
+  it('hält den Zone-1/2-Anteil trotzdem über 80 %', () => {
+    // Die Regel steht über allen Volumenzielen — auch über dem gekürzten Ziel.
+    for (const macro of [0, 6, 18]) {
+      const p = plan({ cycleOffset: macro * 2, days: days(10) });
+      expect(p.macrocycle.baseShare).toBeGreaterThanOrEqual(MIN_BASE_SHARE);
+    }
+  });
+
+  it('behält das Rad als erste Abstufungsstufe', () => {
+    // Nicht geplant heißt nicht abgeschafft: bei mäßiger Erholung ist dieselbe
+    // Einheit auf dem Rad weiter die bessere Antwort als ein gekürzter Lauf.
+    const p = plan({ days: days(10, { recovery: new Map([[3, 65]]) }) });
+    const unit = unitsOn(p, 3)[0];
+    expect(unit.mode).toBe('bike');
+    expect(unit.downgradedFrom?.mode).toBe('run');
+  });
+
+  it('hält den zweiten Lauf am Zyklustag 5 kurz', () => {
+    const p = plan({ days: days(20) });
+    for (const dayPlan of p.days.filter((d) => d.cycleDay === 5)) {
+      for (const unit of dayPlan.units) {
+        expect(unit.durationMinutes).toBeLessThanOrEqual(35);
+        expect(CATALOGUE[unit.kind].load).toBeLessThan(60);
+      }
+    }
   });
 });

@@ -79,18 +79,23 @@ const STRENGTH = (kind: SessionKind, reason: string): Slot => ({
 });
 
 /*
- * Why cycle day 5 is not a run in P0 to P2.
+ * Cycle day 5, the day after the hard or long session.
  *
- * The day after the hard or long session carries the highest injury
- * susceptibility of the whole cycle. Bike or rower deliver the aerobic stimulus
- * there at zero impact, and the improved circulation speeds the recovery on top
- * of that. From P2 the B cycle can carry a run there, once the tissue has three
- * blocks of adaptation behind it.
+ * That day carries the highest injury susceptibility of the whole cycle, and
+ * cross-training would deliver the aerobic stimulus there at zero impact. The
+ * athlete has chosen not to plan cycling, so it carries a run instead — kept
+ * deliberately easy and short, because a second run on tired legs is where the
+ * injuries come from, not the adaptation.
+ *
+ * Cross-training has not disappeared: it is still the first step of every
+ * downgrade chain. When a morning does not carry the planned session, the same
+ * work on the bike remains the better answer than a watered-down run. It is no
+ * longer *planned* — it is the escape hatch.
  */
-const CROSS = (id: string, kind: SessionKind, weight: number, reason: string): Slot => ({
+const DAY_FIVE = (id: string, kind: SessionKind, weight: number, reason: string): Slot => ({
   cycleDay: 5,
   kind,
-  mode: 'bike',
+  mode: 'run',
   id,
   weight,
   /*
@@ -99,8 +104,13 @@ const CROSS = (id: string, kind: SessionKind, weight: number, reason: string): S
    * a ten-day block is a normal endurance ride, and the bike does not care about
    * the volume the way tendons do.
    */
-  minShare: 0.08,
-  maxShare: 0.3,
+  /*
+   * The day-5 run is the second run in two days, so it stays short. Section 8
+   * of the training rules caps that at 35 minutes; the share is bounded so it
+   * cannot grow past that even in P3.
+   */
+  minShare: 0.05,
+  maxShare: 0.09,
   floorMinutes: 25,
   reason,
 });
@@ -136,7 +146,12 @@ const EARLY_A: Slot[] = [
   EASY_RUN('easy_a', null),
   STRENGTH('strength_moderate', 'Kraft am Schlaftag: keine Stoßbelastung, moderater Reiz vor dem Schlüsseltag'),
   INTENSITY,
-  CROSS('cross_a', 'recovery_z1', 1, 'Der Tag nach der harten Einheit — aerober Reiz bei null Stoßbelastung'),
+  DAY_FIVE(
+    'day5_a',
+    'easy_z2',
+    1,
+    'Der Tag nach der harten Einheit — kurz und locker, damit der Reiz von gestern landen kann',
+  ),
 ];
 
 const EARLY_B: Slot[] = [
@@ -144,7 +159,7 @@ const EARLY_B: Slot[] = [
   EASY_RUN('easy_b', 'strides'),
   STRENGTH('strength_moderate', 'Kraft am Schlaftag: keine Stoßbelastung, moderater Reiz vor dem Schlüsseltag'),
   LONG,
-  CROSS('cross_b', 'easy_z2', 2, 'Der Tag nach der langen Einheit — Rad oder Rudern statt Stoßbelastung'),
+  DAY_FIVE('day5_b', 'easy_z2', 2, 'Der Tag nach der langen Einheit — lockerer Lauf mittlerer Dauer'),
 ];
 
 /** P2 and P3: the B cycle carries a run on day 5. */
@@ -153,7 +168,7 @@ const LATE_A: Slot[] = [
   EASY_RUN('easy_a', null),
   STRENGTH('strength_heavy', 'Kraft am Schlaftag — vor dem Schlüsseltag beinfrei oder moderat gehalten'),
   INTENSITY,
-  CROSS('cross_a', 'recovery_z1', 1, 'Der Tag nach der Intensitätseinheit — regenerativ, null Stoßbelastung'),
+  DAY_FIVE('day5_a', 'easy_z2', 1, 'Der Tag nach der Intensitätseinheit — bewusst kurz gehalten'),
 ];
 
 const LATE_B: Slot[] = [

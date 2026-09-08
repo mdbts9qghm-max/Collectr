@@ -35,6 +35,7 @@ import {
 } from '../ui/primitives.tsx';
 import { IconDownload, IconPlus, IconUpload } from '../ui/icons.tsx';
 import { PhaseSheet, PlanSheet, newPhase } from '../ui/PhaseSheet.tsx';
+import { WhoopCard } from '../ui/WhoopCard.tsx';
 
 export function Profile() {
   const data = useData();
@@ -790,6 +791,9 @@ export function Profile() {
 
       {/* ---------- Integrations ---------- */}
       <SectionTitle title="Integrationen" />
+
+      <WhoopCard />
+
       <Card>
         <p className="t-small muted">
           Noch nicht angebunden. Die Datenstruktur ist vorbereitet: jede Einheit, jeder Check-in und
@@ -799,7 +803,6 @@ export function Profile() {
         <div className="col gap-3 mt-4">
           {[
             ['⌚', 'Garmin Forerunner 265', 'Einheiten, Distanzen, Herzfrequenz, Schlaf'],
-            ['🔴', 'WHOOP', 'Recovery, HRV, Ruhepuls, Schlafphasen'],
             ['💓', 'Polar H10', 'Herzfrequenz pro Einheit'],
             ['🍎', 'Apple Health', 'Schritte, Gewicht, Schlaf'],
             ['📅', 'Kalender', 'Schichten und Termine'],

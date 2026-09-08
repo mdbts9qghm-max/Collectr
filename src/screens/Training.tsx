@@ -188,15 +188,25 @@ function ZoneBar({ plan }: { plan: ReturnType<typeof useAerobicPlan> }) {
         <span className="zone-mark" style={{ left: `${MIN_BASE_SHARE * 100}%` }} />
       </div>
       <div className="row between mt-2 t-caption muted">
-        <span>{macrocycle.aerobicMinutes} min aerob</span>
         <span>
-          🏃 {macrocycle.runMinutes} · 🚴 {macrocycle.crossMinutes} min
+          {macrocycle.aerobicMinutes} min aerob
+          {macrocycle.shortfallMinutes > 0 && ` von ${macrocycle.target.aerobicMinutes} min Phasenziel`}
+        </span>
+        <span>
+          🏃 {macrocycle.runMinutes}
+          {macrocycle.crossMinutes > 0 && ` · 🚴 ${macrocycle.crossMinutes}`} min
         </span>
       </div>
       {macrocycle.spilledToCross > 0 && (
         <div className="t-caption muted mt-2">
           {macrocycle.spilledToCross} min, die das Laufen nicht hergibt, laufen auf dem Rad weiter —
           das aerobe Ziel wird nicht gekürzt.
+        </div>
+      )}
+      {macrocycle.shortfallMinutes > 0 && (
+        <div className="t-caption muted mt-2">
+          {macrocycle.shortfallMinutes} min fehlen zum Phasenziel. Vier Fenster pro Zyklus tragen
+          nicht mehr — der Hebel ist die Zahl der Einheiten, nicht ihre Härte.
         </div>
       )}
     </Card>

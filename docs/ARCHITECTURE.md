@@ -39,6 +39,13 @@ getroffen; alle sind in den Einstellungen änderbar.
 ## 4. Schichtenmodell
 
 ```
+api/whoop/           Serverfunktionen auf Vercel — App-Geheimnis bleibt hier
+├── _config.ts           alle Endpunkte und Scopes an einer Stelle
+├── authorize.ts         OAuth-Start mit state im signierten Cookie
+├── callback.ts          Code gegen Tokens, Rückgabe im URL-Fragment
+├── refresh.ts           neues Zugangstoken aus dem Refresh-Token
+└── data.ts              Proxy mit fester Pfadliste, kein offener Proxy
+
 src/
 ├── domain/          reine Logik, kein React, vollständig testbar
 │   ├── types.ts             alle Entitäten
@@ -98,6 +105,7 @@ src/
 │       └── toSession.ts         Übersetzung einer geplanten Einheit in eine Session
 ├── data/            Persistenz und abgeleiteter Zustand
 │   ├── db.ts                IndexedDB-Wrapper
+│   ├── whoopClient.ts       Tokens auf dem Gerät, Abruf über den Proxy
 │   ├── defaults.ts          Startkonfiguration aus dem Athletenprofil
 │   ├── store.ts             Zustand-Store, alle Mutationen
 │   ├── derived.ts           Indizes und zusammengesetzte Sichten

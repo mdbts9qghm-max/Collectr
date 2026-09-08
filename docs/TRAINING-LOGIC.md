@@ -283,6 +283,34 @@ Ein Stufenwechsel verlangt **zwei Makrozyklen ohne Abstufung** — Kalenderwoche
 reichen nicht. Laufrichtung wechselt jede Einheit. Ohne Bahn: Feldweg, dann Rad oder
 Rudern nach Zeit, Straße zuletzt.
 
+### Crosstraining: nur als Abstufung, nicht geplant
+
+Der Athlet plant kein Rad. Die Vorlage besteht deshalb ausschließlich aus Laufeinheiten,
+und Zyklustag 5 — der Tag nach der harten oder langen Einheit — trägt einen **kurzen,
+lockeren Lauf** statt einer Radeinheit, gedeckelt auf 35 Minuten: ein zweiter Lauf auf
+müden Beinen ist die Verletzung, nicht die Anpassung.
+
+Crosstraining ist damit nicht verschwunden, sondern verschoben. Es bleibt die **erste Stufe
+jeder Abstufungskette**: trägt ein Morgen die geplante Einheit nicht, ist dieselbe Arbeit
+auf dem Rad weiter die bessere Antwort als ein verwässerter Lauf. Es ist nur nicht mehr
+geplant — es ist die Notbremse.
+
+**Die Folge benennt die App offen:** Ohne Ausweichmöglichkeit entscheidet die 8-%-Grenze
+fürs Laufen über das aerobe Volumen. Der Fehlbetrag gegenüber dem Phasenziel steht in der
+Zonenkarte, statt in einer Zahl zu verschwinden.
+
+Der Laufanteil aus dem Phasenmodell greift dabei **nicht mehr**: er teilt zwischen Laufen
+und Crosstraining auf, und ohne Crosstraining gibt es nichts aufzuteilen. Das Ziel um 60 %
+zu kürzen, weil ein Anteil „60 % Laufen" sagt, hieße die Zahl rückwärts zu lesen.
+
+### Eine Intervalleinheit ist nicht eine Zone
+
+18 Minuten Aufwärmen und 5 Minuten Auslaufen liegen in Zone 1 bis 2; nur die
+Arbeitsintervalle sitzen in Zone 4 oder 5. Die ganze Einheit nach ihrer Arbeitszone zu
+zählen unterschätzt den Grundlagenanteil erheblich — eine 39-Minuten-Bahneinheit würde 39
+harte Minuten buchen, obwohl nur 16 davon hart sind, und die 80-Prozent-Regel würde auf
+einem Plan anschlagen, der sie tatsächlich einhält.
+
 ### Volumen und Überlauf
 
 Aerobe Minuten dürfen um höchstens 10 % pro Makrozyklus wachsen, Laufminuten nur um 8 %.
@@ -321,6 +349,31 @@ Länge.
 28-Tage-Mittel **dieses Zyklustags**. 45 % am Schlaftag bei einer Baseline von 48 % ist ein
 normaler Schlaftag, keine Warnung. Unter 28 Tagen Historie arbeitet die App im manuellen
 Modus ganz ohne automatische Abstufung.
+
+### WHOOP-Anbindung
+
+Vier Serverfunktionen unter `api/whoop/`, weil die App keinen anderen Weg hat: die
+Content-Security-Policy erlaubt `connect-src 'self'`, der Browser darf also gar nicht direkt
+zu WHOOP telefonieren. Das ist beabsichtigt — eine kompromittierte Abhängigkeit kann die
+Gesundheitsdaten nirgendwohin schicken. Der Preis dafür ist dieser Proxy.
+
+Die Aufteilung: **das App-Geheimnis liegt auf dem Server**, weil es die App identifiziert
+und nie aus einem Browser extrahierbar sein darf. **Die Tokens des Athleten liegen auf
+seinem Gerät**, weil sie genau das sind — seine Zugangsdaten für seine Daten. Kein Konto,
+keine Datenbank.
+
+Die Tokens kommen im **Fragment** der Rückleitung zurück, nicht im Query-String: ein
+Fragment wird nie an einen Server geschickt und landet in keinem Log oder Referrer-Header.
+Der Datenproxy leitet nur Pfade aus einer festen Liste weiter — ein offener Proxy, der ein
+Bearer-Token an eine beliebige URL weiterreicht, ist ein Datenleck, das nur darauf wartet,
+bemerkt zu werden.
+
+Alle Endpunkte stehen in `api/whoop/_config.ts`. Verifiziert sind Token-Endpunkt, Basis-URL
+und die v2-Pfade; **nicht** wörtlich verifiziert sind der Autorisierungspfad und ob alle
+Scope-Namen unverändert aus v1 übernommen wurden — die Doku-Domain ist aus dieser
+Build-Umgebung nicht erreichbar. Beides ist eine Zeile in dieser Datei.
+
+Ohne WHOOP läuft alles weiter über den Check-in. Nichts ist davon abhängig.
 
 ### Optionale Volumenerweiterung
 
