@@ -1084,110 +1084,6 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Training tab — cycle rows, zone bar, mode chips
- * ------------------------------------------------------------------ */
-.cycle-day {
-  padding: var(--s3);
-  border-top: 1px solid var(--border);
-}
-.cycle-day:first-child { border-top: none; }
-.cycle-day.selected { background: var(--surface-2); }
-.cycle-day.past { opacity: 0.55; }
-.cycle-day-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  width: 100%;
-  min-height: 44px; /* Apples Richtwert für Tap-Ziele */
-  text-align: left;
-}
-.cycle-badge {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-md);
-  border: 1.5px solid var(--border);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-/* Sleep gets its own row: on a rotation it is the fixed point everything else
-   is planned around, not a detail of the session. */
-.cycle-sleep {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  margin-top: var(--s2);
-  padding: 6px var(--s2);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  font-size: 11.5px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.cycle-day.selected .cycle-sleep { background: var(--surface-3); }
-.cycle-unit {
-  display: flex;
-  gap: var(--s3);
-  margin-top: var(--s3);
-}
-.cycle-warn { margin-top: var(--s2); color: var(--bad); }
-.cycle-explain {
-  margin-top: var(--s3);
-  padding: var(--s3);
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-}
-.cycle-day.selected .cycle-explain { background: var(--surface-3); }
-
-/* The zone bar carries the 80 % mark on the bar itself, because that rule sits
-   above every other volume goal — it must be impossible to miss. */
-.zone-bar {
-  position: relative;
-  display: flex;
-  height: 14px;
-  border-radius: 7px;
-  overflow: hidden;
-  background: var(--surface-2);
-}
-.zone-seg { display: block; height: 100%; }
-.zone-z1 { background: var(--zone-1, #4a90d9); }
-.zone-z2 { background: var(--zone-2, #3ec98b); }
-.zone-z3 { background: var(--zone-3, #f2c14e); }
-.zone-z4 { background: var(--zone-4, #f08a3c); }
-.zone-z5 { background: var(--zone-5, #e5484d); }
-.zone-mark {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
-  background: var(--text);
-  opacity: 0.8;
-}
-.mode-switch { display: flex; gap: 6px; flex-wrap: wrap; }
-.mode-chip {
-  /* Ein echter Knopf, kein Etikett: 40 px ist der praktikable Richtwert. */
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--text-muted);
-  transition: all var(--t-fast);
-}
-.mode-chip.active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-color: transparent;
-  color: var(--text);
-  font-weight: 600;
-}
-
-/* ------------------------------------------------------------------ *
  * Sleep tab — day timeline over four tracks
  * ------------------------------------------------------------------ */
 .tl-hours {
@@ -1220,6 +1116,7 @@
 }
 .tl-bar {
   position: absolute;
+  pointer-events: none;
   top: 3px;
   bottom: 3px;
   border-radius: 3px;

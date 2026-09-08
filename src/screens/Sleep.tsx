@@ -297,10 +297,16 @@ function Timeline({
             {day.byTrack[track].map((a) => {
               const from = Math.max(0, Math.min(SPAN, a.from));
               const to = Math.max(from + 8, Math.min(SPAN, a.to));
+              /*
+               * The bars are a picture, not a control. A fifteen-minute window
+               * is three pixels wide on a phone — a button that size is one the
+               * thumb misses, and a miss is worse than no button at all. The
+               * list below carries the same action at full tap size, and the
+               * highlight here follows whatever is open there.
+               */
               return (
-                <button
+                <span
                   key={a.id}
-                  type="button"
                   className={`tl-bar ${a.avoid ? 'avoid' : ''} ${open === a.id ? 'open' : ''}`}
                   style={{
                     left: `${(from / SPAN) * 100}%`,
@@ -308,9 +314,7 @@ function Timeline({
                     background: a.avoid ? 'transparent' : TRACK_META[track].color,
                     borderColor: TRACK_META[track].color,
                   }}
-                  onClick={() => onToggle(a.id)}
-                  aria-label={`${a.label}, ${clock(a.from)} bis ${clock(a.to)}`}
-                  aria-expanded={open === a.id}
+                  title={`${a.label}, ${clock(a.from)} bis ${clock(a.to)}`}
                 />
               );
             })}

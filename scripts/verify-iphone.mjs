@@ -127,12 +127,13 @@ for (const d of DEVICES) {
     await page.screenshot({ path: `${DIR}/91-${d.name}-sheet.png` });
   }
 
-  // Kleinste Tap-Ziele messen — auf dem Trainingstab, wo die meisten sitzen.
-  await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.cycle-day');
+  // Kleinste Tap-Ziele messen. Der Trainingstab wird gerade neu gebaut, also
+  // misst der Check den Schlaftab — dort sitzen jetzt die meisten Ziele.
+  await page.goto(`${BASE}/#/sleep`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.advice-row');
   await page.waitForTimeout(500);
   const smallest = await page.evaluate(() => {
-    const sel = '.tabbar-item, .check, .stepper > button, .chip, .cycle-day-head, .mode-chip';
+    const sel = '.tabbar-item, .check, .stepper > button, .chip, .advice-row';
     let min = Infinity; let which = '';
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();
@@ -143,7 +144,7 @@ for (const d of DEVICES) {
     }
     return { min: Math.round(min), which };
   });
-  await page.screenshot({ path: `${DIR}/92-${d.name}-training.png` });
+  await page.screenshot({ path: `${DIR}/92-${d.name}-sleep.png` });
 
   // Apple's guideline is 44 pt; 40 is the practical floor used here.
   if (smallest.min < 40) failures++;

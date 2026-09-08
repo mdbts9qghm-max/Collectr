@@ -138,73 +138,19 @@ if ((await page.locator('.list .check.checked').count()) === 0) {
 console.log('✓ session completed with one tap and persisted');
 await shot('05-session-done');
 
-// The training tab is organised by cycle, with the sleep row, the zone bar and
-// its 80 % mark, and a switchable mode per session.
+/*
+ * The training tab is being rebuilt, so there is nothing to assert about its
+ * presentation. What must not break while it is gone is everything underneath —
+ * the planner still runs and the screens that read it still work, which the
+ * checks above and below cover.
+ */
 await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.cycle-day');
-await page.waitForTimeout(500);
-const cycleDays = await page.locator('.cycle-day').count();
-if (cycleDays !== 10) throw new Error(`macrocycle shows ${cycleDays} days, expected 10`);
-if ((await page.locator('.cycle-sleep').count()) !== cycleDays) {
-  throw new Error('every cycle day must carry its sleep row');
+await page.waitForSelector('.app-main');
+await page.waitForTimeout(400);
+if (!/neu gebaut/i.test(await page.locator('.app-main').innerText())) {
+  throw new Error('the training tab placeholder did not render');
 }
-if ((await page.locator('.zone-mark').count()) !== 1) {
-  throw new Error('the zone bar must carry the 80 % mark');
-}
-console.log(`✓ training tab: ${cycleDays} days with sleep rows and the 80 % zone mark`);
-
-// Tapping a day opens its explanation; it starts closed.
-if ((await page.locator('.cycle-explain').count()) !== 0) {
-  throw new Error('the explanation must start closed');
-}
-await page.locator('.cycle-day-head').nth(1).click();
-await page.waitForTimeout(350);
-if ((await page.locator('.cycle-explain').count()) === 0) {
-  throw new Error('tapping a cycle day did not open its explanation');
-}
-console.log('✓ tapping a day explains its recovery value');
-
-/*
- * The mode switch is the heart of this plan: moving a run onto the bike keeps
- * the aerobic stimulus and drops the impact, and the macrocycle's running total
- * has to follow.
- */
-const runTotal = async () =>
-  Number((await page.locator('.zone-bar').locator('..').innerText()).match(/🏃 (\d+)/)?.[1] ?? -1);
-const beforeSwitch = await runTotal();
-if (beforeSwitch <= 0) throw new Error('no running minutes reported for the macrocycle');
-await page.locator('.cycle-unit .mode-chip', { hasText: 'Rad' }).first().click();
-await page.waitForTimeout(800);
-const afterSwitch = await runTotal();
-if (afterSwitch >= beforeSwitch) {
-  throw new Error(`switching a run to the bike did not reduce the running total (${beforeSwitch} → ${afterSwitch})`);
-}
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('.cycle-day');
-await page.waitForTimeout(700);
-if ((await runTotal()) !== afterSwitch) throw new Error('the mode switch did not survive a reload');
-console.log(`✓ mode switch moves ${beforeSwitch - afterSwitch} min off the running total and persists`);
-
-// The progress view shows physiological markers and no gamification.
-await page.getByRole('tab', { name: 'Fortschritt' }).click();
-await page.waitForTimeout(600);
-const progress = await page.locator('.app-main').innerText();
-if (!/Schwellenherzfrequenz/i.test(progress)) throw new Error('progress view missing the threshold marker');
-/*
- * Checked as UI, not as words: the page's own disclaimer says the word
- * "Abzeichen", so a text match would flag the very sentence that promises there
- * are none. What must not be there are streak counters and badges.
- */
-const gamified = await page.evaluate(
-  () => document.querySelectorAll('.badge, .streak, .streak-dot, .trophy').length,
-);
-if (gamified > 0) throw new Error(`the progress view must not gamify (${gamified} elements)`);
-if (!/keine Punkte, keine Serien, keine Abzeichen/i.test(progress)) {
-  throw new Error('the progress view should state that it does not gamify');
-}
-console.log('✓ progress view shows markers, not badges');
-
-await shot('06-week-planner');
+console.log('✓ training tab placeholder renders (rebuild in progress)');
 
 /*
  * The sleep tab: four tracks, every recommendation tappable with its reason, no
