@@ -1225,68 +1225,114 @@
   border-radius: var(--r-full);
 }
 
-/* ---- Das Blickfeld ---- */
+/* ---- Der Kalender ---- */
 
-.horizon-scroll {
-  display: flex;
-  gap: 2px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin: var(--s3) calc(-1 * var(--s3)) 0;
-  padding: 0 var(--s3) var(--s2);
+.cal-nav {
+  min-width: 44px; /* Apples Richtwert für Tap-Ziele */
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
 }
-.horizon-scroll::-webkit-scrollbar { display: none; }
+.cal-nav:active { background: var(--surface-2); }
 
-.horizon-day {
-  flex: none;
-  /* 40 px ist der praktische Boden für ein Tap-Ziel. Das Blickfeld wird dadurch
-     breit — es scrollt, und der Ankertag steht beim Öffnen in der Mitte. */
-  width: 40px;
-  min-height: 44px; /* Apples Richtwert für Tap-Ziele */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  /* Sieben Spalten auf einem 375-px-Display: ohne diese Zugabe bleibt je Zelle
+     weniger als Apples Richtwert von 44 pt übrig. */
+  margin-inline: -7px;
+}
+.cal-dow {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 660;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cal-cell {
+  min-height: 56px; /* über Apples 44 pt, damit auch die Marker Platz haben */
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  padding: 5px 2px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: var(--s1) 0;
-  border-radius: var(--r-xs);
-  background: transparent;
 }
-.horizon-day.is-selected { background: var(--surface-2); }
-.horizon-day.is-anchor { background: var(--accent-soft); }
+/* Die Tage der Nachbarmonate füllen nur die Zeile auf. */
+.cal-cell.is-outside { opacity: 0.38; }
+.cal-cell.is-today {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.cal-cell.is-selected {
+  border-color: var(--border-strong);
+  background: var(--surface-3);
+}
 
-.horizon-bar-track {
-  width: 100%;
-  height: 46px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.cal-num {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
 }
-.horizon-bar {
-  width: 16px;
-  border-radius: 2px 2px 0 0;
-  display: block;
-}
-.horizon-cycle {
+.cal-cell.is-today .cal-num { color: var(--accent); }
+
+.cal-shift {
   font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
-}
-.horizon-date {
-  font-size: 9px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.horizon-day.is-anchor .horizon-cycle,
-.horizon-day.is-anchor .horizon-date {
-  color: var(--accent);
   font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: var(--r-xs);
+}
+.cal-shift-empty {
+  background: transparent;
+  color: var(--text-muted);
 }
 
-.horizon-detail {
+.cal-marks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 8px;
+  margin-top: auto;
+}
+.cal-bar {
+  display: block;
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  flex: none;
+}
+.cal-bar-thin { height: 2px; width: 11px; }
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+.cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-detail {
   background: var(--surface-2);
   border-radius: var(--r-sm);
   padding: var(--s3);
+}
+.cal-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
 }
 
 /* ---- Zonenband ---- */

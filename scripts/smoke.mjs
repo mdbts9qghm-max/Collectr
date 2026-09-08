@@ -151,6 +151,7 @@ await shot('05-session-done');
  * über Wochen in beide Richtungen und sagt pro Tag, warum er noch zählt.
  */
 await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.cal-grid');
 await page.waitForSelector('.coach-headline');
 await page.waitForTimeout(400);
 
@@ -167,21 +168,46 @@ const reasons = await page.locator('.coach-reasons li').count();
 if (reasons === 0) throw new Error('the coach gave no reason');
 console.log(`✓ coach: "${headline}" — ${reasons} Begründungen hinter dem Knopf`);
 
-// Das Blickfeld: 55 Tage, der Ankertag markiert, jeder Tag antippbar.
-const horizonDays = await page.locator('.horizon-day').count();
-if (horizonDays !== 55) {
-  throw new Error(`the horizon shows ${horizonDays} days, expected 55 (−27 … +27)`);
+/*
+ * Der Kalender: Schicht und Einheit pro Tag, blätterbar, und beim Antippen
+ * eines Tages steht dort auch, welche Regeln ihn noch mit heute verbinden —
+ * das Einflussfenster ist in die Tagesansicht gewandert, nicht verschwunden.
+ */
+const cells = await page.locator('.cal-cell').count();
+if (cells % 7 !== 0 || cells < 28) {
+  throw new Error(`the calendar renders ${cells} cells, expected whole weeks`);
 }
-if ((await page.locator('.horizon-day.is-anchor').count()) !== 1) {
-  throw new Error('the horizon does not mark today');
+if ((await page.locator('.cal-cell.is-today').count()) !== 1) {
+  throw new Error('the calendar does not mark today');
 }
-await page.locator('.horizon-day').nth(30).click();
-await page.waitForSelector('.horizon-detail');
-const detail = await page.locator('.horizon-detail').innerText();
+const shiftBadges = await page.locator('.cal-shift:not(.cal-shift-empty)').count();
+if (shiftBadges === 0) throw new Error('no shift shows in the calendar');
+const sessionBars = await page.locator('.cal-cell .cal-bar').count();
+if (sessionBars === 0) throw new Error('no planned session shows in the calendar');
+console.log(`✓ Kalender: ${cells} Tage, ${shiftBadges} Schichten, ${sessionBars} Einheiten`);
+
+// Einen geplanten Tag antippen: Schicht, Einheit und die Verbindung zu heute.
+await page.locator('.cal-cell', { has: page.locator('.cal-bar') }).first().click();
+await page.waitForSelector('.cal-detail');
+const detail = await page.locator('.cal-detail').innerText();
 if (!/verbindet|beeinflusst heute nichts/.test(detail)) {
-  throw new Error('a horizon day does not say why it still matters');
+  throw new Error('a calendar day does not say why it still matters');
 }
-console.log(`✓ Blickfeld: ${horizonDays} Tage, jeder nennt seine Verbindung zu heute`);
+if (!/min/.test(detail)) throw new Error('a planned day shows no session');
+console.log(`✓ Tagesansicht: ${detail.split('\n')[0]} — mit Einheit und Regelbezug`);
+
+// Blättern: der Vormonat muss sich zeigen und der Weg zurück da sein.
+const monthBefore = await page.locator('.cal-head').locator('..').locator('.t-label').first().innerText();
+await page.getByRole('button', { name: 'Nächster Monat' }).click();
+await page.waitForTimeout(300);
+const monthAfter = await page.locator('.cal-head').locator('..').locator('.t-label').first().innerText();
+if (monthBefore === monthAfter) throw new Error('the calendar does not page to the next month');
+if ((await page.getByText('zu heute').count()) === 0) {
+  throw new Error('no way back to today after paging');
+}
+await page.getByText('zu heute').click();
+await page.waitForTimeout(300);
+console.log(`✓ blättert ${monthBefore} → ${monthAfter} und zurück`);
 
 // Es wird gelaufen: kein Rad, kein Rudergerät, kein Crosstrainer als Vorschlag.
 const coachText = await page.locator('.app-main').innerText();

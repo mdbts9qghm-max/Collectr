@@ -1,14 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { HorizonNote, TodayDecision } from '../domain/coach/coach.ts';
+import { useMemo, useState } from 'react';
+import type { TodayDecision } from '../domain/coach/coach.ts';
+import type { ISODate } from '../domain/types.ts';
 import type { CoachView } from '../data/derived.ts';
 import type { SessionKind } from '../domain/coach/catalogue.ts';
 import { CATALOGUE, HARTE_REGEL_LAUFEN } from '../domain/coach/catalogue.ts';
 import { FIXED_ZONES, TEST_PROTOCOL, retestState, zoneRanges } from '../domain/coach/zones.ts';
 import { CYCLE_DAY_META, formatClock } from '../domain/coach/windows.ts';
+import {
+  addDays,
+  dateRange,
+  diffDays,
+  endOfMonth,
+  endOfWeek,
+  startOfMonth,
+  startOfWeek,
+} from '../domain/date.ts';
 import { cyclesUntilDeload } from '../domain/coach/phases.ts';
 import { useCoach, useToday } from '../app/hooks.ts';
 import { useStore } from '../data/store.ts';
 import { Card, Disclosure, Pill, SectionTitle } from '../ui/primitives.tsx';
+import { IconChevronLeft } from '../ui/icons.tsx';
 
 /**
  * Der Coach.
@@ -25,6 +36,15 @@ import { Card, Disclosure, Pill, SectionTitle } from '../ui/primitives.tsx';
 export function Training() {
   const today = useToday();
   const plan = useCoach(today);
+
+  /*
+   * Der Kalender darf über das Blickfeld hinausblättern. Liegt der gezeigte
+   * Monat außerhalb, wird der Coach für dessen Mitte gerechnet — sonst stünde
+   * dort ein leerer Monat, obwohl die Rotation längst feststeht.
+   */
+  const [month, setMonth] = useState<ISODate>(today);
+  const monthAnchor = month.slice(0, 7) === today.slice(0, 7) ? today : `${month.slice(0, 7)}-15`;
+  const monthPlan = useCoach(monthAnchor);
 
   return (
     <>
@@ -45,7 +65,7 @@ export function Training() {
 
       <TodayCard today={plan.today} />
       <StrengthCard today={plan.today} />
-      <HorizonStrip plan={plan} />
+      <CoachCalendar monthPlan={monthPlan} today={today} month={month} onMonth={setMonth} />
       <VolumeCard plan={plan} />
       <ZoneCard plan={plan} />
 
@@ -212,7 +232,7 @@ function StrengthCard({ today }: { today: TodayDecision }) {
 }
 
 /* ------------------------------------------------------------------ *
- * Das Blickfeld
+ * Der Kalender
  * ------------------------------------------------------------------ */
 
 const KIND_COLOR: Record<SessionKind, string> = {
@@ -229,95 +249,253 @@ const KIND_COLOR: Record<SessionKind, string> = {
   kraft_ganzkoerper: 'var(--sport-strength)',
 };
 
-function HorizonStrip({ plan }: { plan: CoachView }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const scroller = useRef<HTMLDivElement>(null);
-  const anchorRef = useRef<HTMLButtonElement>(null);
+const SHIFT_COLOR: Record<number, string> = {
+  1: 'var(--shift-day)',
+  2: 'var(--shift-night)',
+  3: 'var(--shift-sleep)',
+  4: 'var(--shift-off)',
+  5: 'var(--shift-off)',
+};
 
-  // Beim Öffnen steht heute in der Mitte, nicht am linken Rand.
-  useEffect(() => {
-    const el = anchorRef.current;
-    const box = scroller.current;
-    if (!el || !box) return;
-    box.scrollLeft = el.offsetLeft - box.clientWidth / 2 + el.clientWidth / 2;
-  }, []);
+const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-  const maxLoad = Math.max(60, ...plan.notes.map((n) => n.load));
-  const note = plan.notes.find((n) => n.date === selected) ?? null;
+const LEGEND: { kind: SessionKind; label: string }[] = [
+  { kind: 'grundlagenlauf', label: 'Grundlage' },
+  { kind: 'longrun', label: 'Longrun' },
+  { kind: 'intervall', label: 'Bahn' },
+  { kind: 'gehen', label: 'Gehen' },
+  { kind: 'kraft_ganzkoerper', label: 'Kraft' },
+];
+
+/**
+ * Schicht und Einheit im Monatsraster.
+ *
+ * Der Fünf-Tage-Rhythmus läuft durch die Sieben-Tage-Woche — im Monatsraster
+ * sieht man diese Wanderung, und damit auch, warum der Longrun nicht jede Woche
+ * am selben Wochentag liegt. Das ist der eigentliche Grund für die Kalenderform:
+ * eine Wochenansicht würde die Rotation verstecken, die den ganzen Plan bestimmt.
+ *
+ * Das Einflussfenster ist damit nicht weg. Es steckt in der Tagesansicht: welche
+ * Regeln einen angetippten Tag noch mit heute verbinden, steht dort — nur nicht
+ * mehr als eigene Zeitleiste, sondern dort, wo man ohnehin hinschaut.
+ */
+function CoachCalendar({
+  monthPlan,
+  today,
+  month,
+  onMonth,
+}: {
+  monthPlan: CoachView;
+  today: ISODate;
+  month: ISODate;
+  onMonth: (m: ISODate) => void;
+}) {
+  const [selected, setSelected] = useState<ISODate | null>(null);
+
+  const byDate = useMemo(
+    () => new Map(monthPlan.timeline.days.map((d) => [d.date, d])),
+    [monthPlan],
+  );
+  const noteByDate = useMemo(
+    () => new Map(monthPlan.notes.map((n) => [n.date, n])),
+    [monthPlan],
+  );
+
+  // Ganze Wochen, damit das Raster nicht mitten in einer Zeile anfängt.
+  const cells = useMemo(
+    () => dateRange(startOfWeek(startOfMonth(month), 1), endOfWeek(endOfMonth(month), 1)),
+    [month],
+  );
+
+  const inMonth = (d: ISODate) => d.slice(0, 7) === month.slice(0, 7);
+  const day = selected ? byDate.get(selected) : null;
+  const note = selected ? noteByDate.get(selected) : null;
 
   return (
     <Card tight>
       <div className="row between">
-        <div className="t-label">Blickfeld</div>
-        <span className="t-caption muted">
-          −{plan.horizon.back} bis +{plan.horizon.forward} Tage
-        </span>
+        <button
+          type="button"
+          className="cal-nav"
+          onClick={() => onMonth(addDays(startOfMonth(month), -1))}
+          aria-label="Voriger Monat"
+        >
+          <IconChevronLeft size={17} />
+        </button>
+        <div className="col center">
+          <div className="t-label">{monthName(month)}</div>
+          {month.slice(0, 7) !== today.slice(0, 7) && (
+            <button type="button" className="t-caption accent-text" onClick={() => onMonth(today)}>
+              zu heute
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          className="cal-nav"
+          onClick={() => onMonth(addDays(endOfMonth(month), 1))}
+          aria-label="Nächster Monat"
+        >
+          <span style={{ display: 'grid', transform: 'rotate(180deg)' }}>
+            <IconChevronLeft size={17} />
+          </span>
+        </button>
       </div>
 
-      <div className="horizon-scroll" ref={scroller}>
-        {plan.notes.map((n) => (
-          <button
-            key={n.date}
-            type="button"
-            ref={n.isAnchor ? anchorRef : undefined}
-            className={`horizon-day ${n.isAnchor ? 'is-anchor' : ''} ${selected === n.date ? 'is-selected' : ''}`}
-            onClick={() => setSelected(selected === n.date ? null : n.date)}
-            aria-pressed={selected === n.date}
-            aria-label={`${n.date}, ${n.label}`}
-          >
-            <span className="horizon-bar-track">
-              <span
-                className="horizon-bar"
-                style={{
-                  height: `${Math.max(3, (n.load / maxLoad) * 100)}%`,
-                  background: n.kind ? KIND_COLOR[n.kind] : 'var(--surface-3)',
-                  // Je weniger Regeln den Tag noch erreichen, desto blasser.
-                  opacity: n.reaching.length ? 0.35 + 0.65 * (n.reaching.length / 12) : 0.12,
-                }}
-              />
-            </span>
-            <span className="horizon-cycle t-caption">
-              {n.cycleDay ? CYCLE_DAY_META[n.cycleDay].short : '–'}
-            </span>
-            <span className="horizon-date t-caption">{n.date.slice(8)}</span>
-          </button>
+      <div className="cal-grid cal-head mt-3">
+        {WEEKDAYS.map((w) => (
+          <span key={w} className="cal-dow">
+            {w}
+          </span>
         ))}
       </div>
 
-      {note ? (
-        <div className="horizon-detail mt-3">
+      <div className="cal-grid mt-1">
+        {cells.map((date) => {
+          const d = byDate.get(date);
+          const isToday = date === today;
+          return (
+            <button
+              key={date}
+              type="button"
+              className={[
+                'cal-cell',
+                inMonth(date) ? '' : 'is-outside',
+                isToday ? 'is-today' : '',
+                selected === date ? 'is-selected' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setSelected(selected === date ? null : date)}
+              aria-pressed={selected === date}
+              aria-label={`${Number(date.slice(8))}. ${monthName(date)}${
+                d?.run ? `, ${CATALOGUE[d.run.kind].label}` : ''
+              }`}
+            >
+              <span className="cal-num t-num">{Number(date.slice(8))}</span>
+              {d?.cycleDay ? (
+                <span
+                  className="cal-shift"
+                  style={{
+                    background: `color-mix(in srgb, ${
+                      d.isVShift ? 'var(--shift-v)' : SHIFT_COLOR[d.cycleDay]
+                    } 26%, transparent)`,
+                    color: d.isVShift ? 'var(--shift-v)' : SHIFT_COLOR[d.cycleDay],
+                  }}
+                >
+                  {d.isVShift ? 'V' : CYCLE_DAY_META[d.cycleDay].short}
+                </span>
+              ) : (
+                <span className="cal-shift cal-shift-empty">–</span>
+              )}
+              <span className="cal-marks">
+                {d?.run && (
+                  <span className="cal-bar" style={{ background: KIND_COLOR[d.run.kind] }} />
+                )}
+                {d?.strength && (
+                  <span
+                    className="cal-bar cal-bar-thin"
+                    style={{ background: KIND_COLOR[d.strength.kind] }}
+                  />
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="cal-legend mt-3">
+        {LEGEND.map((l) => (
+          <span key={l.kind} className="cal-legend-item">
+            <span className="cal-bar" style={{ background: KIND_COLOR[l.kind], width: 12 }} />
+            <span className="t-caption muted">{l.label}</span>
+          </span>
+        ))}
+      </div>
+
+      {day ? (
+        <div className="cal-detail mt-3">
           <div className="row between">
             <span className="t-small" style={{ fontWeight: 600 }}>
-              {shortDate(note.date)} · {note.label}
+              {longDate(day.date)}
             </span>
             <span className="t-caption muted">
-              {note.offset === 0
+              {day.date === today
                 ? 'heute'
-                : note.offset < 0
-                  ? `vor ${-note.offset} Tagen`
-                  : `in ${note.offset} Tagen`}
+                : day.date < today
+                  ? `vor ${diffDays(today, day.date)} Tagen`
+                  : `in ${diffDays(day.date, today)} Tagen`}
             </span>
           </div>
-          {note.minutes > 0 && (
-            <div className="t-caption secondary mt-1">{note.minutes} Minuten</div>
-          )}
-          {note.reaching.length ? (
-            <>
-              <div className="t-caption muted mt-2">Was diesen Tag mit heute verbindet:</div>
-              <div className="row wrap gap-2 mt-2">
-                {note.reaching.map((r) => (
-                  <Pill key={r.id}>{r.label}</Pill>
-                ))}
-              </div>
-            </>
+
+          <div className="t-caption secondary mt-1">
+            {shiftLine(day)}
+            {day.window && ` · Fenster ${formatClock(day.window.start)}–${formatClock(day.window.end)}`}
+          </div>
+
+          {day.run || day.strength ? (
+            <div className="cal-detail-list mt-2">
+              {day.run && (
+                <div className="row gap-2">
+                  <span className="cal-bar" style={{ background: KIND_COLOR[day.run.kind] }} />
+                  <span className="t-small grow">
+                    {CATALOGUE[day.run.kind].label} · {day.run.minutes} min
+                    {day.run.zone ? ` · Z${day.run.zone}` : ''}
+                    {day.run.startMinutes != null ? ` · ab ${formatClock(day.run.startMinutes)}` : ''}
+                  </span>
+                </div>
+              )}
+              {day.strength && (
+                <div className="row gap-2">
+                  <span
+                    className="cal-bar"
+                    style={{ background: KIND_COLOR[day.strength.kind] }}
+                  />
+                  <span className="t-small grow">
+                    {CATALOGUE[day.strength.kind].label} · {day.strength.minutes} min
+                    {day.strength.startMinutes != null
+                      ? ` · ab ${formatClock(day.strength.startMinutes)}`
+                      : ''}
+                  </span>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="t-caption muted mt-2">
-              Keine Regel reicht so weit. Dieser Tag beeinflusst heute nichts mehr.
+              {day.cycleDay === 1
+                ? 'Tagschicht 07:00–19:00 — kein Trainingsfenster.'
+                : 'Keine Einheit geplant.'}
+            </div>
+          )}
+
+          {/*
+            Das Einflussfenster, an der Stelle, wo man ohnehin hinschaut: welche
+            Regeln diesen Tag noch mit heute verbinden.
+          */}
+          {note && (
+            <div className="mt-3">
+              {note.reaching.length ? (
+                <>
+                  <div className="t-caption muted">Was diesen Tag mit heute verbindet:</div>
+                  <div className="row wrap gap-2 mt-2">
+                    {note.reaching.map((r) => (
+                      <Pill key={r.id}>{r.label}</Pill>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="t-caption muted">
+                  Keine Regel reicht so weit. Dieser Tag beeinflusst heute nichts mehr.
+                </div>
+              )}
             </div>
           )}
         </div>
       ) : (
-        <div className="t-caption muted mt-2">{plan.horizonSummary}</div>
+        <div className="t-caption muted mt-3">
+          Tippe einen Tag an: Schicht, Fenster, Einheit — und welche Regeln ihn noch mit heute
+          verbinden.
+        </div>
       )}
     </Card>
   );
@@ -454,4 +632,29 @@ function shortDate(iso: string): string {
   return `${d}.${m}.`;
 }
 
-export type { HorizonNote };
+const MONTHS = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+];
+
+function monthName(iso: string): string {
+  return `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+}
+
+/**
+ * Schichtart und Dienstzeit in einer Zeile.
+ *
+ * Die freien Tage tragen in der Tabelle „frei" als Dienstzeit — angehängt an
+ * ihr Etikett ergäbe das „Frei · frei". Wo es keine Dienstzeit gibt, steht
+ * deshalb nur das Etikett.
+ */
+function shiftLine(day: { cycleDay: number | null; isVShift: boolean }): string {
+  if (day.isVShift) return 'V-Schicht · 08:00–20:00';
+  if (day.cycleDay == null) return 'Keine Schicht eingetragen';
+  const meta = CYCLE_DAY_META[day.cycleDay];
+  return meta.shift === 'frei' ? `${meta.label}, kein Dienst` : `${meta.label} · ${meta.shift}`;
+}
+
+function longDate(iso: string): string {
+  return `${Number(iso.slice(8))}. ${MONTHS[Number(iso.slice(5, 7)) - 1]}`;
+}

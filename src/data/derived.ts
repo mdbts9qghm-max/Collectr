@@ -396,7 +396,13 @@ export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
       isVShift: d.isVShift,
       outOfRotation: d.outOfRotation,
       recovery: recovery.value,
-      done: d.date < anchor,
+      /*
+       * Erledigt heißt vergangen, nicht „vor dem Ankertag". Der Anker ist der
+       * Tag, über den entschieden wird — der Kalender setzt ihn auch mal in
+       * einen anderen Monat, und dann wären die Tage bis dahin sonst
+       * fälschlich erledigt und ohne Einheit.
+       */
+      done: d.date < todayIso(),
       actual: actualFor(idx, d.date),
     };
   });
