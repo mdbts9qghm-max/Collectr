@@ -366,6 +366,55 @@ describe('Zonen', () => {
  * schon einmal abgerissen sind: das Schlafmodul rechnete weiter, und niemand
  * hörte zu. Ein Signal ohne Test ist ein Signal, das man verlieren kann.
  */
+/**
+ * Wo die Doppeltage liegen.
+ *
+ * Zwei Einheiten an einem Tag gehören dorthin, wo die Erholung sie trägt. Der
+ * Schlaftag hat mit sechs Stunden Tagschlaf nach 24 Stunden Wachzeit den
+ * niedrigsten Erholungswert des Zyklus und trug trotzdem zwei Einheiten, während
+ * ein freier Tag mit Erholung 100 nur eine trug. Das war verkehrt herum, und
+ * dieser Test hält die Korrektur fest.
+ */
+describe('Doppeltage liegen auf den freien Tagen', () => {
+  const p = plan(ANCHOR, 4);
+  const future = p.timeline.days.filter((d) => d.date >= ANCHOR).slice(0, 10);
+  const doubles = future.filter((d) => d.run && d.strength);
+
+  it('lässt den Schlaftag einfach', () => {
+    for (const d of future.filter((x) => x.cycleDay === 3)) {
+      expect(d.run).not.toBeNull();
+      expect(d.strength).toBeNull();
+    }
+  });
+
+  it('gibt jedem freien Tag ohne Schlüsseleinheit seine Krafteinheit', () => {
+    const freeNonKey = future.filter(
+      (d) =>
+        (d.cycleDay === 4 || d.cycleDay === 5) &&
+        d.run != null &&
+        !CATALOGUE[d.run.kind].isKeySession,
+    );
+    expect(freeNonKey.length).toBeGreaterThan(0);
+    for (const d of freeNonKey) expect(d.strength).not.toBeNull();
+  });
+
+  it('doppelt nie auf einem Tag mit Schlüsseleinheit', () => {
+    for (const d of doubles) {
+      expect(CATALOGUE[d.run!.kind].isKeySession).toBe(false);
+    }
+  });
+
+  it('hält die Kraftfrequenz bei zwei Einheiten je Zyklus', () => {
+    expect(future.filter((d) => d.strength).length).toBe(4);
+  });
+
+  it('rührt das Laufvolumen dabei nicht an', () => {
+    const runMinutes = future.reduce((sum, d) => sum + (d.run?.minutes ?? 0), 0);
+    expect(runMinutes).toBeGreaterThan(0);
+    expect(Math.abs(runMinutes - p.target.runMinutes)).toBeLessThanOrEqual(12);
+  });
+});
+
 describe('Schlafsignale greifen ins Training', () => {
   const withSleep = (sleep: {
     debtHours: number;

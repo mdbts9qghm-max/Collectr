@@ -12,24 +12,32 @@ import { CATALOGUE } from './catalogue.ts';
  *
  * ```
  * Tag 1  T1  Tagschicht     Ruhe
- * Tag 2  T2  Nachtschicht   lockerer Lauf + Kraft            09:00–13:30
- * Tag 3  T3  Schlaftag      Grundlagenlauf + Kraft Oberkörper 16:00–20:00
- * Tag 4  T4  frei           Intervalle                        08:00–19:00
- * Tag 5  T5  frei           Grundlagenlauf + Kraft            08:00–19:00
+ * Tag 2  T2  Nachtschicht   lockerer Lauf + Kraft   09:00–13:30
+ * Tag 3  T3  Schlaftag      Grundlagenlauf          16:00–20:00
+ * Tag 4  T4  frei           Intervalle              08:00–19:00
+ * Tag 5  T5  frei           Grundlagenlauf + Kraft  08:00–19:00
  * Tag 6  T1  Tagschicht     Ruhe
- * Tag 7  T2  Nachtschicht   lockerer Lauf + Kraft            09:00–13:30
- * Tag 8  T3  Schlaftag      Grundlagenlauf + Kraft            16:00–20:00
- * Tag 9  T4  frei           Grundlagenlauf                    08:00–19:00
- * Tag 10 T5  frei           Longrun                           08:00–19:00
+ * Tag 7  T2  Nachtschicht   lockerer Lauf + Kraft   09:00–13:30
+ * Tag 8  T3  Schlaftag      Grundlagenlauf          16:00–20:00
+ * Tag 9  T4  frei           Grundlagenlauf + Kraft  08:00–19:00
+ * Tag 10 T5  frei           Longrun                 08:00–19:00
  * ```
  *
  * Die 48 Stunden zwischen den harten Einheiten sind darin schon enthalten:
  * Intervalle an Tag 4, Longrun an Tag 10. Jeder Zyklus hat genau einen
  * lastfreien Tag und höchstens eine Schlüsseleinheit.
  *
- * Kraft steht an Tag 3 bewusst ohne Beine — Tag 4 ist die Bahn, und schwere
- * Beinkraft liegt nie in den 24 Stunden davor. An Tag 9 steht keine Kraft, weil
- * Tag 10 der Longrun ist.
+ * **Doppeltage liegen auf den freien Tagen, nicht auf dem Schlaftag.** Der
+ * Schlaftag hat mit sechs Stunden Tagschlaf nach 24 Stunden Wachzeit den
+ * niedrigsten Erholungswert des Zyklus — zwei Einheiten gehören dorthin, wo die
+ * Erholung sie trägt. Er behält seinen Lauf, weil der den Schlafdruck für den
+ * Abend aufbaut; das war nie die Aufgabe der Krafteinheit.
+ *
+ * Jeder Zyklus trägt damit zwei Doppeltage: den Nachtschichttag im
+ * Vormittagsfenster und einen freien Tag. Auf Tag 9 wird die Kraft von selbst
+ * zum Oberkörper, weil Tag 10 der Longrun ist und schwere Beinkraft nie in den
+ * 24 Stunden davor liegt — das entscheidet die Kraftberechnung, nicht die
+ * Vorlage.
  */
 
 export interface Slot {
@@ -46,14 +54,14 @@ export interface Slot {
 
 export const MACROCYCLE_TEMPLATE: Slot[] = [
   { index: 0, cycleDay: 1, kind: 'ruhe', weight: 0, strength: false, role: 'Ruhetag' },
-  { index: 1, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, strength: true, role: 'Lauf im Vormittagsfenster' },
-  { index: 2, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage am Nachmittag' },
+  { index: 1, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, strength: true, role: 'Lauf und Kraft im Vormittagsfenster' },
+  { index: 2, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, strength: false, role: 'Grundlage am Nachmittag' },
   { index: 3, cycleDay: 4, kind: 'intervall', weight: 0, strength: false, role: 'Schlüsseleinheit: Bahn' },
-  { index: 4, cycleDay: 5, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage' },
+  { index: 4, cycleDay: 5, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage und Kraft am freien Tag' },
   { index: 5, cycleDay: 1, kind: 'ruhe', weight: 0, strength: false, role: 'Ruhetag' },
-  { index: 6, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, strength: true, role: 'Lauf im Vormittagsfenster' },
-  { index: 7, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage am Nachmittag' },
-  { index: 8, cycleDay: 4, kind: 'grundlagenlauf', weight: 1.2, strength: false, role: 'Grundlage vor dem Longrun' },
+  { index: 6, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, strength: true, role: 'Lauf und Kraft im Vormittagsfenster' },
+  { index: 7, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, strength: false, role: 'Grundlage am Nachmittag' },
+  { index: 8, cycleDay: 4, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage und Kraft am freien Tag' },
   { index: 9, cycleDay: 5, kind: 'longrun', weight: 0, strength: false, role: 'Schlüsseleinheit: Longrun' },
 ];
 

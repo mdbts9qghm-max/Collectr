@@ -306,19 +306,31 @@ Anpassung entsteht aus der Wiederholung ähnlicher Reize.
 | Tag | Schicht | Einheit | Fenster |
 | --- | --- | --- | --- |
 | 1 | T1 Tagschicht | Ruhe | — |
-| 2 | T2 Nachtschicht | lockerer Lauf + Kraft | 09:00–13:30 |
-| 3 | T3 Schlaftag | Grundlagenlauf + Kraft Oberkörper | 16:00–20:00 |
+| 2 | T2 Nachtschicht | lockerer Lauf **+ Kraft** | 09:00–13:30 |
+| 3 | T3 Schlaftag | Grundlagenlauf | 16:00–20:00 |
 | 4 | T4 frei | **Intervalle** | 08:00–19:00 |
-| 5 | T5 frei | Grundlagenlauf + Kraft | 08:00–19:00 |
+| 5 | T5 frei | Grundlagenlauf **+ Kraft** | 08:00–19:00 |
 | 6 | T1 Tagschicht | Ruhe | — |
-| 7 | T2 Nachtschicht | lockerer Lauf + Kraft | 09:00–13:30 |
-| 8 | T3 Schlaftag | Grundlagenlauf + Kraft | 16:00–20:00 |
-| 9 | T4 frei | Grundlagenlauf | 08:00–19:00 |
+| 7 | T2 Nachtschicht | lockerer Lauf **+ Kraft** | 09:00–13:30 |
+| 8 | T3 Schlaftag | Grundlagenlauf | 16:00–20:00 |
+| 9 | T4 frei | Grundlagenlauf **+ Kraft** | 08:00–19:00 |
 | 10 | T5 frei | **Longrun** | 08:00–19:00 |
 
-Die 48 Stunden zwischen den harten Einheiten stecken schon darin. Kraft steht an Tag 3
-bewusst ohne Beine — Tag 4 ist die Bahn. An Tag 9 steht keine Kraft, weil Tag 10 der
-Longrun ist.
+Die 48 Stunden zwischen den harten Einheiten stecken schon darin.
+
+**Doppeltage liegen auf den freien Tagen, nicht auf dem Schlaftag.** Der Schlaftag hat mit
+sechs Stunden Tagschlaf nach 24 Stunden Wachzeit den niedrigsten Erholungswert des Zyklus —
+zwei Einheiten gehören dorthin, wo die Erholung sie trägt. Er behält seinen Lauf, weil der
+den Schlafdruck für den Abend aufbaut; das war nie die Aufgabe der Krafteinheit.
+
+Jeder Zyklus trägt damit zwei Doppeltage: den Nachtschichttag im Vormittagsfenster und den
+freien Tag, der keine Schlüsseleinheit hat. Die anderen beiden freien Tage bleiben einfach,
+weil dort Bahn und Longrun liegen. An Tag 9 wird die Kraft von selbst zum Oberkörper, weil
+Tag 10 der Longrun ist — das entscheidet die Kraftberechnung, nicht die Vorlage.
+
+Vorher lag es umgekehrt: der Schlaftag mit Erholung 60 trug zwei Einheiten, der freie Tag 9
+mit Erholung 100 nur eine und kam auf eine Tageslast von 27. Das Laufvolumen ändert sich
+durch die Umstellung nicht — Kraft konkurriert nicht um Laufminuten.
 
 Die **V-Schicht** überschreibt den Tag: 30 bis 60 Minuten locker im Dienst. Das ist kein
 Abschreiben des Tages, aber keine Intensität.
