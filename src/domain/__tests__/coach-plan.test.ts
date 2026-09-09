@@ -70,6 +70,16 @@ describe('Coach-Plan — der Tag', () => {
     expect(p.today.headline).toMatch(/Tagschicht/);
   });
 
+  it('gibt jeder Einheit genau einen Namen für alle Bildschirme', () => {
+    // Der Tagesbildschirm zeigt `label`, der Coach-Tab `headline`. Wenn die
+    // beiden auseinanderlaufen, sieht es aus wie zwei verschiedene Pläne.
+    for (const cycleDay of [1, 2, 3, 4, 5] as const) {
+      const d = plan(ANCHOR, cycleDay).today;
+      expect(d.label.length).toBeGreaterThan(3);
+      expect(d.headline).toContain(d.label);
+    }
+  });
+
   it('legt die Bahn auf den ersten freien Tag und nennt die Stufe', () => {
     const p = plan(ANCHOR, 4);
     expect(p.today.kind).toBe('intervall');
@@ -100,6 +110,44 @@ describe('Coach-Plan — der Tag', () => {
     expect(p.today.minutes).toBeGreaterThanOrEqual(30);
     expect(p.today.minutes).toBeLessThanOrEqual(60);
     expect(p.today.reasons.some((r) => r.title === 'V-Schicht')).toBe(true);
+  });
+});
+
+/**
+ * Ein Tag mit Kraft ist kein Ruhetag.
+ *
+ * Seit die Läufe auf vier Tage je zehn liegen, tragen die übrigen Tage Kraft
+ * ohne Lauf. Die Tagesentscheidung schaute aber nur auf den Lauf und meldete
+ * „Ruhetag", während die Krafteinheit darunter in der Liste stand — auf dem
+ * Tagesbildschirm und im Coach-Tab gleichzeitig.
+ */
+describe('Kraft allein ist kein Ruhetag', () => {
+  // Zyklustag 3 trägt in der neuen Vorlage Kraft und keinen Lauf.
+  const p = plan(ANCHOR, 3);
+
+  it('meldet keine Ruhe, wenn eine Krafteinheit ansteht', () => {
+    expect(p.today.kind).toBe('ruhe');
+    expect(p.today.strength?.kind).toBeTruthy();
+    expect(p.today.verdict).not.toBe('ruhe');
+  });
+
+  it('nennt die Krafteinheit in der Überschrift statt „Ruhetag"', () => {
+    expect(p.today.headline).not.toMatch(/Ruhetag/);
+    expect(p.today.label).toMatch(/Kraft|Mobilität/);
+    expect(p.today.headline).toMatch(/\d+ Minuten/);
+  });
+
+  it('sagt, was zu tun ist, statt „Nichts"', () => {
+    expect(p.today.steps.join(' ')).not.toMatch(/Nichts/);
+    expect(p.today.steps.length).toBeGreaterThan(1);
+  });
+
+  it('meldet echte Ruhe weiterhin als Ruhe', () => {
+    // Zyklustag 1 ist Tagschicht: kein Fenster, kein Lauf, keine Kraft.
+    const rest = plan(ANCHOR, 1);
+    expect(rest.today.strength).toBeNull();
+    expect(rest.today.verdict).toBe('ruhe');
+    expect(rest.today.headline).toMatch(/Tagschicht/);
   });
 });
 

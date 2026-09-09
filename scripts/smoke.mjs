@@ -268,6 +268,26 @@ for (const [path, name] of [
 }
 
 /*
+ * Der Tagesbildschirm muss dieselbe Einheit nennen wie der Coach-Tab. Genau hier
+ * ist es schon auseinandergelaufen: seit die Läufe auf vier Tage je zehn liegen,
+ * tragen die übrigen Tage Kraft ohne Lauf — und „Heute" meldete Ruhe, während
+ * die Krafteinheit darunter in der Liste stand.
+ */
+await page.goto(`${BASE}/#/today`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.card-hero');
+await page.waitForTimeout(400);
+const todayHero = (await page.locator('.card-hero .t-title').first().innerText()).trim();
+if (!headline.includes(todayHero)) {
+  throw new Error(
+    `Heute und der Coach-Tab widersprechen sich:\n  Coach: ${headline}\n  Heute: ${todayHero}`,
+  );
+}
+if (/Ruhetag/.test(todayHero) !== /Ruhetag/.test(headline)) {
+  throw new Error(`Ruhetag nur auf einem der beiden Bildschirme: ${todayHero} / ${headline}`);
+}
+console.log(`✓ Heute deckt sich mit dem Coach-Tab: ${todayHero}`);
+
+/*
  * Die Frage-Antwort-Seite muss dasselbe sagen wie der Coach-Tab. Zwei Stellen,
  * die verschiedene Einheiten vorschlagen, sind der Fehler, an dem man aufhört,
  * dem Plan zu glauben — deshalb steht der Abgleich hier fest im Test.

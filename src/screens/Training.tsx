@@ -107,6 +107,25 @@ function TodayCard({ today }: { today: TodayDecision }) {
 
       <h2 className="coach-headline mt-2">{today.headline}</h2>
 
+      {today.kind === 'ruhe' && today.strength?.kind && (
+        <div className="coach-facts mt-4">
+          <div>
+            <div className="t-num coach-fact-value">{today.strength.minutes}</div>
+            <div className="t-caption muted">Minuten</div>
+          </div>
+          <div>
+            <div className="t-num coach-fact-value">RPE {today.strength.rpe}</div>
+            <div className="t-caption muted">~{today.strength.percentOfMax} % vom Maximum</div>
+          </div>
+          {today.window && (
+            <div>
+              <div className="t-num coach-fact-value">{formatClock(today.window.start)}</div>
+              <div className="t-caption muted">bis {formatClock(today.window.end)}</div>
+            </div>
+          )}
+        </div>
+      )}
+
       {today.kind !== 'ruhe' && (
         <div className="coach-facts mt-4">
           <div>

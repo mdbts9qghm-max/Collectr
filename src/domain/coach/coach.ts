@@ -141,7 +141,16 @@ export type Verdict = 'los' | 'reduziert' | 'ruhe';
 export interface TodayDecision {
   date: ISODate;
   verdict: Verdict;
-  /** Ein Satz, groß auf dem Schirm. */
+  /**
+   * Der Name der Einheit, ohne Dauer und Uhrzeit.
+   *
+   * Jeder Bildschirm, der die Einheit benennt, benutzt genau diesen String.
+   * Vorher bildete jeder seinen eigenen: der Coach-Tab sagte „Bahn: 8 × 100 m",
+   * der Tagesbildschirm „Intervalle, verkürzt" — dieselbe Einheit, zwei Namen,
+   * und man wusste nicht, ob das zwei verschiedene Pläne sind.
+   */
+  label: string;
+  /** Der Name plus Dauer und Uhrzeit. Enthält `label` immer als Teilstring. */
   headline: string;
   kind: SessionKind;
   minutes: number;
@@ -597,9 +606,21 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
       : (anchorDay.run?.kind ?? 'ruhe');
 
   const blockers = findings.filter((f) => f.severity === 'blocker' && f.date === input.anchor);
+  const label = labelFor(anchorDay.run?.kind ?? 'ruhe', anchorDay, stage);
   const kind = anchorDay.run?.kind ?? 'ruhe';
+
+  /*
+   * Ruhe heißt: gar nichts. Seit die Läufe auf vier Tage je zehn liegen, tragen
+   * die übrigen Tage Kraft ohne Lauf — und ein Tag mit Krafteinheit ist kein
+   * Ruhetag. Vorher stand hier nur `kind === 'ruhe'`, und der Tagesbildschirm
+   * meldete Ruhe, während die Krafteinheit darunter in der Liste stand.
+   */
   const verdict: Verdict =
-    kind === 'ruhe' ? 'ruhe' : stepsTaken(plannedKind, kind) > 0 ? 'reduziert' : 'los';
+    kind === 'ruhe' && anchorDay.strength == null
+      ? 'ruhe'
+      : stepsTaken(plannedKind, kind) > 0
+        ? 'reduziert'
+        : 'los';
 
   const reasons = buildReasons({
     anchorDay,
@@ -614,11 +635,14 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     anchor: input.anchor,
   });
 
+  const strengthPlanToday = strengthPlans.get(input.anchor) ?? null;
   const steps =
     kind === 'intervall'
       ? [...intervalSession.steps, trackFallback(stage.stage)]
       : kind === 'ruhe'
-        ? ['Nichts. Ruhe ist Teil des Plans, nicht sein Ausfall.']
+        ? anchorDay.strength && strengthPlanToday?.kind
+          ? strengthPlanToday.blocks.map((b) => `${b.name}: ${b.sets} × ${b.reps}`)
+          : ['Nichts. Ruhe ist Teil des Plans, nicht sein Ausfall.']
         : kind === 'gehen'
           ? [`${anchorDay.run?.minutes ?? 0} Minuten zügig gehen`, 'Gehen ist die letzte Stufe vor Ruhe, keine andere Sportart.']
           : [
@@ -629,7 +653,8 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
   const today: TodayDecision = {
     date: input.anchor,
     verdict,
-    headline: headlineFor(kind, anchorDay, stage, isDeload),
+    label,
+    headline: headlineFor(label, kind, anchorDay, isDeload),
     kind,
     minutes: anchorDay.run?.minutes ?? 0,
     zone: CATALOGUE[kind].zone,
@@ -644,7 +669,7 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     blockers,
   };
 
-  today.strength = strengthPlans.get(input.anchor) ?? null;
+  today.strength = strengthPlanToday;
 
   const notes: HorizonNote[] = days.map((d) => {
     const offset = diffDays(d.date, input.anchor);
@@ -773,22 +798,25 @@ function buildReasons(input: {
   return out;
 }
 
-function headlineFor(
-  kind: SessionKind,
-  day: CoachDay,
-  stage: StageState,
-  isDeload: boolean,
-): string {
+/** Der Name der Einheit. Die eine Quelle, aus der jeder Bildschirm sie benennt. */
+function labelFor(kind: SessionKind, day: CoachDay, stage: StageState): string {
   if (kind === 'ruhe') {
+    // Kein Lauf heißt nicht keine Einheit.
+    if (day.strength) return CATALOGUE[day.strength.kind].label;
     if (day.cycleDay === 1 && !day.isVShift) return 'Tagschicht. Heute wird nicht trainiert.';
     return 'Ruhetag.';
   }
-  if (kind === 'intervall' || kind === 'intervall_kurz') {
-    return `Bahn: ${stage.stage.label}`;
-  }
-  const entry = CATALOGUE[kind];
-  const when = day.window ? ` ab ${formatClock(day.window.start)}` : '';
-  return `${entry.label}, ${day.run?.minutes ?? entry.defaultMinutes} Minuten${when}${isDeload ? ' — Deload' : ''}`;
+  if (kind === 'intervall') return `Bahn: ${stage.stage.label}`;
+  if (kind === 'intervall_kurz') return `Bahn verkürzt: ${stage.stage.label}`;
+  return CATALOGUE[kind].label;
+}
+
+/** Der Name plus Dauer und Uhrzeit — enthält den Namen immer als Teilstring. */
+function headlineFor(label: string, kind: SessionKind, day: CoachDay, isDeload: boolean): string {
+  const item = kind === 'ruhe' ? day.strength : day.run;
+  if (!item) return label;
+  const at = item.startMinutes != null ? ` ab ${formatClock(item.startMinutes)}` : '';
+  return `${label}, ${item.minutes} Minuten${at}${isDeload ? ' — Deload' : ''}`;
 }
 
 function hardYesterday(days: CoachDay[], date: ISODate): boolean {

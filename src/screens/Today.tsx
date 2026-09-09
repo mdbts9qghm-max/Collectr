@@ -79,6 +79,14 @@ export function Today() {
    */
   const coach = useCoach(today);
   const decision = coach.today;
+
+  /*
+   * Die Einheit des Tages ist nicht zwangsläufig ein Lauf. Seit die Läufe auf
+   * vier Tage je zehn liegen, tragen die übrigen Tage Kraft — und ein Tag mit
+   * Krafteinheit ist kein Ruhetag.
+   */
+  const mainKind = decision.kind !== 'ruhe' ? decision.kind : (decision.strength?.kind ?? null);
+  const mainMinutes = decision.kind !== 'ruhe' ? decision.minutes : (decision.strength?.minutes ?? 0);
   const coachDay = coach.timeline.days.find((d) => d.date === today) ?? null;
   const recoveryBand: 'red' | 'amber' | 'green' =
     decision.verdict === 'ruhe' ? 'red' : decision.verdict === 'reduziert' ? 'amber' : 'green';
@@ -140,25 +148,37 @@ export function Today() {
             </Pill>
           )}
         </div>
-        {decision.kind !== 'ruhe' ? (
+        {mainKind ? (
           <>
             <div className="row gap-3 mt-3">
               <span style={{ fontSize: 32, lineHeight: 1 }}>
-                {SPORT_META[shapeOf(decision.kind).sport].icon}
+                {SPORT_META[shapeOf(mainKind).sport].icon}
               </span>
               <div className="grow">
-                <div className="t-title">{CATALOGUE[decision.kind].label}</div>
+                <div className="t-title">{decision.label}</div>
                 <div className="t-small secondary mt-2">
                   {[
-                    formatDuration(decision.minutes),
-                    decision.zoneLabel,
-                    decision.startMinutes != null ? `ab ${formatClock(decision.startMinutes)}` : null,
+                    formatDuration(mainMinutes),
+                    decision.kind !== 'ruhe' ? decision.zoneLabel : `RPE ${decision.strength?.rpe}`,
+                    decision.kind !== 'ruhe'
+                      ? decision.startMinutes != null
+                        ? `ab ${formatClock(decision.startMinutes)}`
+                        : null
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </div>
               </div>
             </div>
+
+            {/* Steht beides an, gehört die zweite Einheit auch auf die Karte. */}
+            {decision.kind !== 'ruhe' && decision.strength?.kind && (
+              <div className="t-caption secondary mt-2">
+                Dazu {CATALOGUE[decision.strength.kind].label} ·{' '}
+                {formatDuration(decision.strength.minutes)} · RPE {decision.strength.rpe}
+              </div>
+            )}
 
             {decision.stepsDown > 0 && (
               <div className="t-caption mt-3" style={{ color: 'var(--warn)' }}>
