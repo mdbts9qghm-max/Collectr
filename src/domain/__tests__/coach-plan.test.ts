@@ -6,7 +6,13 @@ import { CATALOGUE, HARD_LOAD, bearableStep, chainFor, stepDown } from '../coach
 import { FIXED_ZONES, proposeZones, retestState, zoneFor } from '../coach/zones.ts';
 import { isDeloadCycle, targetFor } from '../coach/phases.ts';
 import { STAGE_TABLE, stageFor } from '../coach/intervals.ts';
-import { planStrength } from '../coach/strength.ts';
+import {
+  STRENGTH_PHASES,
+  STRENGTH_STAGES,
+  planStrength,
+  strengthStageFor,
+  strengthTargetFor,
+} from '../coach/strength.ts';
 import { MIN_CAPACITY } from '../coach/capacity.ts';
 import { shiftLoadFor } from '../coach/shift.ts';
 import { loadOf, totalLoadOf } from '../coach/types.ts';
@@ -250,6 +256,15 @@ describe('Phasen und Volumen', () => {
     ]);
   });
 
+  it('läuft in P3 auf die Spanne zu und bleibt dort stehen', () => {
+    // `open` heißt: die Phase endet nicht. Nicht: das Volumen wächst endlos.
+    let previous: number | null = null;
+    for (let m = 0; m <= 80; m++) {
+      previous = targetFor({ macrocycleIndex: m, previousRunMinutes: previous }).runMinutes;
+    }
+    expect(previous).toBe(850);
+  });
+
   it('wächst nie über 8 % je Makrozyklus', () => {
     let previous = 300;
     for (let m = 1; m < 30; m++) {
@@ -258,6 +273,125 @@ describe('Phasen und Volumen', () => {
       previous = t.runMinutes;
     }
     expect(previous).toBeGreaterThan(700);
+  });
+});
+
+/**
+ * Kraft nach denselben Regeln wie das Laufen.
+ *
+ * Sie war lange die Ausnahme: das Laufen hatte Volumenziel, Wachstumsgrenze,
+ * Phasen, Stufen und Deload — die Kraft bekam, was übrig blieb. Diese Tests
+ * halten fest, dass sie dasselbe Gerüst hat.
+ */
+describe('Kraft hat dasselbe Gerüst wie das Laufen', () => {
+  it('hat ein Volumenziel je zehn Tage, an dieselbe Phasenuhr gehängt', () => {
+    const start = strengthTargetFor({ macrocycleIndex: 0, previousStrengthMinutes: null });
+    expect(start.phase).toBe('P0');
+    expect(start.minutes).toBe(STRENGTH_PHASES.P0.fromMinutes);
+    expect(start.limitedBy).toBe('start');
+  });
+
+  it('kennt dieselbe Wachstumsgrenze von 8 %', () => {
+    const t = strengthTargetFor({ macrocycleIndex: 12, previousStrengthMinutes: 60 });
+    expect(t.phaseTarget).toBeGreaterThan(t.minutes);
+    expect(t.minutes).toBe(Math.floor(60 * 1.08));
+    expect(t.limitedBy).toBe('wachstum');
+  });
+
+  it('hält die Kraft in P3 an, während das Laufen noch steigt', () => {
+    let kraft: number | null = null;
+    let lauf: number | null = null;
+    for (let m = 0; m <= 60; m++) {
+      kraft = strengthTargetFor({ macrocycleIndex: m, previousStrengthMinutes: kraft }).minutes;
+      lauf = targetFor({ macrocycleIndex: m, previousRunMinutes: lauf }).runMinutes;
+    }
+    expect(kraft).toBe(STRENGTH_PHASES.P3.toMinutes);
+    expect(lauf).toBeGreaterThan(kraft!);
+  });
+
+  it('nimmt im Deload 40 % des betroffenen Zyklus heraus', () => {
+    const normal = strengthTargetFor({ macrocycleIndex: 6, previousStrengthMinutes: 200 });
+    const deload = strengthTargetFor({
+      macrocycleIndex: 6,
+      previousStrengthMinutes: 200,
+      deloadShare: 0.5,
+    });
+    expect(deload.minutes).toBeLessThan(normal.minutes);
+    expect(deload.limitedBy).toBe('deload');
+  });
+
+  it('steigt in Stufen und braucht zwei saubere Zyklen je Stufe', () => {
+    expect(strengthStageFor([]).stage.id).toBe('A');
+    expect(strengthStageFor([true]).stage.id).toBe('A');
+    expect(strengthStageFor([true, true]).stage.id).toBe('B');
+    expect(strengthStageFor([true, true, true, true]).stage.id).toBe('C');
+    expect(strengthStageFor(new Array(40).fill(true)).stage.id).toBe('D');
+    // Ein unsauberer Zyklus setzt den Zähler zurück, wirft die Stufe nicht weg.
+    expect(strengthStageFor([true, true, true, false, true]).stage.id).toBe('B');
+  });
+
+  it('lässt die Stufe die Anstrengung setzen und die Erholung sie nur senken', () => {
+    const base = {
+      hasWindow: true,
+      availableMinutes: 120,
+      hardRunTomorrow: false,
+      hardRunToday: false,
+      hardRunYesterday: false,
+      isDeload: false,
+      daysSinceStrength: 3,
+      targetMinutes: 50,
+    };
+    // Volle Erholung, aber Stufe A: die Stufe deckelt.
+    const early = planStrength({ ...base, recovery: 100, stage: STRENGTH_STAGES[0] });
+    expect(early.rpe).toBe(STRENGTH_STAGES[0].targetRpe);
+    expect(early.blocks[0].reps).toBe(STRENGTH_STAGES[0].reps);
+
+    // Späte Stufe, aber mäßige Erholung: die Erholung deckelt.
+    const tired = planStrength({ ...base, recovery: 62, stage: STRENGTH_STAGES[3] });
+    expect(tired.rpe).toBeLessThan(STRENGTH_STAGES[3].targetRpe);
+    expect(tired.reason).toMatch(/Erholung trägt heute/);
+  });
+
+  it('plant die Länge aus dem Volumenziel, nicht aus dem Katalog', () => {
+    const base = {
+      recovery: 95,
+      hasWindow: true,
+      availableMinutes: 120,
+      hardRunTomorrow: false,
+      hardRunToday: false,
+      hardRunYesterday: false,
+      isDeload: false,
+      daysSinceStrength: 3,
+      stage: STRENGTH_STAGES[2],
+    };
+    expect(planStrength({ ...base, targetMinutes: 40 }).minutes).toBe(40);
+    expect(planStrength({ ...base, targetMinutes: 60 }).minutes).toBe(60);
+  });
+
+  it('lässt im Deload keine schwere Beinlast zu', () => {
+    const p = planStrength({
+      recovery: 95,
+      hasWindow: true,
+      availableMinutes: 120,
+      hardRunTomorrow: false,
+      hardRunToday: false,
+      hardRunYesterday: false,
+      isDeload: true,
+      daysSinceStrength: 3,
+      stage: STRENGTH_STAGES[2],
+      targetMinutes: 50,
+    });
+    expect(p.kind).not.toBe('kraft_ganzkoerper');
+  });
+
+  it('hält 48 Stunden zwischen schweren Beineinheiten', () => {
+    const p = plan(ANCHOR, 4);
+    const heavy = p.timeline.days
+      .filter((d) => d.date >= ANCHOR && d.strength && CATALOGUE[d.strength.kind].legHeavy)
+      .map((d) => d.date);
+    for (let i = 1; i < heavy.length; i++) {
+      expect(diffDays(heavy[i], heavy[i - 1])).toBeGreaterThanOrEqual(2);
+    }
   });
 });
 
@@ -292,6 +426,8 @@ describe('Kraft', () => {
     hardRunYesterday: false,
     isDeload: false,
     daysSinceStrength: 3,
+    stage: STRENGTH_STAGES[2],
+    targetMinutes: 50,
   };
 
   it('plant bei guter Erholung schwere Beine und rechnet die Intensität', () => {

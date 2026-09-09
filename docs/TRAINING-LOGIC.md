@@ -281,7 +281,7 @@ Schlägen Unterschied meldet der Vorschlag ausdrücklich Messrauschen statt Anpa
 | P0 | Woche 1–8 | 300 → 420 |
 | P1 | Monat 3–6 | 420 → 600 |
 | P2 | Monat 7–10 | 600 → 750 |
-| P3 | ab Monat 11 | 700 → 850, nach oben offen |
+| P3 | ab Monat 11 | 700 → 850, dann gehalten |
 
 > Verlangt das Phasenziel mehr, gilt die Grenze. Das Ziel wird nach hinten verschoben, nicht
 > die Grenze gedehnt. Es gibt keinen Ersatzweg, um Volumen schneller aufzubauen.
@@ -378,17 +378,53 @@ des Schlaftags ist 60 „nach 24 h Wachzeit", der des Tagschichttags 0.
 Die **V-Schicht** überschreibt den Tag: 30 bis 60 Minuten locker im Dienst. Das ist kein
 Abschreiben des Tages, aber keine Intensität.
 
-### Krafttraining
+### Krafttraining — nach denselben Regeln wie das Laufen
 
-Kraft geht immer. Sie konkurriert nicht um Laufminuten und wird deshalb nicht weggelassen,
-wenn es eng wird — sie wird leichter. Die Intensität wird gerechnet, nicht gewählt:
-Ausgangspunkt ist der Erholungswert, Abzüge kommen von einer harten Laufeinheit heute,
-gestern oder morgen, vom Deload und von einer Krafteinheit am Vortag. Daraus fallen
-Einheitenart, RPE, Richtwert in Prozent des Maximums und die Wiederholungen in Reserve.
+Kraft war lange die Ausnahme im Plan: das Laufen hatte ein Volumenziel je zehn Tage, eine
+Wachstumsgrenze, Phasen, Bahnstufen und einen Deload — die Kraft bekam, was an Zeit und
+Erholung übrig blieb. Jetzt hat sie dasselbe Gerüst.
 
-Die einzige harte Grenze ist die Nachbarschaft: **schwere Beinkraft liegt nie in den 24
-Stunden vor einer Intensitäts- oder Longrun-Einheit.** Sie schiebt nicht die Last nach
-unten, sondern die Übungen nach oben — Oberkörper geht auch am Tag vor der Bahn.
+| Laufen | Kraft |
+| --- | --- |
+| Laufminuten je 10 Tage aus der Phase | Kraftminuten je 10 Tage aus derselben Phase |
+| höchstens 8 % Wachstum je 10 Tage | dieselbe Grenze |
+| Bahnstufen 8×100 m → 4×4 | Kraftstufen Anpassung → Maximalkraft |
+| zwei saubere Zyklen je Stufe | dieselbe Regel |
+| Deload: 40 % weniger, keine Intensität | Deload: 40 % weniger, keine schwere Beinlast |
+| 48 h zwischen harten Läufen | 48 h zwischen schweren Beineinheiten |
+| Phase setzt, Erholung stuft ab | Stufe setzt, Erholung stuft ab |
+
+**Kraftminuten je zehn Tage:**
+
+| Phase | von | bis | Schwerpunkt |
+| --- | --- | --- | --- |
+| P0 | 60 | 90 | Technik vor Last, die Sehnen brauchen länger als die Muskeln |
+| P1 | 90 | 120 | Aufbau bis auf die zwei Einheiten die Woche, die ein Läufer trägt |
+| P2 | 120 | 140 | Maximalkraft in den Grundübungen — sie trägt den Longrun |
+| P3 | 140 | 140 | Halten |
+
+**Kraftstufen:**
+
+| Stufe | Sätze × Wdh. | Ziel-RPE | Zweck |
+| --- | --- | --- | --- |
+| A Anpassung | 2 × 12–15 | 6 | Bewegungen lernen, Sehnen an Last gewöhnen |
+| B Hypertrophie | 3 × 8–12 | 7 | Muskelquerschnitt als Grundlage |
+| C Kraft | 4 × 6–8 | 8 | der Bereich, in dem ein Läufer lebt |
+| D Maximalkraft | 4 × 4–6 | 9 | neuronale Ansteuerung, wenig Muskelkater |
+
+Die Stufe setzt die **Zielanstrengung**, die Erholung darf sie nur **senken**. Das ist
+dieselbe Rangfolge wie beim Laufen: die Phase setzt, der Erholungswert stuft ab — nie
+umgekehrt. Sätze und Wiederholungen kommen aus der Stufe, die Länge aus dem Volumenziel,
+und der Katalog gibt nur noch die Grenzen, in denen sie liegen darf.
+
+**Die eine Stelle, an der die Kraft dem Laufen bewusst nicht folgt**, ist P3: dort ist das
+Laufvolumen bei 850 Minuten angekommen und die Kraft bleibt bei 140. Kraft ist die Stütze
+des Laufens, nicht sein Wettbewerber — eine Kraft, die in P3 mitwüchse, konkurrierte um
+dieselbe Erholung.
+
+Die harte Nachbarschaftsgrenze gilt weiter: **schwere Beinkraft liegt nie in den 24 Stunden
+vor einer Intensitäts- oder Longrun-Einheit.** Sie schiebt nicht die Last ins Leichte,
+sondern die Übungen nach oben — Oberkörper geht auch am Tag vor der Bahn.
 
 ### Deload
 
@@ -426,6 +462,7 @@ nicht an einem einzelnen kurzen Tag, sonst schlüge sie jeden Zyklus grundlos an
 
 | Vorgabe | Umsetzung | Grund |
 | --- | --- | --- |
+| „P3 ab Monat 11 (700–850), unbegrenzt" | `open` heißt: die **Phase** endet nie. Das Volumen läuft die Spanne hoch und bleibt bei 850. | Zuerst umgekehrt gelesen — das Ziel wuchs in P3 entlang der 8-%-Grenze weiter, weil kein Phasenziel mehr bremste. Über genug Makrozyklen ergab das 2846 Laufminuten je zehn Tage, also 47 Stunden. Eine Grenze, die man durch Warten überschreiten kann, ist keine. |
 | „Zone 2 mindestens 80 % der Laufminuten" | gezählt wird Zone 1 **und** 2 | Wörtlich genommen fielen Ein- und Auslaufen einer korrekt gelaufenen Intervalleinheit gegen die Regel. Eine Regel, die richtiges Aufwärmen bestraft, misst nicht, was sie messen soll. |
 | Volumenwachstum ≤ 8 % je 10 Tage | Fenster mit Deload-Tagen sind ausgenommen | Sonst bestraft die Regel den geplanten Einbruch und zieht das Volumen bei jedem vierten Zyklus dauerhaft nach unten. |
 | Longrun ≤ 10 min Wachstum pro Schritt | der halbierte Deload-Longrun steht nicht in der Schrittfolge | Sonst gälte der Rücksprung danach als Steigerung um vierzig Minuten. |

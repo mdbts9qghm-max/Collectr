@@ -428,6 +428,7 @@ export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
     dayShiftWakeMinutes: wake,
     cycleIndex: cyclesBefore + Math.max(0, cyclesToAnchor - 1),
     previousRunMinutes: runMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
+    previousStrengthMinutes: strengthMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
     zones: data.settings.coachZones ?? FIXED_ZONES,
     sleep: {
       debtHours: sleep.debtHours,
@@ -467,6 +468,19 @@ function runKindOf(session: TrainingSession): CoachSessionKind {
   if (minutes >= 50) return 'longrun_verkuerzt';
   if (minutes >= 40) return 'grundlagenlauf';
   return 'lockerer_lauf';
+}
+
+/** Tatsächlich gehobene Minuten in einem Zeitraum. Null ohne jede Einheit. */
+function strengthMinutesInWindow(data: AppData, from: ISODate, to: ISODate): number | null {
+  const inRange = data.sessions.filter(
+    (s) =>
+      s.status === 'completed' &&
+      (s.sport === 'strength' || s.sport === 'mobility') &&
+      s.date >= from &&
+      s.date <= to,
+  );
+  if (!inRange.length) return null;
+  return inRange.reduce((sum, s) => sum + effectiveDuration(s), 0);
 }
 
 /** Tatsächlich gelaufene Minuten in einem Zeitraum. Null ohne jede Einheit. */

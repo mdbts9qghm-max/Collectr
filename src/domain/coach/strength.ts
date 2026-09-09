@@ -1,19 +1,32 @@
+import type { PhaseId } from './phases.ts';
 import type { SessionKind } from './catalogue.ts';
 import { CATALOGUE } from './catalogue.ts';
+import { CLEAN_CYCLES_PER_STAGE } from './intervals.ts';
+import { MAX_GROWTH, phaseForWeek, weekOfMacrocycle } from './phases.ts';
 
 /**
- * Kraft geht immer.
+ * Kraft — nach denselben Regeln wie das Laufen.
  *
- * Kraft ist die einzige Belastungsform in diesem Plan, die nicht um Laufminuten
- * konkurriert. Sie wird deshalb nicht weggelassen, wenn es eng wird — sie wird
- * dorthin gelegt, wo sie passt, und in der Intensität an den Tag angepasst.
+ * Sie war lange die Ausnahme im Plan: das Laufen hatte ein Volumenziel je zehn
+ * Tage, eine Wachstumsgrenze, Phasen, Bahnstufen und einen Deload — die Kraft
+ * bekam, was an Zeit und Erholung übrig blieb. Das ist jetzt vorbei. Kraft hat
+ * dieselben fünf Dinge:
  *
- * Die eine harte Grenze ist die Nachbarschaft zu Laufreizen:
+ * | Laufen | Kraft |
+ * | --- | --- |
+ * | Laufminuten je 10 Tage aus der Phase | Kraftminuten je 10 Tage aus derselben Phase |
+ * | höchstens 8 % Wachstum je 10 Tage | dieselbe Grenze |
+ * | Bahnstufen 8×100 m bis 4×4 | Kraftstufen Anpassung bis Maximalkraft |
+ * | zwei saubere Zyklen je Stufe | dieselbe Regel |
+ * | Deload: 40 % weniger, keine Intensität | Deload: 40 % weniger, keine schwere Beinlast |
+ *
+ * Was bleibt: Kraft konkurriert nicht um Laufminuten, und die eine harte Grenze
+ * ist die Nachbarschaft zu Laufreizen.
  *
  * > Schwere Beinkraft liegt nie in den 24 Stunden vor einer Intensitäts- oder
  * > Longrun-Einheit.
  *
- * Diese Grenze verschiebt die Beine nicht ins Leichte, sondern die Übungen nach
+ * Diese Grenze verschiebt nicht die Last ins Leichte, sondern die Übungen nach
  * oben: Oberkörper geht auch am Tag vor der Bahn. Was wegfällt, ist die Last auf
  * den Beinen, nicht die Einheit.
  */
@@ -22,6 +35,232 @@ export type StrengthKind = Extract<
   SessionKind,
   'kraft_ganzkoerper' | 'kraft_oberkoerper' | 'kraft_leicht'
 >;
+
+/* ------------------------------------------------------------------ *
+ * Das Volumenziel
+ * ------------------------------------------------------------------ */
+
+export interface StrengthPhaseTarget {
+  phase: PhaseId;
+  fromMinutes: number;
+  toMinutes: number;
+  focus: string;
+}
+
+/**
+ * Kraftminuten je zehn Tage, an dieselbe Phasenuhr gehängt wie das Laufen.
+ *
+ * **Diese Zahlen sind Urteil, keine Messung.** Zwei Krafteinheiten die Woche zu
+ * je 45 Minuten sind der gängige Richtwert für Läufer; 120 Minuten je zehn Tage
+ * treffen das. Der Aufbau dorthin ist bewusst langsam, weil in P0 die Sehnen der
+ * begrenzende Faktor sind und nicht die Kraft.
+ *
+ * In P3 wächst die Kraft **nicht mehr mit**. Das ist die eine Stelle, an der sie
+ * dem Laufen bewusst nicht folgt: dort ist das Laufvolumen nach oben offen, und
+ * eine Kraft, die mitwüchse, konkurrierte um dieselbe Erholung. Kraft wird
+ * aufgebaut und dann gehalten — sie ist die Stütze des Laufens, nicht sein
+ * Wettbewerber.
+ */
+export const STRENGTH_PHASES: Record<PhaseId, StrengthPhaseTarget> = {
+  P0: {
+    phase: 'P0',
+    fromMinutes: 60,
+    toMinutes: 90,
+    focus: 'Technik vor Last. Die Sehnen brauchen länger als die Muskeln.',
+  },
+  P1: {
+    phase: 'P1',
+    fromMinutes: 90,
+    toMinutes: 120,
+    focus: 'Aufbau bis auf die zwei Einheiten die Woche, die ein Läufer trägt.',
+  },
+  P2: {
+    phase: 'P2',
+    fromMinutes: 120,
+    toMinutes: 140,
+    focus: 'Maximalkraft in den Grundübungen — sie trägt den Longrun.',
+  },
+  P3: {
+    phase: 'P3',
+    fromMinutes: 140,
+    toMinutes: 140,
+    focus: 'Halten. Hier wächst das Laufen weiter, die Kraft nicht mehr.',
+  },
+};
+
+export interface StrengthTarget {
+  phase: PhaseId;
+  phaseTarget: number;
+  growthCeiling: number | null;
+  /** Kraftminuten, die tatsächlich verplant werden. */
+  minutes: number;
+  limitedBy: 'start' | 'phase' | 'wachstum' | 'deload';
+  reason: string;
+}
+
+/**
+ * Das Kraftminutenziel für einen Makrozyklus — dieselbe Rechnung wie beim Laufen.
+ *
+ * Das Phasenziel ist eine Absicht, die Wachstumsgrenze ist ein Gesetz. Wo beide
+ * sich widersprechen, gewinnt die Grenze und das Ziel rutscht nach hinten.
+ */
+export function strengthTargetFor(input: {
+  macrocycleIndex: number;
+  previousStrengthMinutes: number | null;
+  /** Anteil des Makrozyklus, der im Deload liegt: 0, 0.5 oder 1. */
+  deloadShare?: number;
+}): StrengthTarget {
+  const week = weekOfMacrocycle(input.macrocycleIndex);
+  const phase = phaseForWeek(week);
+  const table = STRENGTH_PHASES[phase.id];
+
+  const spanWeeks = phase.toWeek == null ? 20 : phase.toWeek - phase.fromWeek;
+  const progress = spanWeeks <= 0 ? 1 : Math.min(1, (week - phase.fromWeek) / spanWeeks);
+  const phaseTarget = Math.round(
+    table.fromMinutes + (table.toMinutes - table.fromMinutes) * progress,
+  );
+
+  const previous = input.previousStrengthMinutes;
+  const growthCeiling = previous != null ? Math.floor(previous * (1 + MAX_GROWTH)) : null;
+  const deloadShare = input.deloadShare ?? 0;
+
+  const withDeload = (minutes: number) => Math.round(minutes * (1 - 0.4 * deloadShare));
+
+  if (previous == null || growthCeiling == null) {
+    const minutes = withDeload(table.fromMinutes);
+    return {
+      phase: phase.id,
+      phaseTarget,
+      growthCeiling: null,
+      minutes,
+      limitedBy: deloadShare > 0 ? 'deload' : 'start',
+      reason: `Noch keine zehn Tage Vorgeschichte. Einstieg in ${phase.id} mit ${minutes} Kraftminuten.`,
+    };
+  }
+
+  if (phaseTarget > growthCeiling) {
+    const minutes = withDeload(growthCeiling);
+    return {
+      phase: phase.id,
+      phaseTarget,
+      growthCeiling,
+      minutes,
+      limitedBy: 'wachstum',
+      reason: `${phase.id} sähe ${phaseTarget} Kraftminuten vor, gewachsen wird aber höchstens 8 % — also ${growthCeiling}${deloadShare > 0 ? `, im Deload ${minutes}` : ''}.`,
+    };
+  }
+
+  const minutes = withDeload(phaseTarget);
+  return {
+    phase: phase.id,
+    phaseTarget,
+    growthCeiling,
+    minutes,
+    limitedBy: deloadShare > 0 ? 'deload' : 'phase',
+    reason:
+      deloadShare > 0
+        ? `Deload: ${minutes} statt ${phaseTarget} Kraftminuten, und keine schwere Beinlast.`
+        : `${phase.id}: ${minutes} Kraftminuten in zehn Tagen. ${table.focus}`,
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Die Stufen
+ * ------------------------------------------------------------------ */
+
+export interface StrengthStage {
+  id: 'A' | 'B' | 'C' | 'D';
+  index: number;
+  label: string;
+  sets: number;
+  reps: string;
+  /** Zielanstrengung dieser Stufe. Die Erholung darf sie nur senken, nie heben. */
+  targetRpe: number;
+  purpose: string;
+}
+
+/**
+ * Die Kraftstufen — dieselbe Mechanik wie die Bahnstufen.
+ *
+ * Eine Stufe wird erst verlassen, wenn zwei Zyklen sauber durchlaufen wurden.
+ * Wer von Anpassung direkt auf Maximalkraft springt, hat keine Anpassung
+ * gewonnen, sondern nur die Rückmeldung verloren, ob die Technik trägt.
+ */
+export const STRENGTH_STAGES: StrengthStage[] = [
+  {
+    id: 'A',
+    index: 0,
+    label: 'Anpassung',
+    sets: 2,
+    reps: '12–15',
+    targetRpe: 6,
+    purpose: 'Bewegungen lernen, Sehnen an Last gewöhnen',
+  },
+  {
+    id: 'B',
+    index: 1,
+    label: 'Hypertrophie',
+    sets: 3,
+    reps: '8–12',
+    targetRpe: 7,
+    purpose: 'Muskelquerschnitt als Grundlage für alles Weitere',
+  },
+  {
+    id: 'C',
+    index: 2,
+    label: 'Kraft',
+    sets: 4,
+    reps: '6–8',
+    targetRpe: 8,
+    purpose: 'Kraft bei überschaubarer Ermüdung — der Bereich, in dem ein Läufer lebt',
+  },
+  {
+    id: 'D',
+    index: 3,
+    label: 'Maximalkraft',
+    sets: 4,
+    reps: '4–6',
+    targetRpe: 9,
+    purpose: 'Neuronale Ansteuerung, wenig Volumen, wenig Muskelkater',
+  },
+];
+
+export interface StrengthStageState {
+  stage: StrengthStage;
+  cleanCycles: number;
+  cyclesToNext: number;
+  next: StrengthStage | null;
+  reason: string;
+}
+
+/** Die Stufe aus der Vorgeschichte — Zyklus für Zyklus, sauber oder nicht. */
+export function strengthStageFor(history: boolean[]): StrengthStageState {
+  let index = 0;
+  let clean = 0;
+  for (const wasClean of history) {
+    if (!wasClean) {
+      clean = 0;
+      continue;
+    }
+    clean += 1;
+    if (clean >= CLEAN_CYCLES_PER_STAGE && index < STRENGTH_STAGES.length - 1) {
+      index += 1;
+      clean = 0;
+    }
+  }
+  const stage = STRENGTH_STAGES[index];
+  const next = index < STRENGTH_STAGES.length - 1 ? STRENGTH_STAGES[index + 1] : null;
+  const cyclesToNext = next ? CLEAN_CYCLES_PER_STAGE - clean : 0;
+  return {
+    stage,
+    cleanCycles: clean,
+    cyclesToNext,
+    next,
+    reason: next
+      ? `Kraftstufe ${stage.id}: ${stage.label}, ${stage.sets} × ${stage.reps} bei RPE ${stage.targetRpe}. Noch ${cyclesToNext} sauberer Zyklus bis ${next.label}.`
+      : `Kraftstufe ${stage.id}: ${stage.label}. Die letzte Stufe — hier bleibt es.`,
+  };
+}
 
 export interface StrengthBlock {
   name: string;
@@ -69,10 +308,16 @@ export interface StrengthInput {
   hardRunToday: boolean;
   /** Gestern wurde hart gelaufen. */
   hardRunYesterday: boolean;
-  /** Deload-Zyklus: die Kraft geht mit runter. */
+  /** Deload-Zyklus: die Kraft geht mit runter, und schwere Beinlast entfällt. */
   isDeload: boolean;
   /** Tage seit der letzten Krafteinheit. Null, wenn es noch keine gab. */
   daysSinceStrength: number | null;
+  /** Die Stufe aus der Vorgeschichte. Sie setzt die Zielanstrengung. */
+  stage: StrengthStage;
+  /** Die Minuten, die die Volumenverteilung diesem Tag zugeteilt hat. */
+  targetMinutes: number;
+  /** Schwere Beinlast liegt weniger als 48 h zurück. */
+  legsRecentlyLoaded?: boolean;
 }
 
 export function planStrength(input: StrengthInput): StrengthPlan {
@@ -113,6 +358,16 @@ export function planStrength(input: StrengthInput): StrengthPlan {
   add(`Erholung ${input.recovery}`, 0);
 
   let legsAllowed = true;
+  if (input.isDeload) {
+    // Im Deload keine schwere Beinlast — wie beim Laufen keine Intensität.
+    legsAllowed = false;
+    add('Deload-Zyklus — keine schwere Beinlast', 0);
+  }
+  if (input.legsRecentlyLoaded) {
+    legsAllowed = false;
+    add('Schwere Beinlast vor weniger als 48 Stunden', -10);
+    score -= 10;
+  }
   if (input.hardRunTomorrow) {
     legsAllowed = false;
     add('Morgen Intensität oder Longrun — Beine bleiben frei', -15);
@@ -150,18 +405,33 @@ export function planStrength(input: StrengthInput): StrengthPlan {
         : 'kraft_leicht';
 
   const entry = CATALOGUE[kind];
+  /*
+   * Die Länge kommt aus der Volumenverteilung, nicht aus dem Katalog — genau wie
+   * beim Laufen. Der Katalog gibt nur noch die Grenzen, in denen sie liegen darf.
+   */
   const minutes = Math.max(
     entry.minMinutes,
-    Math.min(entry.maxMinutes, entry.defaultMinutes, input.availableMinutes),
+    Math.min(entry.maxMinutes, input.targetMinutes, input.availableMinutes),
   );
 
-  const rpe = Math.max(5, Math.min(9, Math.round(5 + (score - 40) / 15)));
+  /*
+   * Die Stufe setzt die Zielanstrengung, die Erholung darf sie nur senken. Das
+   * ist dieselbe Rangfolge wie beim Laufen: die Phase setzt, der Erholungswert
+   * stuft ab — nie umgekehrt.
+   */
+  const fromRecovery = Math.max(5, Math.min(9, Math.round(5 + (score - 40) / 15)));
+  const rpe = Math.min(input.stage.targetRpe, fromRecovery);
   const percentOfMax = RPE_TO_PERCENT[rpe];
   const repsInReserve = 10 - rpe;
 
+  const stageNote =
+    rpe < input.stage.targetRpe
+      ? ` Stufe ${input.stage.id} sähe RPE ${input.stage.targetRpe} vor — die Erholung trägt heute ${rpe}.`
+      : ` Stufe ${input.stage.id}, ${input.stage.label}.`;
+
   const reason =
     kind === 'kraft_ganzkoerper'
-      ? `Der Tag trägt schwere Beine: RPE ${rpe}, rund ${percentOfMax} % — ${repsInReserve} Wiederholungen in Reserve.`
+      ? `Der Tag trägt schwere Beine: RPE ${rpe}, rund ${percentOfMax} % — ${repsInReserve} Wiederholungen in Reserve.${stageNote}`
       : kind === 'kraft_oberkoerper'
         ? legsAllowed
           ? `Erholung reicht für Kraft, aber nicht für schwere Beine: Oberkörper mit RPE ${rpe}, rund ${percentOfMax} %.`
@@ -174,15 +444,16 @@ export function planStrength(input: StrengthInput): StrengthPlan {
     rpe,
     percentOfMax,
     repsInReserve,
-    blocks: blocksFor(kind, rpe),
+    blocks: blocksFor(kind, rpe, input.stage),
     reason,
     factors,
   };
 }
 
-function blocksFor(kind: StrengthKind, rpe: number): StrengthBlock[] {
-  const reps = rpe >= 8 ? '4–6' : rpe >= 7 ? '6–8' : '8–12';
-  const sets = rpe >= 8 ? 4 : 3;
+function blocksFor(kind: StrengthKind, rpe: number, stage: StrengthStage): StrengthBlock[] {
+  // Sätze und Wiederholungen kommen aus der Stufe, nicht aus der Tagesform.
+  const reps = stage.reps;
+  const sets = stage.sets;
 
   const core: StrengthBlock = {
     name: 'Rumpf: Unterarmstütz seitlich und Pallof-Press',

@@ -535,6 +535,17 @@ function VolumeCard({ plan }: { plan: CoachView }) {
         </div>
       </div>
 
+      <div className="coach-facts mt-3">
+        <div>
+          <div className="t-num coach-fact-value">{plan.strengthTarget.minutes}</div>
+          <div className="t-caption muted">Kraftminuten / 10 Tage</div>
+        </div>
+        <div>
+          <div className="t-num coach-fact-value">{plan.strengthStage.stage.id}</div>
+          <div className="t-caption muted">Kraftstufe</div>
+        </div>
+      </div>
+
       <div className="coach-meter mt-3">
         <div
           className="coach-meter-fill"
@@ -550,6 +561,8 @@ function VolumeCard({ plan }: { plan: CoachView }) {
           <div className="t-small secondary">{target.phase.focus}</div>
           <div className="t-small secondary mt-2">{stage.reason}</div>
           <div className="t-small secondary mt-2">{stage.stage.instruction}</div>
+          <div className="t-small secondary mt-2">{plan.strengthTarget.reason}</div>
+          <div className="t-small secondary mt-2">{plan.strengthStage.reason}</div>
           <div className="t-caption muted mt-3">
             {plan.isDeload
               ? 'Dieser Zyklus ist der Deload: 40 % weniger Laufminuten, keine Intensität, Longrun halbiert.'

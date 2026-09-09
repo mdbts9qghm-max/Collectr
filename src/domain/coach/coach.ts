@@ -1,7 +1,7 @@
 import type { ISODate } from '../types.ts';
 import type { CoachDay, CycleDayNumber, PlannedItem, Timeline } from './types.ts';
 import type { RuleFinding } from './rules.ts';
-import type { StrengthPlan } from './strength.ts';
+import type { StrengthPlan, StrengthStageState, StrengthTarget } from './strength.ts';
 import type { VolumeTarget } from './phases.ts';
 import type { Distribution } from './template.ts';
 import type { StageState } from './intervals.ts';
@@ -17,7 +17,11 @@ import { secondUnitCapacity } from './capacity.ts';
 import { shiftLoadFor } from './shift.ts';
 import { buildIntervalSession, stageFor, trackFallback } from './intervals.ts';
 import { isDeloadCycle, targetFor } from './phases.ts';
-import { planStrength } from './strength.ts';
+import {
+  planStrength,
+  strengthStageFor,
+  strengthTargetFor,
+} from './strength.ts';
 import { RULES, checkAll } from './rules.ts';
 import { loadOf } from './types.ts';
 import { addDays, diffDays } from '../date.ts';
@@ -79,6 +83,10 @@ export interface CoachInput {
   phaseChanging?: boolean;
   /** Je Zyklus von alt nach neu: war die Intervalleinheit sauber? */
   intervalHistory?: boolean[];
+  /** Je Zyklus von alt nach neu: war die Krafteinheit sauber? */
+  strengthHistory?: boolean[];
+  /** Kraftminuten der zehn Tage vor dem laufenden Makrozyklus. */
+  previousStrengthMinutes?: number | null;
   zones?: ZoneBounds;
   /**
    * Die Signale des Schlafmoduls.
@@ -150,6 +158,9 @@ export interface CoachPlan {
   timeline: Timeline;
   target: VolumeTarget;
   stage: StageState;
+  /** Kraftminuten je 10 Tage und die Stufe, nach denselben Regeln wie das Laufen. */
+  strengthTarget: StrengthTarget;
+  strengthStage: StrengthStageState;
   isDeload: boolean;
   /** Zyklusindex des Ankertags, ab 0 seit Trainingsbeginn. */
   anchorCycleIndex: number;
@@ -400,25 +411,50 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     day.run = itemFrom(kind, minutes, hardMinutes, start);
   }
 
-  /* ---- 4. Kraft dorthin, wo sie passt ----------------------------- */
+  /* ---- 4. Kraft nach denselben Regeln wie das Laufen -------------- */
 
   /*
-   * Ob ein Tag eine zweite Einheit trägt, steht nirgends geschrieben — er rechnet
-   * es aus. Erholung minus Schichtlast minus geplantes Training ergibt das
-   * Budget; erst wenn davon genug übrig ist, entscheidet die Kraftberechnung, wie
-   * schwer sie wird. Vorher stand das *Ob* als `strength: true` in der Vorlage,
-   * und dadurch konnten Vorschläge entstehen, die aus Erholung und Belastung nie
-   * gefolgt wären — zwei Einheiten am Vormittag vor einer Zwölf-Stunden-Nacht.
+   * Kraft bekommt dasselbe Gerüst: ein Volumenziel je zehn Tage aus der Phase,
+   * dieselbe Wachstumsgrenze von 8 %, Stufen mit zwei sauberen Zyklen, Deload.
+   *
+   * Zwei Durchgänge, weil das Ziel auf Tage verteilt werden muss, die man erst
+   * kennt, wenn das Laufen steht: erst rechnet jeder Tag sein Budget aus, dann
+   * werden die Kraftminuten des Makrozyklus auf die Tage verteilt, die eines
+   * haben.
    */
+  const strengthStage = strengthStageFor(input.strengthHistory ?? []);
+
+  const strengthTargets = new Map<number, StrengthTarget>();
+  const strengthTargetForMacro = (m: number): StrengthTarget => {
+    const cached = strengthTargets.get(m);
+    if (cached) return cached;
+    const previous =
+      m <= anchorMacro
+        ? (input.previousStrengthMinutes ?? null)
+        : strengthTargetForMacro(m - 1).minutes;
+    const deloadCycle =
+      forcedDeload && m === anchorMacro ? halfOf(anchorCycle) : deloadCycleOf(m);
+    const target = strengthTargetFor({
+      macrocycleIndex: m,
+      previousStrengthMinutes: previous,
+      deloadShare: deloadCycle == null ? 0 : 0.5,
+    });
+    strengthTargets.set(m, target);
+    return target;
+  };
+
+  // 4a. Wer hat überhaupt Budget?
+  const eligible: { day: CoachDay; macro: number; daysSince: number | null }[] = [];
   for (const day of days) {
     if (day.done) continue;
     if (day.cycleDay == null && !day.isVShift) continue;
+    const cycle = cycles.get(day.date);
+    if (cycle == null) continue;
 
-    const next = days.find((d) => d.date === addDays(day.date, 1));
     const prevStrength = lastStrengthBefore(days, day.date);
+    const daysSince = prevStrength == null ? null : diffDays(day.date, prevStrength);
     const runMinutes = day.run?.minutes ?? 0;
     const windowMinutes = day.window ? day.window.end - day.window.start : 0;
-    const daysSinceStrength = prevStrength == null ? null : diffDays(day.date, prevStrength);
 
     const capacity = secondUnitCapacity({
       recovery: day.recovery,
@@ -427,21 +463,44 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
       windowMinutes,
       runMinutes,
       keySessionToday: !!day.run && CATALOGUE[day.run.kind].isKeySession,
-      daysSinceStrength,
+      daysSinceStrength: daysSince,
     });
     day.secondUnit = capacity;
-    if (!capacity.ok) continue;
+    if (capacity.ok) eligible.push({ day, macro: Math.floor(cycle / 2), daysSince });
+  }
 
+  // 4b. Die Kraftminuten des Makrozyklus auf seine tragfähigen Tage verteilen.
+  const perDayMinutes = new Map<ISODate, number>();
+  const byMacro = new Map<number, typeof eligible>();
+  for (const e of eligible) {
+    const list = byMacro.get(e.macro) ?? [];
+    list.push(e);
+    byMacro.set(e.macro, list);
+  }
+  for (const [macro, list] of byMacro) {
+    const target = strengthTargetForMacro(macro);
+    const share = Math.round(target.minutes / list.length);
+    for (const e of list) perDayMinutes.set(e.day.date, share);
+  }
+
+  // 4c. Und erst jetzt: wie schwer wird sie an diesem Tag?
+  const strengthPlans = new Map<ISODate, StrengthPlan>();
+  for (const { day, daysSince } of eligible) {
+    const next = days.find((d) => d.date === addDays(day.date, 1));
     const plan = planStrength({
       recovery: day.recovery,
       hasWindow: !!day.window,
-      availableMinutes: capacity.freeMinutes,
+      availableMinutes: day.secondUnit!.freeMinutes,
       hardRunTomorrow: !!next?.run && CATALOGUE[next.run.kind].isKeySession,
       hardRunToday: !!day.run && day.run.load >= HARD_LOAD,
       hardRunYesterday: hardYesterday(days, day.date),
-      isDeload,
-      daysSinceStrength,
+      isDeload: day.isDeloadDay,
+      daysSinceStrength: daysSince,
+      stage: strengthStage.stage,
+      targetMinutes: perDayMinutes.get(day.date) ?? CATALOGUE.kraft_ganzkoerper.defaultMinutes,
+      legsRecentlyLoaded: heavyLegsWithin48h(days, day.date),
     });
+    strengthPlans.set(day.date, plan);
 
     if (plan.kind) {
       // Kraft liegt hinter dem Lauf im selben Fenster. Ohne Startzeit könnten
@@ -539,6 +598,8 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     plannedKind,
     target,
     stage,
+    strengthTarget: strengthTargetForMacro(anchorMacro),
+    strengthStage,
     findings,
     notes: planNotes,
     days,
@@ -575,21 +636,7 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     blockers,
   };
 
-  if (anchorDay.strength) {
-    const next = days.find((d) => d.date === addDays(input.anchor, 1));
-    const prevStrength = lastStrengthBefore(days, input.anchor);
-    const windowMinutes = anchorDay.window ? anchorDay.window.end - anchorDay.window.start : 0;
-    today.strength = planStrength({
-      recovery: anchorDay.recovery,
-      hasWindow: !!anchorDay.window,
-      availableMinutes: Math.max(0, windowMinutes - (anchorDay.run?.minutes ?? 0) - 30),
-      hardRunTomorrow: !!next?.run && CATALOGUE[next.run.kind].isKeySession,
-      hardRunToday: !!anchorDay.run && anchorDay.run.load >= HARD_LOAD,
-      hardRunYesterday: hardYesterday(days, input.anchor),
-      isDeload,
-      daysSinceStrength: prevStrength == null ? null : diffDays(input.anchor, prevStrength),
-    });
-  }
+  today.strength = strengthPlans.get(input.anchor) ?? null;
 
   const notes: HorizonNote[] = days.map((d) => {
     const offset = diffDays(d.date, input.anchor);
@@ -613,6 +660,8 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     timeline,
     target,
     stage,
+    strengthTarget: strengthTargetForMacro(anchorMacro),
+    strengthStage,
     isDeload,
     anchorCycleIndex: anchorCycle,
     today,
@@ -631,6 +680,9 @@ function buildReasons(input: {
   plannedKind: SessionKind;
   target: VolumeTarget;
   stage: StageState;
+  /** Kraftminuten je 10 Tage und die Stufe, nach denselben Regeln wie das Laufen. */
+  strengthTarget: StrengthTarget;
+  strengthStage: StrengthStageState;
   findings: RuleFinding[];
   notes: Map<ISODate, Reason[]>;
   days: CoachDay[];
@@ -653,6 +705,17 @@ function buildReasons(input: {
       detail: input.stage.reason,
       date: null,
       effect: 'setzt',
+    });
+  }
+
+  // Kraft hat ein eigenes Volumenziel und eine eigene Stufe — wie das Laufen.
+  if (input.anchorDay.strength) {
+    out.push({
+      ruleId: null,
+      title: `Kraft: ${input.strengthTarget.minutes} min / 10 Tage`,
+      detail: `${input.strengthTarget.reason} ${input.strengthStage.reason}`,
+      date: null,
+      effect: input.strengthTarget.limitedBy === 'wachstum' ? 'begrenzt' : 'setzt',
     });
   }
 
@@ -723,6 +786,17 @@ function headlineFor(
 function hardYesterday(days: CoachDay[], date: ISODate): boolean {
   const y = days.find((d) => d.date === addDays(date, -1));
   return !!y?.run && y.run.load >= HARD_LOAD;
+}
+
+/** Lag in den letzten 48 Stunden schwere Beinlast? Dieselbe Frist wie bei harten Läufen. */
+function heavyLegsWithin48h(days: CoachDay[], date: ISODate): boolean {
+  return days.some(
+    (d) =>
+      d.strength != null &&
+      CATALOGUE[d.strength.kind].legHeavy &&
+      diffDays(date, d.date) >= 1 &&
+      diffDays(date, d.date) <= 2,
+  );
 }
 
 function lastStrengthBefore(days: CoachDay[], date: ISODate): ISODate | null {

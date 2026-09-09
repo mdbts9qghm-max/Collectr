@@ -29,7 +29,7 @@ export interface Phase {
   fromMinutes: number;
   /** Laufminuten je 10 Tage am Ende der Phase. */
   toMinutes: number;
-  /** Nach oben offen — das Ziel wächst dann nur noch über die Wachstumsgrenze. */
+  /** Die Phase hat kein Enddatum. Das Volumen hat trotzdem eine Obergrenze. */
   open: boolean;
   focus: string;
 }
@@ -84,7 +84,7 @@ export const PHASES: Phase[] = [
     toMinutes: 850,
     open: true,
     focus:
-      'Kein Ende und kein Tapering. Das Volumen wächst nur noch, solange die Erholung mitgeht.',
+      'Kein Ende und kein Tapering. Das Volumen läuft die Spanne hoch und wird dort gehalten.',
   },
 ];
 
@@ -188,12 +188,16 @@ export function targetFor(input: {
   }
 
   /*
-   * In P3 ist das Phasenziel nach oben offen. Sobald die Spanne 700–850
-   * durchlaufen ist, gibt es kein Ziel mehr, das bremst — dann wächst das
-   * Volumen nur noch entlang der 8-%-Grenze, und gebremst wird es von Erholung
-   * und Belastungsverhältnis, nicht von einer Tabellenzeile.
+   * `open` heißt: die Phase hat **kein Ende**, nicht das Volumen hat keine
+   * Grenze. Vorher stand hier das Gegenteil — in P3 wuchs das Ziel entlang der
+   * 8-%-Grenze immer weiter, weil kein Phasenziel mehr bremste. Über genug
+   * Makrozyklen ergab das 2846 Laufminuten je zehn Tage, also 47 Stunden. Eine
+   * Grenze, die man durch Warten überschreiten kann, ist keine.
+   *
+   * P3 läuft die Spanne 700–850 hoch und bleibt dort. Weiter wachsen kann das
+   * Volumen nur, wenn jemand die Tabelle ändert — bewusst und sichtbar.
    */
-  const wanted = phase.open && progress >= 1 ? Math.max(phaseTarget, growthCeiling) : phaseTarget;
+  const wanted = phaseTarget;
 
   if (wanted > growthCeiling) {
     return {
