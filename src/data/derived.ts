@@ -331,6 +331,8 @@ function sleepSignalsFor(data: AppData, idx: Indexes, date: ISODate) {
     downgradeNextHard: signals.downgradeNextHard,
     forceDeload: signals.forceDeload,
     blockHardAfter: signals.blockHardAfter,
+    /** Fertig gerechnete Abzüge für genau diesen Tag, z. B. ein ausgefallener Vorschlaf. */
+    penaltyReasons: signals.penaltyReasons,
     warnings: signals.warnings,
   };
 }
@@ -385,9 +387,17 @@ export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
       recoveryBaseline: baselineFor(recoveryHistory, d.cycleDay),
       restingHr: checkIn?.restingHr,
       restingHrBaseline: baselineFor(restingHrHistory, d.cycleDay),
-      sleepPenalties: sleep.blockHardAfter.includes(addDays(d.date, -1))
-        ? [{ label: 'Tagschlaf gestern unter 5 h', delta: -25 }]
-        : undefined,
+      /*
+       * Die Abzüge des Schlafmoduls, an genau einer Stelle in einen
+       * Erholungswert übersetzt. Die tagesbezogenen Gründe — ein ausgefallener
+       * Vorschlaf etwa — gelten nur für den Tag, für den sie gerechnet wurden.
+       */
+      sleepPenalties: [
+        ...(sleep.blockHardAfter.includes(addDays(d.date, -1))
+          ? [{ label: 'Tagschlaf gestern unter 5 h', delta: -25 }]
+          : []),
+        ...(d.date === anchor ? sleep.penaltyReasons : []),
+      ],
     });
 
     return {
@@ -419,6 +429,11 @@ export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
     cycleIndex: cyclesBefore + Math.max(0, cyclesToAnchor - 1),
     previousRunMinutes: runMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
     zones: data.settings.coachZones ?? FIXED_ZONES,
+    sleep: {
+      debtHours: sleep.debtHours,
+      downgradeNextHard: sleep.downgradeNextHard,
+      forceDeload: sleep.forceDeload,
+    },
   });
 }
 

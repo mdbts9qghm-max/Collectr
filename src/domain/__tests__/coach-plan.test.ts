@@ -358,3 +358,57 @@ describe('Zonen', () => {
     expect(retestState(FIXED_ZONES, '2026-09-10').status).toBe('nie');
   });
 });
+
+/**
+ * Die Signale des Schlafmoduls.
+ *
+ * Diese Tests stehen hier, weil genau diese Drähte beim Neuaufbau des Coaches
+ * schon einmal abgerissen sind: das Schlafmodul rechnete weiter, und niemand
+ * hörte zu. Ein Signal ohne Test ist ein Signal, das man verlieren kann.
+ */
+describe('Schlafsignale greifen ins Training', () => {
+  const withSleep = (sleep: {
+    debtHours: number;
+    downgradeNextHard: boolean;
+    forceDeload: boolean;
+  }) => plan(ANCHOR, 4, { sleep });
+
+  it('stuft bei Schlafschuld genau die nächste harte Einheit ab', () => {
+    const before = plan(ANCHOR, 4);
+    expect(before.today.kind).toBe('intervall');
+
+    const after = withSleep({ debtHours: 6.2, downgradeNextHard: true, forceDeload: false });
+    expect(after.today.kind).toBe('intervall_kurz');
+    expect(after.today.stepsDown).toBe(1);
+    expect(after.today.reasons.some((r) => r.title.includes('Schlafschuld'))).toBe(true);
+  });
+
+  it('stuft nur eine einzige harte Einheit ab, nicht jede', () => {
+    const after = withSleep({ debtHours: 6.2, downgradeNextHard: true, forceDeload: false });
+    const future = after.timeline.days.filter((d) => d.date >= ANCHOR);
+    const downgraded = future.filter((d) => d.downgraded && d.run && d.run.load >= 40);
+    expect(downgraded.length).toBeLessThanOrEqual(1);
+
+    // Der Longrun weiter hinten bleibt stehen — die Schuld ist abgegolten.
+    const longrun = future.find((d) => d.run?.kind === 'longrun');
+    expect(longrun).toBeDefined();
+  });
+
+  it('erzwingt bei großer Schlafschuld einen Deload, egal wo der Rhythmus steht', () => {
+    const normal = plan(ANCHOR, 4);
+    expect(normal.isDeload).toBe(false);
+
+    const forced = withSleep({ debtHours: 9.4, downgradeNextHard: true, forceDeload: true });
+    expect(forced.isDeload).toBe(true);
+    expect(forced.today.reasons.some((r) => r.title.includes('Deload erzwungen'))).toBe(true);
+    // Ein Deload-Zyklus trägt keine Intensität.
+    const cycle = forced.timeline.days.filter((d) => d.date >= ANCHOR).slice(0, 5);
+    expect(cycle.every((d) => d.run?.kind !== 'intervall')).toBe(true);
+  });
+
+  it('lässt ohne Signale alles, wie es ist', () => {
+    const quiet = withSleep({ debtHours: 1.2, downgradeNextHard: false, forceDeload: false });
+    expect(quiet.today.kind).toBe(plan(ANCHOR, 4).today.kind);
+    expect(quiet.isDeload).toBe(false);
+  });
+});

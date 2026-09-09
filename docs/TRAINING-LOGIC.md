@@ -341,6 +341,32 @@ Jeder vierte **Zyklus** — nicht Makrozyklus — ist ein Deload: 40 % weniger L
 diesen fünf Tagen, keine Intensität, Longrun halbiert. Der Bahntag fällt dabei nicht weg, er
 wird ein Grundlagenlauf.
 
+### Was das Schlafmodul ins Training meldet
+
+Das Schlafmodul entscheidet nie selbst über Abstufungen — es liefert Signale, und
+der Coach übersetzt sie. Vier Leitungen, alle verdrahtet und alle durch Tests
+festgehalten, die rot werden, wenn eine davon reißt:
+
+| Signal | Schwelle | Wirkung |
+| --- | --- | --- |
+| Tagschlaf zu kurz | unter 5 h | am Folgetag keine harte Einheit |
+| Vorschlaf ausgefallen | — | −15 auf den Erholungswert dieses Tages |
+| Schlafschuld über 10 Tage | ab 5 h | die **nächste** harte Einheit geht eine Stufe zurück |
+| Schlafschuld über 10 Tage | ab 8 h | Deload, unabhängig vom Vierer-Rhythmus |
+
+Die Abstufung trifft genau eine Einheit, nicht jede: Schlafschuld nimmt die
+nächste harte Belastung heraus und ist damit abgegolten. Alles Weitere macht der
+Erholungswert Tag für Tag. Der erzwungene Deload **ersetzt den nächsten
+planmäßigen nicht** — Schlafmangel ist ein anderer Grund als angesammelte
+Trainingslast und leistet deren Erholung nicht mit.
+
+Das Schlafziel des Schlaftags sind sechs Stunden. Das ist eine Beschreibung der
+Rotation, keine Empfehlung: der Zyklus liegt mit Schlafverlängerung und Vorschlaf
+vor der Nachtschicht bei 41,25 h auf fünf Tage, also 8,25 h am Tag. Fällt der
+Vorschlaf weg, fällt der Schnitt auf 7,75 h — deshalb kostet er Erholungspunkte.
+Die ärztliche Empfehlung hängt am **Vier-Wochen-Schnitt unter sechs Stunden**,
+nicht an einem einzelnen kurzen Tag, sonst schlüge sie jeden Zyklus grundlos an.
+
 ### Wo die Vorgabe nachgerechnet werden musste
 
 | Vorgabe | Umsetzung | Grund |

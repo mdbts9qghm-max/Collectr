@@ -9,7 +9,7 @@ import type { Horizon, InfluenceRule } from './horizon.ts';
 import type { SessionKind } from './catalogue.ts';
 import type { ZoneBounds, ZoneNumber } from './zones.ts';
 
-import { CATALOGUE, HARD_LOAD, bearableStep, describeStepDown, stepsTaken } from './catalogue.ts';
+import { CATALOGUE, HARD_LOAD, bearableStep, describeStepDown, stepDown, stepsTaken } from './catalogue.ts';
 import { FIXED_ZONES, formatZone } from './zones.ts';
 import { buildHorizon, rulesReaching } from './horizon.ts';
 import { MACROCYCLE_TEMPLATE, distribute, slotFor } from './template.ts';
@@ -78,6 +78,20 @@ export interface CoachInput {
   /** Je Zyklus von alt nach neu: war die Intervalleinheit sauber? */
   intervalHistory?: boolean[];
   zones?: ZoneBounds;
+  /**
+   * Die Signale des Schlafmoduls.
+   *
+   * Das Schlafmodul stuft nie selbst ab — es liefert Signale, und hier werden
+   * sie zu Entscheidungen. Ein einziger Ort entscheidet über Abstufungen, und
+   * das ist diese Datei.
+   */
+  sleep?: {
+    debtHours: number;
+    /** Schlafschuld über der Warnschwelle: die nächste harte Einheit geht eine Stufe zurück. */
+    downgradeNextHard: boolean;
+    /** Schlafschuld über der Deload-Schwelle: Deload, unabhängig vom Rhythmus. */
+    forceDeload: boolean;
+  };
 }
 
 export interface Reason {
@@ -187,6 +201,11 @@ function deloadCycleOf(macrocycleIndex: number): 0 | 1 | null {
   return null;
 }
 
+/** Welche Hälfte des Makrozyklus ein Zyklus ist: 0 oder 1. */
+function halfOf(cycle: number): 0 | 1 {
+  return (((cycle % 2) + 2) % 2) as 0 | 1;
+}
+
 /* ------------------------------------------------------------------ *
  * Der Plan
  * ------------------------------------------------------------------ */
@@ -214,8 +233,18 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
   const cycles = cycleIndexAt(input.days, input.anchor, input.cycleIndex);
 
   const anchorCycle = cycles.get(input.anchor) ?? input.cycleIndex;
-  const isDeload = isDeloadCycle(anchorCycle);
   const anchorMacro = Math.floor(anchorCycle / 2);
+
+  /*
+   * Ein erzwungener Deload überschreibt den Vierer-Rhythmus für den laufenden
+   * Zyklus. Er verschiebt ihn nicht — der nächste planmäßige Deload kommt
+   * trotzdem, weil die Schlafschuld ein anderer Grund ist als die angesammelte
+   * Trainingslast und nicht deren Erholung ersetzt.
+   */
+  const forcedDeload = input.sleep?.forceDeload === true;
+  const isDeloadCycleHere = (cycle: number) =>
+    isDeloadCycle(cycle) || (forcedDeload && cycle === anchorCycle);
+  const isDeload = isDeloadCycleHere(anchorCycle);
 
   const stage = stageFor(input.intervalHistory ?? []);
   const intervalSession = buildIntervalSession(stage.stage);
@@ -245,7 +274,8 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
       runMinutes: target.runMinutes,
       intervalMinutes: intervalSession.totalMinutes,
       longrunCap: Math.floor(target.runMinutes * 0.35),
-      deloadCycle: deloadCycleOf(m),
+      deloadCycle:
+        forcedDeload && m === anchorMacro ? halfOf(anchorCycle) : deloadCycleOf(m),
       longrunPrevious:
         m <= anchorMacro ? (input.previousLongrunMinutes ?? null) : planForMacro(m - 1).dist.longrunBase,
       longrunGrewLast:
@@ -279,7 +309,7 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
       done: ctx?.done ?? false,
       downgraded: ctx?.actual?.downgraded ?? false,
       hasRecord: ctx?.actual != null,
-      isDeloadDay: isDeloadCycle(cycles.get(h.date) ?? input.cycleIndex),
+      isDeloadDay: isDeloadCycleHere(cycles.get(h.date) ?? input.cycleIndex),
     };
   });
 
@@ -316,7 +346,16 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     let kind: SessionKind = macroOfDay.dist.kinds[idx];
     let minutes = macroOfDay.dist.minutes[idx];
 
-    if (day.isDeloadDay) {
+    if (day.isDeloadDay && forcedDeload && cycle === anchorCycle) {
+      noteFor(day.date).push({
+        ruleId: 'deload_rhythmus',
+        title: `Deload erzwungen — Schlafschuld ${input.sleep?.debtHours.toFixed(1) ?? '?'} h`,
+        detail:
+          'Über acht Stunden Schlafmangel in zehn Tagen. Der Deload kommt jetzt, unabhängig vom Vierer-Rhythmus — und ersetzt den nächsten planmäßigen nicht.',
+        date: day.date,
+        effect: 'stuft ab',
+      });
+    } else if (day.isDeloadDay) {
       noteFor(day.date).push({
         ruleId: 'deload_rhythmus',
         title: 'Deload-Zyklus',
@@ -391,7 +430,47 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     }
   }
 
-  /* ---- 5. Erholung stuft ab, sie plant nicht ---------------------- */
+  /* ---- 5. Schlafschuld stuft die nächste harte Einheit ab --------- */
+
+  /*
+   * Genau eine Einheit, nicht jede. Schlafschuld ist ein Zustand, kein
+   * Dauerzustand: sie nimmt die nächste harte Belastung heraus und ist damit
+   * abgegolten. Alles Weitere macht der Erholungswert Tag für Tag.
+   *
+   * Vergangene Tage bleiben unberührt — was gelaufen wurde, wurde gelaufen.
+   */
+  if (input.sleep?.downgradeNextHard) {
+    const nextHard = days.find(
+      (d) => !d.done && d.date >= input.anchor && d.run && d.run.load >= HARD_LOAD,
+    );
+    if (nextHard?.run) {
+      const before = nextHard.run.kind;
+      const stepped = stepDown(before);
+      if (stepped) {
+        const entry = CATALOGUE[stepped];
+        const minutes = Math.max(
+          entry.minMinutes,
+          Math.min(entry.maxMinutes, Math.round(nextHard.run.minutes * 0.8)),
+        );
+        nextHard.run = itemFrom(
+          stepped,
+          minutes,
+          stepped === 'intervall' ? nextHard.run.hardMinutes : 0,
+          nextHard.run.startMinutes,
+        );
+        nextHard.downgraded = true;
+        noteFor(nextHard.date).push({
+          ruleId: null,
+          title: `Schlafschuld ${input.sleep.debtHours.toFixed(1)} h`,
+          detail: `${describeStepDown(before, stepped)} Aufgelaufener Schlafmangel über zehn Tage — die nächste harte Einheit geht eine Stufe zurück, danach ist es abgegolten.`,
+          date: nextHard.date,
+          effect: 'stuft ab',
+        });
+      }
+    }
+  }
+
+  /* ---- 6. Erholung stuft ab, sie plant nicht ---------------------- */
 
   for (const day of days) {
     if (day.done || !day.run) continue;
@@ -417,7 +496,7 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
   const timeline: Timeline = { anchor: input.anchor, days };
   const findings = checkAll(timeline);
 
-  /* ---- 6. Die Antwort für heute ----------------------------------- */
+  /* ---- 7. Die Antwort für heute ----------------------------------- */
 
   const anchorDay = days.find((d) => d.date === input.anchor)!;
   const anchorIdx =
