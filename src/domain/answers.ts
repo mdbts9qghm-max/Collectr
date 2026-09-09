@@ -234,35 +234,42 @@ function answerLastWeek(data: AppData, idx: Indexes, today: ISODate): CoachAnswe
   };
 }
 
+/**
+ * Laufen oder Kraft — aus dem Coach, nicht aus einer zweiten Bewertung.
+ *
+ * Vorher rechnete hier der alte Empfehlungsmotor eigene Punktzahlen für beide
+ * Sportarten aus und verglich sie. Das war eine zweite Stelle, die über das
+ * Training entschied — und sie konnte dem Coach widersprechen.
+ */
 function answerRunOrStrength(data: AppData, idx: Indexes, today: ISODate): CoachAnswer {
   const view = buildDayView(data, idx, today);
-  const all = [
-    ...view.recommendation.recommended,
-    ...view.recommendation.alternatives,
-    ...view.recommendation.notRecommended,
-  ];
-  const run = all.find((r) => r.template.sport === 'run');
-  const strength = all.find((r) => r.template.sport === 'strength');
+  const plan = buildCoach(data, idx, today);
+  const d = plan.today;
+  const hasRun = d.kind !== 'ruhe';
+  const hasStrength = d.strength?.kind != null;
 
-  if (!run && !strength) {
-    return { text: 'Heute passt weder Laufen noch Krafttraining — beide sind durch Schicht oder Erholung ausgeschlossen.' };
+  if (!hasRun && !hasStrength) {
+    return {
+      text: `${d.headline}\n\nHeute steht keins von beidem an.`,
+      facts: [{ label: 'Schicht', value: view.shift.type?.label ?? 'nicht gesetzt' }],
+    };
   }
-  const better = (run?.score ?? -1) >= (strength?.score ?? -1) ? run : strength;
-  const other = better === run ? strength : run;
 
-  const explain = (r: typeof run) =>
-    r
-      ? r.blockedBy
-        ? `${SPORT_META[r.template.sport].label}: blockiert — ${r.blockedBy}.`
-        : `${SPORT_META[r.template.sport].label}: ${r.template.title}, Bewertung ${r.score}. ${r.reasons[0]?.text ?? ''}`
-      : '';
+  const both = hasRun && hasStrength;
+  const text = both
+    ? `Beides: ${d.label} und dazu ${COACH_CATALOGUE[d.strength!.kind!].label}.\n\n` +
+      `Kraft konkurriert nicht um Laufminuten — sie liegt dort, wo der Tag sie trägt.`
+    : hasRun
+      ? `Laufen. ${d.headline}\n\nKraft steht heute nicht an: entweder trägt der Tag keine zweite Einheit, oder er ist ein Schlüsseltag und gehört der Einheit allein.`
+      : `Kraft. ${d.headline}\n\nGelaufen wird an vier von zehn Tagen, nie zwei hintereinander — heute ist keiner davon.`;
 
   return {
-    text: `Heute spricht mehr für ${SPORT_META[better!.template.sport].label}.\n\n${explain(better)}\n${explain(other)}`,
+    text,
     facts: [
       { label: 'Schicht', value: view.shift.type?.label ?? 'nicht gesetzt' },
-      { label: 'Readiness', value: view.readiness.score != null ? String(view.readiness.score) : '–' },
+      { label: 'Tagesbudget', value: plan.timeline.days.find((x) => x.date === today)?.secondUnit?.remaining.toString() ?? '–' },
     ],
+    followUps: ['Was soll ich heute trainieren?', 'Wie ist meine Belastung gerade?'],
   };
 }
 

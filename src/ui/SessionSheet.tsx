@@ -12,7 +12,7 @@ import { INTENSITY_META, SPORT_META, formatDuration } from '../domain/format.ts'
 import { nowTimestamp } from '../domain/date.ts';
 import { makeId } from '../domain/ids.ts';
 import { sessionLoad } from '../domain/load.ts';
-import { muscleLabel } from '../domain/engine.ts';
+import { muscleLabel } from '../domain/format.ts';
 import { useStore } from '../data/store.ts';
 import {
   Button,

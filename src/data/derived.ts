@@ -15,9 +15,6 @@ import { addDays, dateRange, lastNDays, startOfWeek, today as todayIso } from '.
 import { adjustedTrainingMinutes, buildShiftContext } from '../domain/shifts.ts';
 import { computeReadiness } from '../domain/readiness.ts';
 import { weekTarget } from '../domain/phases.ts';
-import { recommendForDay } from '../domain/engine.ts';
-import { buildOutlook } from '../domain/outlook.ts';
-import { learnPreferences } from '../domain/personalization.ts';
 import { currentMetrics } from '../domain/metrics.ts';
 import { effectiveDuration, loadStateOn, periodStats, weekStats } from '../domain/load.ts';
 import { detectCycle } from '../domain/rotation/detect.ts';
@@ -123,25 +120,6 @@ export function buildDayView(data: AppData, idx: Indexes, date: ISODate) {
     data.settings.training.weeklyHoursTarget,
     data.settings.weekStartsOn,
   );
-  const preferences = learnPreferences(data.sessions, date);
-  const outlook = buildOutlook(
-    date,
-    idx.shiftAssignments,
-    idx.shiftTypes,
-    data.sessions,
-    data.settings,
-  );
-  const recommendation = recommendForDay({
-    date,
-    shift,
-    readiness,
-    target,
-    settings: data.settings,
-    sessions: data.sessions,
-    goals: data.goals,
-    preferences,
-    outlook,
-  });
 
   return {
     date,
@@ -149,8 +127,6 @@ export function buildDayView(data: AppData, idx: Indexes, date: ISODate) {
     shift,
     readiness,
     target,
-    outlook,
-    recommendation,
     sessions: (idx.sessionsByDate.get(date) ?? []).slice().sort((a, b) =>
       (a.startTime ?? '99:99').localeCompare(b.startTime ?? '99:99'),
     ),

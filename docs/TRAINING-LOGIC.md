@@ -104,98 +104,26 @@ Punkte auch dann ab, wenn keine Phase mehr läuft. Sichtbar ist der Zustand eben
 Trainings- und im Wochentab steht, seit wie vielen Wochen der Plan aus ist und dass ohne
 Phase kein Schwerpunkt mehr gesetzt wird.
 
-## 4. Empfehlungs-Engine
+## 4. Entfernt: die alte Empfehlungs-Engine
 
-Für jeden Tag werden 18 Kandidaten erzeugt und in zwei Stufen bewertet.
+Es gab einmal einen zweiten Planer: achtzehn Kandidaten je Tag, elf harte Ausschlüsse,
+neunzehn gewichtete Faktoren, dazu ein Sieben-Tage-Ausblick und gelernte Vorlieben aus dem
+bisherigen Verhalten. Er ist gelöscht.
 
-### Harte Ausschlusskriterien
+Zuletzt tat er nur noch eins: er verglich, was geplant war, mit seiner **eigenen**
+Empfehlung und meldete auf dem Tagesbildschirm Sätze wie *„Dein Plan passt grundsätzlich.
+Laufen hätte diese Woche aber die größere Lücke."* — eine zweite Stelle, die über das
+Training urteilt, mit anderen Regeln als der Coach und ohne dessen Blickfeld.
 
-Ein Kandidat, der eine dieser Regeln verletzt, wird ausgeschlossen — mit sichtbarem Grund:
+Genau das ist der Fehler, den dieser Plan an mehreren Stellen hatte und der ihn unbrauchbar
+macht: **wenn zwei Bildschirme verschiedene Sachen sagen, weiß man nicht mehr, welchem man
+glauben soll.** Es gibt jetzt einen Ort, der über Training entscheidet, und das ist
+`src/domain/coach/`.
 
-1. Dauer passt nicht ins Zeitfenster der Schicht
-2. Intensität über dem Deckel der Schicht
-3. Intensität über dem Deckel der Readiness
-4. Abstand zur letzten harten Einheit unter 40 h
-5. Muskelgruppe innerhalb der letzten 48 h belastet
-6. ACWR über dem Limit und Kandidat nicht locker
-7. Wöchentliches Einheiten-Limit erreicht
-8. Fünf Trainingstage in Folge → nur noch Regeneration
-9. Wochenumfang über 125 % des Ziels
-10. **Kalter Start:** unter vier erfassten Einheiten in vier Wochen keine langen oder
-    intensiven Einheiten und maximal 75 Minuten
-11. **Progressionsgrenze:** eine lange Einheit darf die längste der letzten vier Wochen
-    um höchstens 25 % übertreffen
-
-Regeln 10 und 11 sind der Grund, warum die App am ersten Tag Krafttraining und nicht
-einen 85-Minuten-Long-Run vorschlägt: Ohne Historie ist die sichere Annahme nicht die
-optimistische.
-
-### Weiche Bewertung
-
-Jeder überlebende Kandidat startet bei 50 Punkten. Neunzehn Faktoren addieren oder
-subtrahieren, **jeder mit einem Satz Begründung**, der in der UI landet:
-
-Wochenlücke der Sportart · Gesamtumfang der Woche · Tage seit dieser Sportart ·
-Intensitätsverteilung gegen das Phasenziel · Passung zur Readiness · Passung zur Schicht ·
-morgen Nachtschicht · gestern Nachtschicht · Long-Run-Abstand · Kraftfrequenz ·
-Mobility-Basis · Zielausrichtung · Phasenschwerpunkt · Trainingstage in Folge ·
-Laufumfang gegen Zielkilometer · Cross-Training-Entlastung · gelernte Präferenzen ·
-Kürzung wegen Zeitmangel · **Platzierung von Schlüsseleinheiten · Restkapazität der Woche ·
-Schlafausblick · bereits geplante Belastung.**
-
-### Der Blick nach vorn
-
-Die letzten vier Faktoren stammen aus `outlook.ts`, das einen **7-Tage-Horizont** aus dem
-Schichtplan ableitet: nutzbare Trainingsminuten pro Tag (abzüglich dessen, was schon
-geplant ist), erwarteter Schlaf aus dem Schlaffenster der Schicht, und die bereits
-festgelegte Belastung.
-
-Daraus entstehen vier Entscheidungen:
-
-* **Schlüsseleinheiten werden platziert, nicht verteilt.** Steht der Long Run heute auf
-  einer Schicht mit wenig Zeit, während in drei Tagen eine Freischicht kommt, verliert er
-  20 Punkte — mit dem Hinweis, welcher Tag besser passt. Gibt es umgekehrt in den
-  nächsten sieben Tagen keinen Tag mit Platz für eine lange Einheit, gewinnt er 20 Punkte.
-* **Wochenkapazität statt Kalendertage.** Vorher zählte die App „noch 4 Tage übrig", egal
-  ob das vier Freischichten (16 h) oder vier Tagschichten (80 min) waren. Jetzt zählt sie
-  die tatsächlich nutzbaren Minuten und erkennt, wenn sich das Wochenziel heute entscheidet.
-* **Schlafausblick.** Ein harter Reiz braucht die Nächte danach. Zeigt der Schichtplan für
-  die nächsten Tage im Schnitt mehr als eine Stunde unter dem Schlafziel — etwa eine Serie
-  Nachtschichten mit 3 h Vorschlaf — verliert jede intensive Einheit 16 Punkte.
-* **Bereits geplante Belastung.** Eine zweite lange Einheit wird hart blockiert, wenn
-  innerhalb von zwei Tagen schon eine im Kalender steht. Vor einer geplanten intensiven
-  Einheit verliert Intensität Punkte und lockeres Training gewinnt welche.
-
-Ein Beispiel mit identischer Vergangenheit und identischer Readiness, nur unterschiedlicher
-Zukunft:
-
-| Rest der Woche | Empfehlung | Score |
-| --- | --- | --- |
-| 4× Freischicht | Long Run | 162 |
-| 4× Tagschicht | Long Run | **169** — letzte Gelegenheit |
-| 4× Nachtschicht | Long Run | **143** — Schlafausblick zieht ab |
-
-**Leere Tage erzeugen keine Schlüsse.** Tage ohne eingetragene Schicht sind als
-`known: false` markiert und werden aus jeder Aussage herausgehalten. Ein leerer Kalender
-bedeutet nicht, dass keine guten Tage kommen — die App tut nicht so, als wüsste sie es.
-
-Der höchste Wert ist die Empfehlung, die nächsten drei aus *anderen* Sportarten sind
-Alternativen. Der Ruhetag hat dabei einen eigenen Platz: Er konkurriert nicht mit dem
-lockeren Spaziergang um denselben Slot und wird immer angeboten, auch wenn er nicht
-gewinnt — „nichts tun" muss eine sichtbare, begründete Option sein, keine Lücke.
-
-### Bewertung des eigenen Plans
-
-Steht schon etwas im Kalender, blockt die Engine es nicht — sie prüft es: passt es
-(`aligned`), sollte es angepasst werden (`adjust`), oder sprengt es die Schicht
-(`too_much`). Der Plan des Athleten hat Vorrang, aber nicht ohne Kommentar.
-
-### Personalisierung
-
-`personalization.ts` lernt aus den Daten, welche Sportarten und Wochentage tatsächlich
-umgesetzt werden, und verschiebt die Bewertung um maximal ±6 Punkte. Bewusst klein: Eine
-Vorliebe darf eine knappe Entscheidung kippen, aber niemals eine Erholungsregel
-überstimmen.
+Mit der Engine gingen `outlook.ts` (der Sieben-Tage-Ausblick, den das Blickfeld des Coaches
+ersetzt) und `personalization.ts` (gelernte Vorlieben, die in einem regelbasierten Plan
+nichts zu suchen haben). Geblieben sind Belastungsmodell, Readiness und Phasen — die
+braucht auch der Coach.
 
 ## 4b. Der Coach
 

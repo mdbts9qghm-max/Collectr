@@ -224,19 +224,6 @@ export function Today() {
         )}
       </Card>
 
-      {/* ---------- Plan passt nicht ---------- */}
-      {view.recommendation.planReview && view.recommendation.planReview.verdict !== 'aligned' && (
-        <Card
-          tight
-          style={{ background: 'var(--warn-soft)', borderColor: 'transparent' }}
-        >
-          <div className="row gap-3 row-top">
-            <span style={{ fontSize: 17 }}>⚠️</span>
-            <span className="t-small grow">{view.recommendation.planReview.message}</span>
-          </div>
-        </Card>
-      )}
-
       {/* ---------- Wie es steht ---------- */}
       <Card>
         <div className="row gap-4">

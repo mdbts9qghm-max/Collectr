@@ -1,4 +1,4 @@
-import type { ISODate, IntensityKey, SportKey } from './types.ts';
+import type { ISODate, IntensityKey, MuscleGroup, SportKey } from './types.ts';
 import { fromISODate, isoWeekNumber } from './date.ts';
 
 export const SPORT_META: Record<SportKey, { label: string; icon: string; color: string; short: string }> = {
@@ -130,4 +130,21 @@ export function relativeDayLabel(iso: ISODate, todayIso: ISODate): string {
   if (days > 1 && days < 7) return weekdayLong(iso);
   if (days < 0 && days > -7) return `vor ${-days} Tagen`;
   return formatDateShort(iso);
+}
+
+/** Deutsche Bezeichnungen der Muskelgruppen. */
+export function muscleLabel(g: MuscleGroup): string {
+  const labels: Record<MuscleGroup, string> = {
+    legs_quads: 'Quadrizeps',
+    legs_hamstrings: 'Beinbeuger',
+    glutes: 'Gesäß',
+    calves: 'Waden',
+    chest: 'Brust',
+    back: 'Rücken',
+    shoulders: 'Schultern',
+    arms: 'Arme',
+    core: 'Rumpf',
+    full_body: 'Ganzkörper',
+  };
+  return labels[g];
 }
