@@ -9,7 +9,15 @@ import type { Horizon, InfluenceRule } from './horizon.ts';
 import type { SessionKind } from './catalogue.ts';
 import type { ZoneBounds, ZoneNumber } from './zones.ts';
 
-import { CATALOGUE, HARD_LOAD, bearableStep, describeStepDown, stepDown, stepsTaken } from './catalogue.ts';
+import {
+  CATALOGUE,
+
+  bearableStep,
+  describeStepDown,
+  isHardSession,
+  stepDown,
+  stepsTaken,
+} from './catalogue.ts';
 import { FIXED_ZONES, formatZone } from './zones.ts';
 import { buildHorizon, rulesReaching } from './horizon.ts';
 import { MACROCYCLE_TEMPLATE, distribute, slotFor } from './template.ts';
@@ -492,7 +500,7 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
       hasWindow: !!day.window,
       availableMinutes: day.secondUnit!.freeMinutes,
       hardRunTomorrow: !!next?.run && CATALOGUE[next.run.kind].isKeySession,
-      hardRunToday: !!day.run && day.run.load >= HARD_LOAD,
+      hardRunToday: !!day.run && isHardSession(day.run.kind, day.run.minutes),
       hardRunYesterday: hardYesterday(days, day.date),
       isDeload: day.isDeloadDay,
       daysSinceStrength: daysSince,
@@ -523,7 +531,7 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
    */
   if (input.sleep?.downgradeNextHard) {
     const nextHard = days.find(
-      (d) => !d.done && d.date >= input.anchor && d.run && d.run.load >= HARD_LOAD,
+      (d) => !d.done && d.date >= input.anchor && d.run && isHardSession(d.run.kind, d.run.minutes),
     );
     if (nextHard?.run) {
       const before = nextHard.run.kind;
@@ -721,7 +729,7 @@ function buildReasons(input: {
 
   // Die Tage, an denen heute hängt — der eigentliche Punkt des Blickfelds.
   const previousHard = [...input.days]
-    .filter((d) => d.date < input.anchor && d.run && d.run.load >= HARD_LOAD)
+    .filter((d) => d.date < input.anchor && d.run && isHardSession(d.run.kind, d.run.minutes))
     .pop();
   if (previousHard) {
     const gap = diffDays(input.anchor, previousHard.date);
@@ -785,7 +793,7 @@ function headlineFor(
 
 function hardYesterday(days: CoachDay[], date: ISODate): boolean {
   const y = days.find((d) => d.date === addDays(date, -1));
-  return !!y?.run && y.run.load >= HARD_LOAD;
+  return !!y?.run && isHardSession(y.run.kind, y.run.minutes);
 }
 
 /** Lag in den letzten 48 Stunden schwere Beinlast? Dieselbe Frist wie bei harten Läufen. */

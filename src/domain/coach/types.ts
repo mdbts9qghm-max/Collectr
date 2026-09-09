@@ -1,7 +1,7 @@
 import type { ISODate } from '../types.ts';
 import type { SessionKind } from './catalogue.ts';
 import type { ZoneNumber } from './zones.ts';
-import { CATALOGUE, HARD_LOAD } from './catalogue.ts';
+import { CATALOGUE, isHardSession } from './catalogue.ts';
 import { isBaseZone } from './zones.ts';
 import type { Capacity } from './capacity.ts';
 
@@ -89,7 +89,7 @@ export function totalLoadOf(day: CoachDay): number {
 }
 
 export function isHardDay(day: CoachDay): boolean {
-  return !!day.run && day.run.load >= HARD_LOAD;
+  return !!day.run && isHardSession(day.run.kind, day.run.minutes);
 }
 
 export function hasHeavyLegs(day: CoachDay): boolean {

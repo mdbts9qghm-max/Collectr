@@ -138,12 +138,19 @@ describe('Coach — die harten Regeln im erzeugten Plan', () => {
     }
   });
 
-  it('plant nie zwei Läufe an einem Tag, aber Kraft neben dem Lauf', () => {
-    for (const day of future) {
-      expect(Array.isArray(day.run)).toBe(false);
+  it('plant vier Läufe je zehn Tage und nie zwei an aufeinanderfolgenden Tagen', () => {
+    const window = future.slice(0, 10);
+    expect(window.filter((d) => d.run).length).toBe(4);
+    for (let i = 1; i < window.length; i++) {
+      expect(window[i].run != null && window[i - 1].run != null).toBe(false);
+    }
+  });
+
+  it('legt Kraft auf die lauffreien Tage', () => {
+    for (const day of future.slice(0, 10)) {
       if (day.strength) expect(CATALOGUE[day.strength.kind].discipline).toBe('kraft');
     }
-    expect(future.some((d) => d.run && d.strength)).toBe(true);
+    expect(future.slice(0, 10).filter((d) => d.strength).length).toBeGreaterThanOrEqual(3);
   });
 
   it('legt keine schwere Beinkraft in die 24 Stunden vor einer Schlüsseleinheit', () => {
@@ -229,17 +236,17 @@ describe('Abstufungsketten', () => {
 });
 
 describe('Phasen und Volumen', () => {
-  it('startet P0 bei 300 Laufminuten je 10 Tage', () => {
+  it('startet P0 bei 180 Laufminuten je 10 Tage — vier Läufe, nicht acht', () => {
     const t = targetFor({ macrocycleIndex: 0, previousRunMinutes: null });
     expect(t.phase.id).toBe('P0');
-    expect(t.runMinutes).toBe(300);
+    expect(t.runMinutes).toBe(180);
     expect(t.limitedBy).toBe('start');
   });
 
   it('lässt die Grenze gewinnen, wenn das Phasenziel mehr verlangt', () => {
-    const t = targetFor({ macrocycleIndex: 4, previousRunMinutes: 300 });
+    const t = targetFor({ macrocycleIndex: 20, previousRunMinutes: 180 });
     expect(t.phaseTarget).toBeGreaterThan(t.runMinutes);
-    expect(t.runMinutes).toBe(324);
+    expect(t.runMinutes).toBe(Math.floor(180 * 1.08));
     expect(t.limitedBy).toBe('wachstum');
     expect(t.reason).toMatch(/verschiebt sich nach hinten/);
   });
@@ -262,17 +269,17 @@ describe('Phasen und Volumen', () => {
     for (let m = 0; m <= 80; m++) {
       previous = targetFor({ macrocycleIndex: m, previousRunMinutes: previous }).runMinutes;
     }
-    expect(previous).toBe(850);
+    expect(previous).toBe(320);
   });
 
   it('wächst nie über 8 % je Makrozyklus', () => {
-    let previous = 300;
-    for (let m = 1; m < 30; m++) {
+    let previous = 180;
+    for (let m = 1; m < 40; m++) {
       const t = targetFor({ macrocycleIndex: m, previousRunMinutes: previous });
       expect(t.runMinutes).toBeLessThanOrEqual(Math.floor(previous * 1.08));
       previous = t.runMinutes;
     }
-    expect(previous).toBeGreaterThan(700);
+    expect(previous).toBeGreaterThan(280);
   });
 });
 
@@ -526,21 +533,17 @@ describe('Das Tagesbudget entscheidet über die zweite Einheit', () => {
     }
   });
 
-  it('lässt den Schlaftag einfach, weil nach 24 h Wachzeit nichts übrig ist', () => {
-    for (const d of future.filter((x) => x.cycleDay === 3)) {
-      expect(d.run).not.toBeNull();
-      expect(d.strength).toBeNull();
-      expect(d.secondUnit!.remaining).toBeLessThan(MIN_CAPACITY);
+  it('lässt den Schlaftag ohne Lauf und trägt dort nur Kraft', () => {
+    const sleepDays = future.filter((x) => x.cycleDay === 3);
+    expect(sleepDays.length).toBeGreaterThan(0);
+    for (const d of sleepDays) {
+      expect(d.run).toBeNull();
+      expect(d.strength).not.toBeNull();
     }
   });
 
-  it('gibt dem freien Tag ohne Schlüsseleinheit seine zweite Einheit', () => {
-    const free = future.filter(
-      (d) =>
-        (d.cycleDay === 4 || d.cycleDay === 5) &&
-        d.run != null &&
-        !CATALOGUE[d.run.kind].isKeySession,
-    );
+  it('gibt dem laufreien freien Tag seine Krafteinheit', () => {
+    const free = future.filter((d) => d.cycleDay === 5 && d.run == null);
     expect(free.length).toBe(2);
     for (const d of free) {
       expect(d.strength).not.toBeNull();
@@ -618,9 +621,11 @@ describe('Schlafsignale greifen ins Training', () => {
     const downgraded = future.filter((d) => d.downgraded && d.run && d.run.load >= 40);
     expect(downgraded.length).toBeLessThanOrEqual(1);
 
-    // Der Longrun weiter hinten bleibt stehen — die Schuld ist abgegolten.
-    const longrun = future.find((d) => d.run?.kind === 'longrun');
-    expect(longrun).toBeDefined();
+    // Die Schlüsseleinheit weiter hinten bleibt stehen — die Schuld ist abgegolten.
+    const later = future.find(
+      (d) => d.run != null && CATALOGUE[d.run.kind].isKeySession && !d.downgraded,
+    );
+    expect(later).toBeDefined();
   });
 
   it('erzwingt bei großer Schlafschuld einen Deload, egal wo der Rhythmus steht', () => {

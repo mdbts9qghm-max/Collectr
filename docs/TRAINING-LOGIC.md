@@ -276,12 +276,20 @@ Schlägen Unterschied meldet der Vorschlag ausdrücklich Messrauschen statt Anpa
 
 ### Phasen — in Laufminuten je zehn Tage
 
+**Die Zahlen gelten für vier Läufe je zehn Tage**, also rund dreimal die Woche:
+
 | Phase | Zeitraum | Laufminuten / 10 Tage |
 | --- | --- | --- |
-| P0 | Woche 1–8 | 300 → 420 |
-| P1 | Monat 3–6 | 420 → 600 |
-| P2 | Monat 7–10 | 600 → 750 |
-| P3 | ab Monat 11 | 700 → 850, dann gehalten |
+| P0 | Woche 1–8 | 180 |
+| P1 | Monat 3–6 | 180 → 240 |
+| P2 | Monat 7–10 | 240 → 290 |
+| P3 | ab Monat 11 | 290 → 320, dann gehalten |
+
+Sie waren einmal doppelt so hoch, als der Plan noch acht Läufe je zehn Tage vorsah. Auf
+vier verteilt ergäbe das schon in P0 fünfundsiebzig Minuten je Lauf und in P3 über zwei
+Stunden. **Weniger Lauftage heißt nicht dieselbe Menge in längeren Einheiten, es heißt
+weniger Menge** — wer die Häufigkeit senkt und das Volumen hält, verschiebt die
+Verletzungsgefahr nur von der Häufigkeit auf die Länge.
 
 > Verlangt das Phasenziel mehr, gilt die Grenze. Das Ziel wird nach hinten verschoben, nicht
 > die Grenze gedehnt. Es gibt keinen Ersatzweg, um Volumen schneller aufzubauen.
@@ -303,20 +311,50 @@ Zehn Tage, zwei Zyklen. Die Rollen liegen fest, weil die Rotation feststeht — 
 Optimierer würde aus derselben Ausgangslage jedes Mal einen anderen Plan bauen, und
 Anpassung entsteht aus der Wiederholung ähnlicher Reize.
 
-| Tag | Schicht | Einheit | Fenster |
+| Tag | Schicht | Lauf | Fenster |
 | --- | --- | --- | --- |
-| 1 | T1 Tagschicht | Ruhe | — |
-| 2 | T2 Nachtschicht | lockerer Lauf **+ Kraft** | 09:00–13:30 |
-| 3 | T3 Schlaftag | Grundlagenlauf | 16:00–20:00 |
+| 1 | T1 Tagschicht | — | kein Fenster |
+| 2 | T2 Nachtschicht | **Grundlagenlauf** | 09:00–13:30 |
+| 3 | T3 Schlaftag | — | 16:00–20:00 |
 | 4 | T4 frei | **Intervalle** | 08:00–19:00 |
-| 5 | T5 frei | Grundlagenlauf **+ Kraft** | 08:00–19:00 |
-| 6 | T1 Tagschicht | Ruhe | — |
-| 7 | T2 Nachtschicht | lockerer Lauf **+ Kraft** | 09:00–13:30 |
-| 8 | T3 Schlaftag | Grundlagenlauf | 16:00–20:00 |
-| 9 | T4 frei | Grundlagenlauf **+ Kraft** | 08:00–19:00 |
-| 10 | T5 frei | **Longrun** | 08:00–19:00 |
+| 5 | T5 frei | — | 08:00–19:00 |
+| 6 | T1 Tagschicht | — | kein Fenster |
+| 7 | T2 Nachtschicht | **Grundlagenlauf** | 09:00–13:30 |
+| 8 | T3 Schlaftag | — | 16:00–20:00 |
+| 9 | T4 frei | **Longrun** | 08:00–19:00 |
+| 10 | T5 frei | — | 08:00–19:00 |
 
-Die 48 Stunden zwischen den harten Einheiten stecken schon darin.
+**Vier Läufe je zehn Tage, nie zwei hintereinander.** Das Herz-Kreislauf-System passt sich
+in Tagen bis Wochen an, Sehnen, Bänder und Knochen in Wochen bis Monaten. Die
+Laufhäufigkeit wird vom langsameren der beiden begrenzt, und das ist nie das Herz. Die
+Sehnenanpassung passiert am Tag **zwischen** den Läufen; wer sie aneinanderreiht, lässt
+genau diesen Tag weg.
+
+Mehr als vier Läufe ohne zwei aufeinanderfolgende Tage passen nicht in diese Rotation.
+Das ist Arithmetik, keine Vorliebe: der Tagschichttag hat kein Fenster, es bleiben acht
+mögliche Tage, und aus acht lassen sich höchstens vier ohne Nachbarschaft wählen.
+
+Beide Schlüsseleinheiten liegen auf T4, dem bestenerholten Tag der Rotation, und fünf Tage
+auseinander — die 48 Stunden sind darin enthalten. Die lauffreien Tage mit Fenster (T3 und
+T5) tragen die Kraft; ob sie das tun, steht nicht in dieser Tabelle, sondern folgt aus dem
+Tagesbudget.
+
+Die **V-Schicht** überschreibt den Tag: 30 bis 60 Minuten locker im Dienst. Das ist kein
+Abschreiben des Tages, aber keine Intensität.
+
+### Wann eine Einheit „hart" ist
+
+Nicht die Last entscheidet, sondern Art und Dauer. Ein neunzigminütiger Zone-2-Lauf kommt
+über die Lastschwelle von 60 — hart ist er deshalb nicht, er dauert nur lange. Drei Wege in
+die Härte:
+
+1. Intensität ab **Zone 3**
+2. jede **Schlüsseleinheit** — ein Longrun kostet Tage an Frische, auch ruhig gelaufen
+3. jede Ausdauereinheit ab **zwei Stunden**
+
+Das gilt für den 48-Stunden-Abstand. Die Regel „keine Intensität am Nacht-, Schlaf- und
+V-Tag" prüft dagegen **nur die Zone**: ein langer ruhiger Lauf ist dort erlaubt, eine
+Bahneinheit nicht.
 
 ### Das Tagesbudget entscheidet über die zweite Einheit
 

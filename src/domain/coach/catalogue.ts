@@ -112,7 +112,9 @@ const ENTRIES: CatalogueEntry[] = [
     minRecovery: 55,
     defaultMinutes: 55,
     minMinutes: 30,
-    maxMinutes: 80,
+    // Bei vier Läufen je zehn Tage trägt ein Grundlagenlauf mehr Minuten als bei
+    // acht. Hundert Minuten locker sind in P3 eine gewöhnliche Einheit.
+    maxMinutes: 100,
     legHeavy: false,
     isKeySession: false,
   },
@@ -219,6 +221,27 @@ const ENTRIES: CatalogueEntry[] = [
 export const CATALOGUE: Record<SessionKind, CatalogueEntry> = Object.fromEntries(
   ENTRIES.map((e) => [e.kind, e]),
 ) as Record<SessionKind, CatalogueEntry>;
+
+/** Ab dieser Dauer ist auch ein Grundlagenlauf eine harte Einheit. */
+export const LONG_EASY_IS_HARD_MINUTES = 120;
+
+/**
+ * Ist diese Einheit hart?
+ *
+ * Nicht die Last entscheidet, sondern Art und Dauer. Ein neunzigminütiger
+ * Zone-2-Lauf kommt über die Lastschwelle von 60 — hart ist er deshalb nicht, er
+ * dauert nur lange. Umgekehrt kostet ein Longrun Tage an Frische, auch wenn er
+ * ruhig gelaufen wird.
+ *
+ * Drei Wege in die Härte: Intensität ab Zone 3, jede Schlüsseleinheit, und jede
+ * Ausdauereinheit ab zwei Stunden — drei Stunden locker kosten ebenfalls Tage.
+ */
+export function isHardSession(kind: SessionKind, minutes: number): boolean {
+  const entry = CATALOGUE[kind];
+  if ((entry.zone ?? 1) >= 3) return true;
+  if (entry.isKeySession) return true;
+  return entry.discipline === 'lauf' && minutes >= LONG_EASY_IS_HARD_MINUTES;
+}
 
 export function isHard(kind: SessionKind): boolean {
   return CATALOGUE[kind].load >= HARD_LOAD;

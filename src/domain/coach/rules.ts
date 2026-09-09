@@ -98,12 +98,18 @@ const keineIntensitaetOhneFenster: CoachRule = {
   title: 'Keine Intensität an Nacht-, Schlaf- und V-Tagen',
   text: 'An Nachtschicht-, Schlaf- und V-Schicht-Tagen wird keine Intensität gelaufen.',
   horizonRuleId: null,
+  /*
+   * Intensität ist eine Frage der Art, nicht der Last. Ein neunzigminütiger
+   * Zone-2-Lauf kommt über die Lastschwelle von 60, ist aber keine Intensität —
+   * er dauert nur lange. Geprüft wird deshalb die Zone: ab Zone 3 ist es
+   * Intensität, darunter ist es Grundlage, wie lang sie auch sei.
+   */
   check: (t) =>
     planned(t)
       .filter(
         (d) =>
           d.run != null &&
-          d.run.load >= HARD_LOAD &&
+          (CATALOGUE[d.run.kind].zone ?? 1) >= 3 &&
           (d.isVShift || d.cycleDay === 2 || d.cycleDay === 3),
       )
       .map((d) =>

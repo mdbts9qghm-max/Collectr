@@ -50,10 +50,11 @@ export interface StrengthPhaseTarget {
 /**
  * Kraftminuten je zehn Tage, an dieselbe Phasenuhr gehängt wie das Laufen.
  *
- * **Diese Zahlen sind Urteil, keine Messung.** Zwei Krafteinheiten die Woche zu
- * je 45 Minuten sind der gängige Richtwert für Läufer; 120 Minuten je zehn Tage
- * treffen das. Der Aufbau dorthin ist bewusst langsam, weil in P0 die Sehnen der
- * begrenzende Faktor sind und nicht die Kraft.
+ * **Diese Zahlen sind Urteil, keine Messung.** Sie sind auf **drei bis vier
+ * Krafteinheiten je zehn Tage** gerechnet, also zwei bis drei die Woche: 180
+ * Minuten auf vier Tage sind 45 Minuten je Einheit, der gängige Richtwert. Der
+ * Aufbau dorthin ist bewusst langsam, weil in P0 die Sehnen der begrenzende
+ * Faktor sind und nicht die Kraft.
  *
  * In P3 wächst die Kraft **nicht mehr mit**. Das ist die eine Stelle, an der sie
  * dem Laufen bewusst nicht folgt: dort ist das Laufvolumen nach oben offen, und
@@ -64,26 +65,26 @@ export interface StrengthPhaseTarget {
 export const STRENGTH_PHASES: Record<PhaseId, StrengthPhaseTarget> = {
   P0: {
     phase: 'P0',
-    fromMinutes: 60,
-    toMinutes: 90,
+    fromMinutes: 100,
+    toMinutes: 130,
     focus: 'Technik vor Last. Die Sehnen brauchen länger als die Muskeln.',
   },
   P1: {
     phase: 'P1',
-    fromMinutes: 90,
-    toMinutes: 120,
+    fromMinutes: 130,
+    toMinutes: 160,
     focus: 'Aufbau bis auf die zwei Einheiten die Woche, die ein Läufer trägt.',
   },
   P2: {
     phase: 'P2',
-    fromMinutes: 120,
-    toMinutes: 140,
+    fromMinutes: 160,
+    toMinutes: 180,
     focus: 'Maximalkraft in den Grundübungen — sie trägt den Longrun.',
   },
   P3: {
     phase: 'P3',
-    fromMinutes: 140,
-    toMinutes: 140,
+    fromMinutes: 180,
+    toMinutes: 180,
     focus: 'Halten. Hier wächst das Laufen weiter, die Kraft nicht mehr.',
   },
 };

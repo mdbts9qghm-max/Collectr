@@ -11,33 +11,33 @@ import { CATALOGUE } from './catalogue.ts';
  * der Wiederholung ähnlicher Reize, nicht aus der besten Einzelentscheidung.
  *
  * ```
- * Tag 1  T1  Tagschicht     Ruhe
- * Tag 2  T2  Nachtschicht   lockerer Lauf + Kraft   09:00–13:30
- * Tag 3  T3  Schlaftag      Grundlagenlauf          16:00–20:00
- * Tag 4  T4  frei           Intervalle              08:00–19:00
- * Tag 5  T5  frei           Grundlagenlauf + Kraft  08:00–19:00
- * Tag 6  T1  Tagschicht     Ruhe
- * Tag 7  T2  Nachtschicht   lockerer Lauf + Kraft   09:00–13:30
- * Tag 8  T3  Schlaftag      Grundlagenlauf          16:00–20:00
- * Tag 9  T4  frei           Grundlagenlauf + Kraft  08:00–19:00
- * Tag 10 T5  frei           Longrun                 08:00–19:00
+ * Tag 1  T1  Tagschicht     —                08:00 kein Fenster
+ * Tag 2  T2  Nachtschicht   Lauf             09:00–13:30
+ * Tag 3  T3  Schlaftag      (Kraft)          16:00–20:00
+ * Tag 4  T4  frei           Intervalle       08:00–19:00
+ * Tag 5  T5  frei           (Kraft)          08:00–19:00
+ * Tag 6  T1  Tagschicht     —                kein Fenster
+ * Tag 7  T2  Nachtschicht   Lauf             09:00–13:30
+ * Tag 8  T3  Schlaftag      (Kraft)          16:00–20:00
+ * Tag 9  T4  frei           Longrun          08:00–19:00
+ * Tag 10 T5  frei           (Kraft)          08:00–19:00
  * ```
  *
- * Die 48 Stunden zwischen den harten Einheiten sind darin schon enthalten:
- * Intervalle an Tag 4, Longrun an Tag 10. Jeder Zyklus hat genau einen
- * lastfreien Tag und höchstens eine Schlüsseleinheit.
+ * **Vier Läufe je zehn Tage, nie zwei hintereinander.** Das Herz-Kreislauf-System
+ * passt sich in Tagen bis Wochen an, Sehnen und Knochen in Wochen bis Monaten —
+ * die Laufhäufigkeit wird vom langsameren der beiden begrenzt, und das ist nie
+ * das Herz. Die Sehnenanpassung passiert am Tag *zwischen* den Läufen; wer sie
+ * aneinanderreiht, lässt genau diesen Tag weg.
  *
- * **Doppeltage liegen auf den freien Tagen, nicht auf dem Schlaftag.** Der
- * Schlaftag hat mit sechs Stunden Tagschlaf nach 24 Stunden Wachzeit den
- * niedrigsten Erholungswert des Zyklus — zwei Einheiten gehören dorthin, wo die
- * Erholung sie trägt. Er behält seinen Lauf, weil der den Schlafdruck für den
- * Abend aufbaut; das war nie die Aufgabe der Krafteinheit.
+ * Mehr als vier Läufe ohne zwei aufeinanderfolgende Tage passen nicht in die
+ * Rotation. Das ist Arithmetik: der Tagschichttag hat kein Fenster, also bleiben
+ * acht mögliche Tage, und aus acht lassen sich höchstens vier ohne Nachbarschaft
+ * wählen.
  *
- * Jeder Zyklus trägt damit zwei Doppeltage: den Nachtschichttag im
- * Vormittagsfenster und einen freien Tag. Auf Tag 9 wird die Kraft von selbst
- * zum Oberkörper, weil Tag 10 der Longrun ist und schwere Beinkraft nie in den
- * 24 Stunden davor liegt — das entscheidet die Kraftberechnung, nicht die
- * Vorlage.
+ * Beide Schlüsseleinheiten liegen auf T4, dem bestenerholten Tag der Rotation,
+ * und fünf Tage auseinander — die 48 Stunden sind darin enthalten. Die Klammern
+ * bei der Kraft stehen dort, weil sie nicht in dieser Tabelle steht: ob ein Tag
+ * eine Krafteinheit trägt, rechnet er sich aus seinem Tagesbudget aus.
  */
 
 export interface Slot {
@@ -51,16 +51,16 @@ export interface Slot {
 }
 
 export const MACROCYCLE_TEMPLATE: Slot[] = [
-  { index: 0, cycleDay: 1, kind: 'ruhe', weight: 0, role: 'Ruhetag' },
-  { index: 1, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, role: 'Lauf im Vormittagsfenster' },
-  { index: 2, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am Nachmittag' },
+  { index: 0, cycleDay: 1, kind: 'ruhe', weight: 0, role: 'Tagschicht — kein Fenster' },
+  { index: 1, cycleDay: 2, kind: 'grundlagenlauf', weight: 1, role: 'Lauf im Vormittagsfenster' },
+  { index: 2, cycleDay: 3, kind: 'ruhe', weight: 0, role: 'Schlaftag — kein Lauf' },
   { index: 3, cycleDay: 4, kind: 'intervall', weight: 0, role: 'Schlüsseleinheit: Bahn' },
-  { index: 4, cycleDay: 5, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am freien Tag' },
-  { index: 5, cycleDay: 1, kind: 'ruhe', weight: 0, role: 'Ruhetag' },
-  { index: 6, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, role: 'Lauf im Vormittagsfenster' },
-  { index: 7, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am Nachmittag' },
-  { index: 8, cycleDay: 4, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am freien Tag' },
-  { index: 9, cycleDay: 5, kind: 'longrun', weight: 0, role: 'Schlüsseleinheit: Longrun' },
+  { index: 4, cycleDay: 5, kind: 'ruhe', weight: 0, role: 'Freier Tag ohne Lauf' },
+  { index: 5, cycleDay: 1, kind: 'ruhe', weight: 0, role: 'Tagschicht — kein Fenster' },
+  { index: 6, cycleDay: 2, kind: 'grundlagenlauf', weight: 1, role: 'Lauf im Vormittagsfenster' },
+  { index: 7, cycleDay: 3, kind: 'ruhe', weight: 0, role: 'Schlaftag — kein Lauf' },
+  { index: 8, cycleDay: 4, kind: 'longrun', weight: 0, role: 'Schlüsseleinheit: Longrun' },
+  { index: 9, cycleDay: 5, kind: 'ruhe', weight: 0, role: 'Freier Tag ohne Lauf' },
 ];
 
 /** Anteil des Zehn-Tage-Ziels, den der Longrun bekommt. Die Regel deckelt bei 35 %. */
@@ -93,7 +93,7 @@ export const DELOAD_FACTOR = 0.6;
 export const LONGRUN_MAX_GROWTH = 10;
 
 const INTERVAL_SLOT = 3;
-const LONGRUN_SLOT = 9;
+const LONGRUN_SLOT = 8;
 
 /**
  * Die Laufminuten des Makrozyklus auf die Tage verteilen.
@@ -150,11 +150,30 @@ export function distribute(input: {
   if (previous != null) {
     base = Math.min(base, input.longrunGrewLast ? previous : previous + LONGRUN_MAX_GROWTH);
   }
-  base = Math.max(longrunEntry.minMinutes, Math.min(longrunEntry.maxMinutes, base));
+  /*
+   * Reicht das Volumen noch nicht für einen richtigen Longrun, ist es eben noch
+   * keiner. In P0 sind 35 % von 180 Minuten dreiundsechzig — den als
+   * neunzigminütigen Longrun zu buchen hieße, die Longrun-Regel zu brechen, um
+   * ein Etikett zu retten.
+   */
+  if (base < longrunEntry.minMinutes) {
+    const short = CATALOGUE.longrun_verkuerzt;
+    kinds[LONGRUN_SLOT] = 'longrun_verkuerzt';
+    base = Math.max(short.minMinutes, Math.min(short.maxMinutes, base));
+  } else {
+    base = Math.min(longrunEntry.maxMinutes, base);
+  }
   const longrunGrew = previous != null && base > previous;
 
+  /*
+   * Die ungekürzte Länge merken: der Rest des Volumens bemisst sich an dem, was
+   * der Longrun ohne Deload gekostet hätte. Sonst flösse das, was der Deload dem
+   * Longrun nimmt, in die Grundlagenläufe zurück.
+   */
+  const fullLongrun = base;
+
   if (inDeload(LONGRUN_SLOT)) {
-    // Halbiert — und damit ist es kein Longrun mehr, sondern ein verkürzter.
+    // Halbiert — und damit ist es erst recht kein Longrun mehr.
     kinds[LONGRUN_SLOT] = 'longrun_verkuerzt';
     const short = CATALOGUE.longrun_verkuerzt;
     minutes[LONGRUN_SLOT] = Math.max(
@@ -181,16 +200,28 @@ export function distribute(input: {
     };
   };
 
-  const remaining = input.runMinutes - minutes[INTERVAL_SLOT] - minutes[LONGRUN_SLOT];
+  const remaining = input.runMinutes - minutes[INTERVAL_SLOT] - fullLongrun;
   const totalWeight = baseSlots.reduce((sum, s) => sum + s.weight, 0);
 
+  /*
+   * Erst die Sollwerte, dann das Stutzen. Der Unterschied ist wichtig: die Summe
+   * der Sollwerte ist das Ziel, das die Umverteilung anstrebt — nicht eine
+   * Formel daneben. Vorher stand hier eine, und weil sie den Deload anders
+   * rechnete als die Verteilung ihn anwandte, hat die Umverteilung den Abzug
+   * wieder auf die Tage außerhalb des Deloads draufgepackt. Der Deload nahm dann
+   * nichts mehr weg, er verschob nur.
+   */
+  const ideal = new Array<number>(10).fill(0);
+  ideal[INTERVAL_SLOT] = minutes[INTERVAL_SLOT];
+  ideal[LONGRUN_SLOT] = minutes[LONGRUN_SLOT];
   for (const slot of baseSlots) {
-    const wanted = Math.round(
+    ideal[slot.index] = Math.round(
       ((remaining * slot.weight) / totalWeight) * (inDeload(slot.index) ? DELOAD_FACTOR : 1),
     );
     const b = boundsOf(slot.index);
-    minutes[slot.index] = Math.max(b.min, Math.min(b.max, wanted));
+    minutes[slot.index] = Math.max(b.min, Math.min(b.max, ideal[slot.index]));
   }
+  const idealTotal = ideal.reduce((a, b) => a + b, 0);
 
   /*
    * Nach dem Stutzen stimmt die Summe nicht mehr. Der Rest wird auf die Tage
@@ -198,8 +229,7 @@ export function distribute(input: {
    * gemeldet statt stillschweigend in eine Einheit gedrückt. Der Deload-Zyklus
    * bleibt dabei außen vor: er soll ja kürzer sein.
    */
-  const target = expectedTotal(input);
-  let diff = target - minutes.reduce((a, b) => a + b, 0);
+  let diff = idealTotal - minutes.reduce((a, b) => a + b, 0);
   for (let pass = 0; pass < 5 && diff !== 0; pass++) {
     const movable = baseSlots.filter((s) => {
       const b = boundsOf(s.index);
@@ -227,10 +257,3 @@ export function distribute(input: {
   };
 }
 
-/** Das Ziel, nachdem der Deload seinen Zyklus gekürzt hat. */
-export function expectedTotal(input: { runMinutes: number; deloadCycle: 0 | 1 | null }): number {
-  if (input.deloadCycle == null) return input.runMinutes;
-  // Die beiden Zyklen tragen nicht dasselbe: Zyklus A hat die Bahn, Zyklus B den
-  // Longrun. Gekürzt wird die Hälfte, in der der Deload liegt.
-  return Math.round(input.runMinutes * (0.5 + 0.5 * DELOAD_FACTOR));
-}

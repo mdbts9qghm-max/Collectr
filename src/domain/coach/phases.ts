@@ -5,6 +5,13 @@
  * hängen an Tempo, Untergrund und Steigung; Minuten in einer Zone hängen an
  * nichts davon ab. Deshalb steht in jeder Zeile eine Minutenzahl je zehn Tage.
  *
+ * **Die Zahlen gelten für vier Läufe je zehn Tage**, also rund dreimal die Woche.
+ * Sie waren einmal doppelt so hoch, als der Plan noch acht Läufe vorsah — auf
+ * vier verteilt ergäbe das schon in P0 fünfundsiebzig Minuten je Lauf und in P3
+ * über zwei Stunden. Weniger Lauftage heißt nicht dieselbe Menge in längeren
+ * Einheiten; es heißt weniger Menge. Wer die Häufigkeit senkt und das Volumen
+ * hält, verschiebt die Verletzungsgefahr nur von der Häufigkeit auf die Länge.
+ *
  * > Verlangt das Phasenziel mehr, gilt die Grenze. Das Ziel wird nach hinten
  * > verschoben, nicht die Grenze gedehnt. Es gibt keinen Ersatzweg, um Volumen
  * > schneller aufzubauen.
@@ -46,8 +53,8 @@ export const PHASES: Phase[] = [
     span: 'Woche 1–8',
     fromWeek: 0,
     toWeek: 7,
-    fromMinutes: 300,
-    toMinutes: 420,
+    fromMinutes: 180,
+    toMinutes: 180,
     open: false,
     focus:
       'Gewebe an regelmäßiges Laufen gewöhnen. Intervalle laufen von Anfang an mit, aber kurz und wenige.',
@@ -58,8 +65,8 @@ export const PHASES: Phase[] = [
     span: 'Monat 3–6',
     fromWeek: 8,
     toWeek: 25,
-    fromMinutes: 420,
-    toMinutes: 600,
+    fromMinutes: 180,
+    toMinutes: 240,
     open: false,
     focus: 'Die Zone-2-Minuten tragen den Zuwachs. Die Bahnstufen wandern nach oben.',
   },
@@ -69,8 +76,8 @@ export const PHASES: Phase[] = [
     span: 'Monat 7–10',
     fromWeek: 26,
     toWeek: 43,
-    fromMinutes: 600,
-    toMinutes: 750,
+    fromMinutes: 240,
+    toMinutes: 290,
     open: false,
     focus: 'Longrun und Schwelle bekommen Gewicht, ohne dass der Grundlagenanteil fällt.',
   },
@@ -80,8 +87,8 @@ export const PHASES: Phase[] = [
     span: 'ab Monat 11',
     fromWeek: 44,
     toWeek: null,
-    fromMinutes: 700,
-    toMinutes: 850,
+    fromMinutes: 290,
+    toMinutes: 320,
     open: true,
     focus:
       'Kein Ende und kein Tapering. Das Volumen läuft die Spanne hoch und wird dort gehalten.',
