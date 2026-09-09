@@ -86,7 +86,7 @@ const PATTERNS: { intent: Intent; keywords: string[][] }[] = [
 
 export const COACH_SUGGESTIONS = [
   'Was soll ich heute trainieren?',
-  'Warum habe ich diesen Hybrid Score?',
+  'Wie sind meine Schichten diese Woche?',
   'Wie war meine letzte Woche?',
   'Wie viel Laufumfang hatte ich diesen Monat?',
   'Wie entwickle ich mich Richtung 100-km-Ultra?',

@@ -58,13 +58,10 @@ src/
 │   ├── outlook.ts           7-Tage-Horizont: Kapazität, Schlaf, geplante Last
 │   ├── engine.ts            Kandidatengenerierung, harte Gates, Scoring
 │   ├── personalization.ts   gelernte Präferenzen aus dem Verhalten
-│   ├── score.ts             Hybrid Score, sechs Säulen, transparent
 │   ├── habits.ts            Zeitpläne, Streaks mit Schutztagen, Quoten
-│   ├── tasks.ts             Prioritäten, Wiederholungen, Fälligkeit
 │   ├── goals.ts             Fortschritt, Meilensteine, Plan-Abgleich
 │   ├── metrics.ts           Kennzahlen aus Rohdaten, PR-Erkennung
 │   ├── review.ts            Wochenrückblick mit generierter Bewertung
-│   ├── insights.ts          Inhalte für Benachrichtigungen und Briefing
 │   ├── answers.ts           regelbasierte Antworten auf eigene Daten (Frage-Antwort-Tab)
 │   ├── coach/               die Trainingslogik — ein Ort, eine Antwort
 │   │   ├── horizon.ts           das Einflussfenster: Reichweite je Regel in Tagen
@@ -138,16 +135,15 @@ gekennzeichnet — es gibt keine Schaltfläche, die nichts tut.
 
 ## 6. Navigation
 
-Mobile: feste Tableiste mit **Heute · Training · Habits · Tasks · Statistik · Mehr**.
+Mobile: feste Tableiste mit **Heute · Training · Schlaf · Habits · Mehr**.
 Woche, Ziele, Coach und Profil liegen unter *Mehr* — neun gleichrangige Tabs sind auf
 einem iPhone nicht mit dem Daumen bedienbar.
 
 Ab 860 px wird die Tableiste durch eine Seitenleiste mit allen Zielen ersetzt.
 
 Die Trennung folgt einer einzigen Regel: **Was heute handlungsrelevant ist, gehört auf
-Heute. Alles, was eine Zahl über die Vergangenheit ist, gehört in Statistik.** Deshalb
-liegen Hybrid Score, Verläufe, Records und Hinweise im Statistik-Tab und nicht auf dem
-Tagesbildschirm.
+Heute. Alles, was eine Zahl über die Vergangenheit ist, gehört woandershin.** Deshalb
+liegen Verläufe und Bestleistungen im Ziele-Tab und nicht auf dem Tagesbildschirm.
 
 ## 7. Wichtigste Screens
 
@@ -160,8 +156,8 @@ und der Flow lässt sich jederzeit überspringen. Er erscheint pro Tag genau ein
 
 **Heute** — bewusst schmal: Datum und Schicht, die Empfehlung mit ausklappbarem „Warum?",
 ein Statusblock aus Readiness-Ring, Schlaf- und Wochenbalken, dann die handlungsrelevanten
-Listen: heutiges Training, Habits zum Abhaken, fällige Aufgaben. Keine Verläufe, keine
-Scores, keine Vorschauen — was heute nicht handlungsrelevant ist, steht hier nicht.
+Listen: heutiges Training und Habits zum Abhaken. Keine Verläufe, keine Scores, keine
+Vorschauen — was heute nicht handlungsrelevant ist, steht hier nicht.
 
 **Training** — der Wochenplaner als Kalender. Die Woche steht permanent oben als
 Sieben-Spalten-Raster: pro Tag Wochentag, Datum, Schichtkürzel und die Einheiten als
@@ -183,11 +179,6 @@ vergangene Tage ohne Einheit zeigen "nichts erfasst" statt freier Zeit.
 
 **Woche** — Sieben-Tage-Raster mit Schicht, Trainingspunkten und Auswahl; Tagesdetail;
 Balken der Tagesbelastung; automatisch generierter Wochenrückblick mit eigenem Notizfeld.
-
-**Statistik** — alles Numerische an einem Ort: Hinweise, Hybrid Score mit vollständiger
-Aufschlüsselung jeder Säule und Komponente,
-Wochenumfang, Fitness-/Ermüdungsverlauf, Detailansicht je Sportart, Kraftbestwerte,
-Personal Records, Konstanz-Heatmap.
 
 **Profil** — jeder Wert aus Abschnitt 34 der Anforderung ist hier änderbar: Profildaten,
 Trainingswerte, Erholungsschwellen, die Trainingsregeln jeder Schichtart sowie der komplette

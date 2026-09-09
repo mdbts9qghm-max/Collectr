@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { askCoach } from '../answers.ts';
+import { COACH_SUGGESTIONS, askCoach } from '../answers.ts';
 import { buildIndexes } from '../../data/derived.ts';
 import type { AppData } from '../../data/store.ts';
 import {
@@ -107,5 +107,21 @@ describe('backup', () => {
     ]);
     expect(csv).toContain('"Lauf, locker"');
     expect(csv).toContain('"sagte ""gut"""');
+  });
+});
+
+/**
+ * Vorschlagsfragen ohne Antwort sind eine Sackgasse.
+ *
+ * Der Coach bot „Warum habe ich diesen Hybrid Score?" noch an, nachdem der Score
+ * samt Antwort gelöscht war — man tippt drauf und bekommt die Hilfe.
+ */
+describe('Vorschlagsfragen', () => {
+  it('werden alle beantwortet, nicht an die Hilfe weitergereicht', () => {
+    for (const question of COACH_SUGGESTIONS) {
+      const answer = ask(question);
+      expect(answer.text.length).toBeGreaterThan(20);
+      expect(answer.text).not.toMatch(/Ich arbeite ausschließlich mit deinen gespeicherten Daten/);
+    }
   });
 });

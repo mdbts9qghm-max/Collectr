@@ -605,29 +605,16 @@ durch dessen Überwachung. Das ist die eine Fehlwirkung, die ein Modul wie diese
 allein verursachen kann. Der Smoke-Test prüft bei jedem Lauf, dass keine Abzeichen
 auftauchen.
 
-## 5. Hybrid Score
+## 5. Entfernt: Hybrid Score
 
-Sechs Säulen, jede 0–100:
+Es gab einmal einen Gesamtscore aus sechs Säulen. Er ist mit dem Statistiktab gelöscht
+worden — samt Berechnung, Zeitreihe und der Antwort „warum ist mein Score gesunken".
 
-| Säule | Gewicht | Woraus |
-| --- | --- | --- |
-| Endurance | 26 % | 5-km-Zeit, Zone-2-Pace, FTP pro kg, Schwimmpace, längster Lauf, Ausdauerumfang |
-| Consistency | 20 % | Trainingstage, Plan-Umsetzung, längste Pause, Gleichmäßigkeit |
-| Strength | 19 % | Pull-ups, Push-ups, Krafthäufigkeit, Kraftumfang |
-| Recovery | 16 % | Readiness-Schnitt, Schlafdauer, ACWR im sicheren Band |
-| Habits | 12 % | Erfüllungsquote über 28 Tage |
-| Mobility | 7 % | Minuten und Häufigkeit pro Woche |
-
-Zwei Regeln machen den Score ehrlich:
-
-* **Komponenten ohne Daten zählen nicht als Null**, sondern fallen aus der Rechnung; ihr
-  Gewicht wird verteilt. Das gilt auch für ganze Säulen.
-* Unter 45 % Datenabdeckung wird der Gesamtwert als **vorläufig** ausgewiesen. Eine 19
-  ohne Daten sagt etwas über die App aus, nicht über den Athleten.
-
-Zielwerte kommen aus den eigenen Zielen, wo eines existiert, sonst aus
-Amateur-Benchmarks. Jede Komponente meldet Wert, Zielwert, Gewicht und Beitrag — die
-Frage „warum habe ich 78 Punkte?" hat in der UI eine vollständige Antwort.
+Der Grund ist inhaltlich, nicht technisch: ein Score, der Ausdauer, Kraft, Schlaf, Habits
+und Konstanz zu einer Zahl verrechnet, sagt weniger als jede seiner Zutaten einzeln. Er
+steigt und fällt, ohne dass daraus eine Handlung folgt — und die Steuergrößen dieses Plans
+stehen ohnehin fest: VO2max, Schwellenherzfrequenz, Ruhepuls, HRV und die
+Ein-Minuten-Herzfrequenzerholung.
 
 ## 6. Habits
 
