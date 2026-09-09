@@ -280,45 +280,6 @@ export interface HabitEntry {
  * Tasks
  * ------------------------------------------------------------------ */
 
-export type TaskPriority = 'high' | 'normal' | 'low';
-
-export const TASK_CATEGORIES = [
-  'work',
-  'private',
-  'sport',
-  'nutrition',
-  'organisation',
-  'learning',
-  'other',
-] as const;
-export type TaskCategory = (typeof TASK_CATEGORIES)[number];
-
-export type TaskRecurrence =
-  | { type: 'none' }
-  | { type: 'daily'; interval: number }
-  | { type: 'weekly'; days: number[] }
-  | { type: 'monthly'; day: number }
-  /** Repeats on every day carrying a given shift type — e.g. every sleep day. */
-  | { type: 'shift'; shiftTypeId: string };
-
-export interface Task {
-  id: string;
-  title: string;
-  notes?: string;
-  priority: TaskPriority;
-  dueDate?: ISODate;
-  dueTime?: ClockTime;
-  category: TaskCategory;
-  recurrence: TaskRecurrence;
-  status: 'open' | 'done';
-  /** Rough effort in minutes, used for day-load awareness. */
-  effortMin?: number;
-  habitId?: string;
-  completedAt?: ISOTimestamp;
-  createdAt: ISOTimestamp;
-  order: number;
-}
-
 /* ------------------------------------------------------------------ *
  * Goals, metrics, records
  * ------------------------------------------------------------------ */

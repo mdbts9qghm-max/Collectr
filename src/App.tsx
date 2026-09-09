@@ -12,8 +12,6 @@ import { Training } from './screens/Training.tsx';
 import { Sleep } from './screens/Sleep.tsx';
 import { Week } from './screens/Week.tsx';
 import { Habits } from './screens/Habits.tsx';
-import { Tasks } from './screens/Tasks.tsx';
-import { Analytics } from './screens/Analytics.tsx';
 import { Goals } from './screens/Goals.tsx';
 import { Coach } from './screens/Coach.tsx';
 import { Profile } from './screens/Profile.tsx';
@@ -81,8 +79,6 @@ export default function App() {
           <Route path="/sleep" element={<Sleep />} />
           <Route path="/week" element={<Week />} />
           <Route path="/habits" element={<Habits />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/analytics" element={<Analytics />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/coach" element={<Coach />} />
           <Route path="/profile" element={<Profile />} />

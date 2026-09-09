@@ -19,8 +19,6 @@ import { recommendForDay } from '../domain/engine.ts';
 import { buildOutlook } from '../domain/outlook.ts';
 import { learnPreferences } from '../domain/personalization.ts';
 import { currentMetrics } from '../domain/metrics.ts';
-import { computeHybridScore } from '../domain/score.ts';
-import { overallCompletion } from '../domain/habits.ts';
 import { effectiveDuration, loadStateOn, periodStats, weekStats } from '../domain/load.ts';
 import { detectCycle } from '../domain/rotation/detect.ts';
 import { computeRecovery as computeAerobicRecovery } from '../domain/coach/recovery.ts';
@@ -171,61 +169,6 @@ export function buildMetrics(data: AppData, date: ISODate): Map<MetricKey, Metri
   return currentMetrics(data.sessions, Object.values(data.checkIns), data.settings, date);
 }
 
-export function buildScore(
-  data: AppData,
-  idx: Indexes,
-  date: ISODate,
-  metrics: Map<MetricKey, MetricValue>,
-) {
-  const window = lastNDays(date, 28);
-  const contextFor = makeDayContextFn(idx, date);
-  const habitPct = data.habits.length
-    ? overallCompletion(activeHabits(data), (id) => entriesFor(idx, id), contextFor, window).pct
-    : null;
-
-  // Readiness for the last 14 days, so the recovery pillar reflects a trend
-  // rather than a single morning.
-  const readinessHistory = lastNDays(date, 14).map((d) =>
-    computeReadiness(
-      d,
-      idx.checkIns,
-      data.sessions,
-      buildShiftContext(d, idx.shiftAssignments, idx.shiftTypes),
-      data.settings.recovery,
-    ),
-  );
-
-  const sleepHours = lastNDays(date, 14).map((d) => idx.checkIns.get(d)?.sleepHours ?? null);
-
-  return computeHybridScore({
-    date,
-    sessions: data.sessions,
-    metrics,
-    settings: data.settings,
-    goals: data.goals,
-    readinessHistory,
-    sleepHours,
-    habitCompletionPct: habitPct,
-    weeklyMinutesTarget: data.settings.training.weeklyHoursTarget * 60,
-  });
-}
-
-/** Hybrid score sampled weekly, for the trend chart. */
-export function scoreHistory(
-  data: AppData,
-  idx: Indexes,
-  date: ISODate,
-  weeks = 12,
-): { date: ISODate; total: number }[] {
-  const out: { date: ISODate; total: number }[] = [];
-  for (let i = weeks - 1; i >= 0; i--) {
-    const d = addDays(date, -i * 7);
-    const metrics = buildMetrics(data, d);
-    out.push({ date: d, total: buildScore(data, idx, d, metrics).total });
-  }
-  return out;
-}
-
 /* ------------------------------------------------------------------ *
  * Week view
  * ------------------------------------------------------------------ */
@@ -243,7 +186,6 @@ export interface WeekDayCell {
   sleepHours: number | null;
   readinessScore: number | null;
   habitPct: number | null;
-  openTasks: number;
   isToday: boolean;
   isPast: boolean;
 }
@@ -295,7 +237,6 @@ export function buildWeek(data: AppData, idx: Indexes, anyDate: ISODate): WeekDa
       sleepHours: checkIn?.sleepHours ?? null,
       readinessScore: readiness,
       habitPct: habitTotal > 0 ? Math.round((habitDone / habitTotal) * 100) : null,
-      openTasks: data.tasks.filter((t) => t.status === 'open' && t.dueDate === date).length,
       isToday: date === today,
       isPast: date < today,
     };

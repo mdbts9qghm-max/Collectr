@@ -10,7 +10,6 @@ import type {
   PersonalRecord,
   ShiftAssignment,
   ShiftType,
-  Task,
   TrainingPlan,
   TrainingSession,
   WeeklyReview,
@@ -18,7 +17,6 @@ import type {
 import { nowTimestamp, today } from '../domain/date.ts';
 import { makeId } from '../domain/ids.ts';
 import { currentMetrics, detectRecords } from '../domain/metrics.ts';
-import { completeTask as completeTaskRule } from '../domain/tasks.ts';
 import * as db from './db.ts';
 import {
   defaultExercises,
@@ -44,7 +42,6 @@ export interface AppData {
   exercises: Exercise[];
   habits: Habit[];
   habitEntries: HabitEntry[];
-  tasks: Task[];
   goals: Goal[];
   records: PersonalRecord[];
   checkIns: Record<ISODate, DailyCheckIn>;
@@ -79,9 +76,6 @@ interface AppStore extends AppData {
   deleteHabit: (id: string) => void;
   logHabit: (habitId: string, date: ISODate, value: number) => void;
 
-  saveTask: (task: Task) => void;
-  deleteTask: (id: string) => void;
-  toggleTask: (id: string) => void;
 
   saveGoal: (goal: Goal) => void;
   deleteGoal: (id: string) => void;
@@ -102,7 +96,6 @@ const emptyData: AppData = {
   exercises: [],
   habits: [],
   habitEntries: [],
-  tasks: [],
   goals: [],
   records: [],
   checkIns: {},
@@ -156,7 +149,6 @@ export const useStore = create<AppStore>()((set, get) => {
           exercises,
           habits,
           habitEntries,
-          tasks,
           goals,
           records,
           checkInRows,
@@ -170,7 +162,6 @@ export const useStore = create<AppStore>()((set, get) => {
           db.getAll<Exercise>(db.STORES.exercises),
           db.getAll<Habit>(db.STORES.habits),
           db.getAll<HabitEntry>(db.STORES.habitEntries),
-          db.getAll<Task>(db.STORES.tasks),
           db.getAll<Goal>(db.STORES.goals),
           db.getAll<PersonalRecord>(db.STORES.records),
           db.getAll<DailyCheckIn>(db.STORES.checkIns),
@@ -209,7 +200,6 @@ export const useStore = create<AppStore>()((set, get) => {
           exercises: seededExercises,
           habits: seededHabits.sort((a, b) => a.order - b.order),
           habitEntries,
-          tasks,
           goals: seededGoals,
           records,
           checkIns: Object.fromEntries(checkInRows.map((c) => [c.date, c])),
@@ -376,37 +366,6 @@ export const useStore = create<AppStore>()((set, get) => {
       write(db.put(db.STORES.habitEntries, entry));
     },
 
-    saveTask(task) {
-      set((s) => ({ tasks: s.tasks.filter((t) => t.id !== task.id).concat(task) }));
-      write(db.put(db.STORES.tasks, task));
-    },
-
-    deleteTask(id) {
-      set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
-      write(db.remove(db.STORES.tasks, id));
-    },
-
-    toggleTask(id) {
-      const state = get();
-      const task = state.tasks.find((t) => t.id === id);
-      if (!task) return;
-
-      if (task.status === 'done') {
-        const reopened: Task = { ...task, status: 'open', completedAt: undefined };
-        set({ tasks: state.tasks.map((t) => (t.id === id ? reopened : t)) });
-        write(db.put(db.STORES.tasks, reopened));
-        return;
-      }
-
-      const shifts = new Map(Object.entries(state.shifts));
-      const { completed, next } = completeTaskRule(task, shifts);
-      const tasks = state.tasks.map((t) => (t.id === id ? completed : t));
-      if (next) tasks.push(next);
-      set({ tasks });
-      write(db.put(db.STORES.tasks, completed));
-      if (next) write(db.put(db.STORES.tasks, next));
-    },
-
     saveGoal(goal) {
       set((s) => ({ goals: s.goals.filter((g) => g.id !== goal.id).concat(goal) }));
       write(db.put(db.STORES.goals, goal));
@@ -460,7 +419,6 @@ export const useStore = create<AppStore>()((set, get) => {
         db.bulkPut(db.STORES.exercises, merged.exercises),
         db.bulkPut(db.STORES.habits, merged.habits),
         db.bulkPut(db.STORES.habitEntries, merged.habitEntries),
-        db.bulkPut(db.STORES.tasks, merged.tasks),
         db.bulkPut(db.STORES.goals, merged.goals),
         db.bulkPut(db.STORES.records, merged.records),
         db.bulkPut(db.STORES.checkIns, Object.values(merged.checkIns)),
@@ -488,7 +446,6 @@ export function snapshot(): AppData {
     exercises: s.exercises,
     habits: s.habits,
     habitEntries: s.habitEntries,
-    tasks: s.tasks,
     goals: s.goals,
     records: s.records,
     checkIns: s.checkIns,

@@ -22,7 +22,6 @@ function data(overrides: Partial<AppData> = {}): AppData {
     exercises: defaultExercises(),
     habits: defaultHabits(),
     habitEntries: [],
-    tasks: [],
     goals: [],
     records: [],
     checkIns: {},
@@ -41,12 +40,6 @@ describe('coach', () => {
     const answer = ask('Was soll ich heute trainieren?');
     expect(answer.text.length).toBeGreaterThan(20);
     expect(answer.facts?.some((f) => f.label === 'Schicht')).toBe(true);
-  });
-
-  it('explains the hybrid score with its pillars', () => {
-    const answer = ask('Warum habe ich diesen Hybrid Score?');
-    expect(answer.text).toContain('Hybrid Score');
-    expect(answer.facts?.length).toBe(6);
   });
 
   it('says it has no data instead of inventing numbers', () => {

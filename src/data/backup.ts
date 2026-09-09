@@ -69,7 +69,6 @@ export function parseBackup(text: string): ImportResult {
   if (Array.isArray(data.exercises)) clean.exercises = data.exercises;
   if (Array.isArray(data.habits)) clean.habits = data.habits;
   if (Array.isArray(data.habitEntries)) clean.habitEntries = data.habitEntries;
-  if (Array.isArray(data.tasks)) clean.tasks = data.tasks;
   if (Array.isArray(data.goals)) clean.goals = data.goals;
   if (Array.isArray(data.records)) clean.records = data.records;
   if (data.checkIns && typeof data.checkIns === 'object') clean.checkIns = data.checkIns;
@@ -83,7 +82,6 @@ export function parseBackup(text: string): ImportResult {
       { label: 'Trainingseinheiten', count: clean.sessions?.length ?? 0 },
       { label: 'Habits', count: clean.habits?.length ?? 0 },
       { label: 'Habit-Einträge', count: clean.habitEntries?.length ?? 0 },
-      { label: 'Aufgaben', count: clean.tasks?.length ?? 0 },
       { label: 'Check-ins', count: Object.keys(clean.checkIns ?? {}).length },
       { label: 'Schichttage', count: Object.keys(clean.shifts ?? {}).length },
       { label: 'Ziele', count: clean.goals?.length ?? 0 },
@@ -160,13 +158,6 @@ export function checkInsToCsv(data: AppData): string {
     ],
     rows,
   );
-}
-
-export function tasksToCsv(data: AppData): string {
-  const rows = data.tasks.map((t) => [
-    t.title, t.category, t.priority, t.status, t.dueDate, t.dueTime, t.effortMin, t.notes,
-  ]);
-  return toCsv(['titel', 'kategorie', 'prioritaet', 'status', 'faellig', 'uhrzeit', 'aufwand_min', 'notizen'], rows);
 }
 
 /** Triggers a client-side download. Everything stays on the device. */

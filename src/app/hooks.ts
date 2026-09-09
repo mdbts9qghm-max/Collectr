@@ -6,7 +6,6 @@ import {
   buildDayView,
   buildIndexes,
   buildMetrics,
-  buildScore,
   buildWeek,
   buildCoach,
   buildSleepView,
@@ -28,7 +27,6 @@ export function useData(): AppData {
       exercises: s.exercises,
       habits: s.habits,
       habitEntries: s.habitEntries,
-      tasks: s.tasks,
       goals: s.goals,
       records: s.records,
       checkIns: s.checkIns,
@@ -89,13 +87,6 @@ export function useCoach(anchor: ISODate) {
 export function useMetrics(date: ISODate) {
   const data = useData();
   return useMemo(() => buildMetrics(data, date), [data, date]);
-}
-
-export function useHybridScore(date: ISODate) {
-  const data = useData();
-  const idx = useIndexes();
-  const metrics = useMetrics(date);
-  return useMemo(() => buildScore(data, idx, date, metrics), [data, idx, date, metrics]);
 }
 
 export function useDayContext(date: ISODate) {

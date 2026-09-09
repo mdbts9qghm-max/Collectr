@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  IconAnalytics,
   IconCalendar,
   IconCoach,
   IconGoal,
   IconHabits,
   IconProfile,
   IconSleep,
-  IconTasks,
   IconToday,
   IconTraining,
 } from '../ui/icons.tsx';
@@ -27,9 +25,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/training', label: 'Training', shortLabel: 'Training', icon: IconTraining, primary: true },
   { to: '/sleep', label: 'Schlaf & Erholung', shortLabel: 'Schlaf', icon: IconSleep, primary: true },
   { to: '/habits', label: 'Habits', shortLabel: 'Habits', icon: IconHabits, primary: true },
-  { to: '/tasks', label: 'Aufgaben', shortLabel: 'Tasks', icon: IconTasks, primary: true },
-  // Everything numeric lives here, off the daily screen.
-  { to: '/analytics', label: 'Statistik', shortLabel: 'Statistik', icon: IconAnalytics, primary: true },
   { to: '/week', label: 'Woche', shortLabel: 'Woche', icon: IconCalendar, primary: false },
   { to: '/goals', label: 'Ziele', shortLabel: 'Ziele', icon: IconGoal, primary: false },
   { to: '/coach', label: 'Coach', shortLabel: 'Coach', icon: IconCoach, primary: false },

@@ -43,7 +43,6 @@ function data(checkIns: Record<ISODate, DailyCheckIn> = {}): AppData {
     exercises: defaultExercises(),
     habits: defaultHabits(),
     habitEntries: [],
-    tasks: [],
     goals: [],
     records: [],
     checkIns,

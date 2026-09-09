@@ -6,7 +6,6 @@ import {
   buildCoach,
   buildDayView,
   buildMetrics,
-  buildScore,
   entriesFor,
   makeDayContextFn,
 } from '../data/derived.ts';
@@ -25,7 +24,6 @@ import { average, periodStats, round1 } from './load.ts';
 import { buildWeekSummary } from './review.ts';
 import { computeStreak, quotaFor } from './habits.ts';
 import { goalProgress, goalStatusText } from './goals.ts';
-import { PILLAR_META } from './score.ts';
 import { describeRecord } from './metrics.ts';
 
 /**
@@ -48,14 +46,12 @@ export interface CoachAnswer {
 
 type Intent =
   | 'today'
-  | 'why_score'
   | 'last_week'
   | 'run_or_strength'
   | 'volume_month'
   | 'ultra_progress'
   | 'sleep'
   | 'habits'
-  | 'tasks'
   | 'records'
   | 'load'
   | 'goals'
@@ -64,10 +60,6 @@ type Intent =
 
 const PATTERNS: { intent: Intent; keywords: string[][] }[] = [
   { intent: 'today', keywords: [['heute'], ['jetzt', 'trainieren'], ['today'], ['was', 'soll']] },
-  {
-    intent: 'why_score',
-    keywords: [['score'], ['hybrid'], ['punkte'], ['warum', 'gesunken'], ['bewertung']],
-  },
   {
     intent: 'last_week',
     keywords: [['letzte', 'woche'], ['vergangene', 'woche'], ['wochenrückblick'], ['last', 'week']],
@@ -86,7 +78,6 @@ const PATTERNS: { intent: Intent; keywords: string[][] }[] = [
   },
   { intent: 'sleep', keywords: [['schlaf'], ['sleep'], ['müde'], ['erholung'], ['recovery']] },
   { intent: 'habits', keywords: [['habit'], ['gewohnheit'], ['streak']] },
-  { intent: 'tasks', keywords: [['aufgabe'], ['task'], ['todo'], ['to-do']] },
   { intent: 'records', keywords: [['record'], ['bestleistung'], ['pr'], ['bestzeit'], ['rekord']] },
   { intent: 'load', keywords: [['belastung'], ['load'], ['form'], ['fitness'], ['acwr'], ['überlast']] },
   { intent: 'goals', keywords: [['ziel'], ['goal'], ['ftp'], ['pull'], ['5 km'], ['5km']] },
@@ -127,8 +118,6 @@ export function askCoach(
   switch (detectIntent(question)) {
     case 'today':
       return answerToday(data, idx, today);
-    case 'why_score':
-      return answerScore(data, idx, today);
     case 'last_week':
       return answerLastWeek(data, idx, today);
     case 'run_or_strength':
@@ -141,8 +130,6 @@ export function askCoach(
       return answerSleep(data, idx, today);
     case 'habits':
       return answerHabits(data, idx, today);
-    case 'tasks':
-      return answerTasks(data, today);
     case 'records':
       return answerRecords(data);
     case 'load':
@@ -216,45 +203,6 @@ function answerToday(data: AppData, idx: Indexes, today: ISODate): CoachAnswer {
       { label: 'Bahnstufe', value: plan.stage.stage.label },
     ],
     followUps: ['Wie ist meine Belastung gerade?', 'Wie war meine letzte Woche?'],
-  };
-}
-
-function answerScore(data: AppData, idx: Indexes, today: ISODate): CoachAnswer {
-  const metrics = buildMetrics(data, today);
-  const score = buildScore(data, idx, today, metrics);
-  const lastWeek = buildScore(data, idx, addDays(today, -7), buildMetrics(data, addDays(today, -7)));
-  const delta = round1(score.total - lastWeek.total);
-
-  const lines = score.pillars
-    .slice()
-    .sort((a, b) => b.contribution - a.contribution)
-    .map(
-      (p) =>
-        `${PILLAR_META[p.key].label}: ${Math.round(p.score)} × ${Math.round(p.weight * 100)} % = ${p.contribution.toFixed(1)} Punkte`,
-    )
-    .join('\n');
-
-  const trend =
-    delta === 0
-      ? 'Unverändert zur Vorwoche.'
-      : delta > 0
-        ? `${delta} Punkte besser als vor einer Woche.`
-        : `${Math.abs(delta)} Punkte niedriger als vor einer Woche.`;
-
-  const weakest = score.pillars.slice().sort((a, b) => a.score - b.score)[0];
-
-  return {
-    text:
-      `Dein Hybrid Score liegt bei ${score.total} / 100. ${trend}\n\nSo setzt er sich zusammen:\n${lines}\n\n` +
-      `Schwächste Säule: ${PILLAR_META[weakest.key].label} mit ${Math.round(weakest.score)}.` +
-      (score.levers[0] ? `\n\nGrößter Hebel: ${score.levers[0].text}` : '') +
-      (score.coverage < 80
-        ? `\n\nHinweis: nur ${score.coverage} % der Bewertungsgrundlage haben Daten. Mehr erfasste Einheiten und Check-ins machen den Score präziser.`
-        : ''),
-    facts: score.pillars.map((p) => ({
-      label: PILLAR_META[p.key].label,
-      value: String(Math.round(p.score)),
-    })),
   };
 }
 
@@ -452,26 +400,6 @@ function answerHabits(data: AppData, idx: Indexes, today: ISODate): CoachAnswer 
       `Stärkster Streak: ${best.habit.name} mit ${best.streak.current} Tagen.\n` +
       `Schwächster Habit: ${worst.habit.name} mit ${worst.quota.pct} %.`,
     facts: [{ label: 'Habits aktiv', value: String(habits.length) }],
-  };
-}
-
-function answerTasks(data: AppData, today: ISODate): CoachAnswer {
-  const open = data.tasks.filter((t) => t.status === 'open');
-  const overdue = open.filter((t) => t.dueDate && t.dueDate < today);
-  const dueToday = open.filter((t) => t.dueDate === today);
-  if (open.length === 0) return { text: 'Keine offenen Aufgaben. 🎉' };
-
-  const lines = [...overdue, ...dueToday]
-    .slice(0, 6)
-    .map((t) => `• ${t.title}${t.dueDate && t.dueDate < today ? ' (überfällig)' : ''}`)
-    .join('\n');
-
-  return {
-    text: `${open.length} offene Aufgaben, davon ${overdue.length} überfällig und ${dueToday.length} heute fällig.\n\n${lines}`,
-    facts: [
-      { label: 'Offen', value: String(open.length) },
-      { label: 'Überfällig', value: String(overdue.length) },
-    ],
   };
 }
 

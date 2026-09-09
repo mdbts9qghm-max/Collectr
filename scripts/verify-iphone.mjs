@@ -112,18 +112,33 @@ for (const d of DEVICES) {
       (clipped.length ? ` → ABGESCHNITTEN: ${clipped.map((c) => c.text).join(', ')}` : ' → passt'),
   );
 
-  // Prüfen: Eingabefeld-Schriftgröße (unter 16px zoomt iOS)
-  await page.goto(`${BASE}/#/tasks`, { waitUntil: 'networkidle' });
+  /*
+   * Prüfen: Eingabefeld-Schriftgröße. Unter 16 px zoomt iOS beim Fokussieren,
+   * und das Formular rutscht aus dem Bild.
+   *
+   * Gemessen wird das Einheitenformular, weil dort am meisten getippt wird.
+   * Diese Prüfung hing früher am Aufgabentab und dessen `.fab`; als der Tab
+   * wegfiel, wäre sie stillschweigend übersprungen worden — deshalb scheitert
+   * sie jetzt laut, wenn sie kein Feld findet.
+   */
+  await page.goto(`${BASE}/#/today`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
-  const fab = page.locator('.fab');
-  if (await fab.count()) {
-    await fab.click();
-    await page.waitForSelector('.sheet');
-    await page.waitForTimeout(400);
-    const fs = await page.locator('.sheet .input').first()
+  await page.getByRole('button', { name: /Einheit selbst eintragen/ }).click();
+  await page.waitForSelector('.sheet .input');
+  await page.waitForTimeout(400);
+  const inputs = await page.locator('.sheet .input').count();
+  if (inputs === 0) {
+    failures++;
+    console.log('  Eingabefeld-Schrift: KEIN FELD GEFUNDEN — die Prüfung misst nichts');
+  } else {
+    const fs = await page
+      .locator('.sheet .input')
+      .first()
       .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     if (fs < 16) failures++;
-    console.log(`  Eingabefeld-Schrift: ${fs}px → ${fs >= 16 ? 'kein Zoom' : 'ZOOMT'}`);
+    console.log(
+      `  Eingabefeld-Schrift: ${fs}px in ${inputs} Feldern → ${fs >= 16 ? 'kein Zoom' : 'ZOOMT'}`,
+    );
     await page.screenshot({ path: `${DIR}/91-${d.name}-sheet.png` });
   }
 

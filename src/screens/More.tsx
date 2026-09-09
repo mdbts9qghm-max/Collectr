@@ -1,14 +1,12 @@
 import { Link } from 'react-router-dom';
 import { NAV_ITEMS } from '../app/nav.tsx';
 import { APP_NAME, APP_VERSION } from '../app/version.ts';
-import { useData, useHybridScore, useToday } from '../app/hooks.ts';
+import { useData,  } from '../app/hooks.ts';
 import { Card, Pill, SectionTitle } from '../ui/primitives.tsx';
 import { IconChevronRight } from '../ui/icons.tsx';
 
 export function More() {
-  const today = useToday();
   const data = useData();
-  const score = useHybridScore(today);
   const secondary = NAV_ITEMS.filter((i) => !i.primary);
 
   const completed = data.sessions.filter((s) => s.status === 'completed').length;
@@ -20,12 +18,12 @@ export function More() {
       <Card hero>
         <div className="row between">
           <div>
-            <div className="t-label">Hybrid Score</div>
-            <div className="stat-value lg t-num mt-2">{score.total}</div>
+            <div className="t-label">Erfasst</div>
+            <div className="stat-value lg t-num mt-2">{completed}</div>
+            <div className="t-caption muted">Einheiten</div>
           </div>
           <div className="right">
-            <div className="t-caption muted">{completed} Einheiten erfasst</div>
-            <div className="t-caption muted mt-2">{data.records.length} Bestleistungen</div>
+            <div className="t-caption muted">{data.records.length} Bestleistungen</div>
           </div>
         </div>
       </Card>

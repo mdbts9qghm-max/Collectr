@@ -252,8 +252,6 @@ for (const [path, name] of [
   ['#/sleep', '05b-sleep'],
   ['#/week', '06-week'],
   ['#/habits', '07-habits'],
-  ['#/tasks', '08-tasks'],
-  ['#/analytics', '09-analytics'],
   ['#/goals', '10-goals'],
   ['#/coach', '11-coach'],
   ['#/profile', '12-profile'],

@@ -178,22 +178,6 @@
 .btn-block { width: 100%; }
 .btn-icon { padding: 8px; width: 36px; height: 36px; border-radius: var(--r-sm); }
 
-.fab {
-  position: fixed;
-  right: var(--s4);
-  bottom: calc(var(--nav-height) + var(--safe-bottom) + var(--s4));
-  z-index: 45;
-  width: 54px;
-  height: 54px;
-  border-radius: var(--r-full);
-  background: var(--accent);
-  color: var(--accent-ink);
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow-lg);
-  transition: transform var(--t-spring);
-}
-.fab:active { transform: scale(0.92); }
 
 /* ---------- Pills, chips, badges ---------- */
 
@@ -837,7 +821,6 @@
   .app-main {
     padding-bottom: var(--s8);
   }
-  .fab { display: none; }
   .sheet-backdrop { align-items: center; }
   .sheet {
     border-radius: var(--r-xl);

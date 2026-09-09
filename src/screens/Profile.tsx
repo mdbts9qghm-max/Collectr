@@ -15,7 +15,6 @@ import {
   habitEntriesToCsv,
   parseBackup,
   sessionsToCsv,
-  tasksToCsv,
 } from '../data/backup.ts';
 import { useStore } from '../data/store.ts';
 import { useData } from '../app/hooks.ts';
@@ -710,12 +709,6 @@ export function Profile() {
             onClick={() => downloadFile(backupFilename('checkins', 'csv'), checkInsToCsv(data), 'text/csv')}
           >
             Check-ins
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => downloadFile(backupFilename('aufgaben', 'csv'), tasksToCsv(data), 'text/csv')}
-          >
-            Aufgaben
           </Button>
         </div>
 

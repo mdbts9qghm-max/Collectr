@@ -24,7 +24,6 @@ export interface WeekSummary {
   avgSleepHours: number | null;
   avgReadiness: number | null;
   habitPct: number | null;
-  tasksCompleted: number;
   /** Comparison with the previous week. */
   deltaMinutes: number;
   deltaLoad: number;
@@ -71,10 +70,6 @@ export function buildWeekSummary(
     ? overallCompletion(activeHabits(data), (id) => entriesFor(idx, id), contextFor, dates).pct
     : null;
 
-  const tasksCompleted = data.tasks.filter(
-    (t) => t.status === 'done' && t.completedAt && t.completedAt.slice(0, 10) >= weekStart && t.completedAt.slice(0, 10) <= weekEnd,
-  ).length;
-
   const bySport = (Object.keys(stats.bySport) as SportKey[])
     .map((sport) => ({
       sport,
@@ -97,7 +92,6 @@ export function buildWeekSummary(
     avgSleepHours: sleeps.length ? round1(average(sleeps)) : null,
     avgReadiness: readiness.length ? Math.round(average(readiness)) : null,
     habitPct,
-    tasksCompleted,
     deltaMinutes: stats.total.minutes - prev.total.minutes,
     deltaLoad: stats.total.load - prev.total.load,
     wentWell: [],

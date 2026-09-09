@@ -16,7 +16,6 @@ import { formatClock } from '../domain/coach/windows.ts';
 import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
 import { RECOVERY_BAND_META } from '../domain/coach/recovery.ts';
 import { statusOn } from '../domain/habits.ts';
-import { summarise, tasksForDay } from '../domain/tasks.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
 import { activeHabits, entriesFor } from '../data/derived.ts';
@@ -51,7 +50,6 @@ export function Today() {
   const view = useDayView(today);
   const contextFor = useDayContext(today);
   const logHabit = useStore((s) => s.logHabit);
-  const toggleTask = useStore((s) => s.toggleTask);
   const saveSession = useStore((s) => s.saveSession);
   const toast = useStore((s) => s.toast);
 
@@ -59,8 +57,6 @@ export function Today() {
   const [editing, setEditing] = useState<TrainingSession | null>(null);
 
   const habits = activeHabits(data);
-  const tasks = tasksForDay(data.tasks, today, today);
-  const taskSummary = summarise(data.tasks, today);
 
   const habitRows = habits.map((h) => {
     const entry = entriesFor(idx, h.id).get(today);
@@ -358,35 +354,6 @@ export function Today() {
                     )}
                   </span>
                   {status === 'skipped' && <Pill>frei</Pill>}
-                </div>
-              ))}
-            </div>
-          </Card>
-        </>
-      )}
-
-      {/* ---------- Aufgaben ---------- */}
-      {tasks.length > 0 && (
-        <>
-          <SectionTitle
-            title="Aufgaben"
-            action={
-              taskSummary.overdue > 0 ? (
-                <Pill tone="bad">{taskSummary.overdue} überfällig</Pill>
-              ) : (
-                <Link to="/tasks" className="t-caption accent">
-                  alle
-                </Link>
-              )
-            }
-          />
-          <Card flush>
-            <div className="list">
-              {tasks.slice(0, 5).map((task) => (
-                <div className="list-item" key={task.id}>
-                  <Check round state="empty" label={task.title} onClick={() => toggleTask(task.id)} />
-                  <span className="grow truncate">{task.title}</span>
-                  {task.dueDate && task.dueDate < today && <Pill tone="bad">überfällig</Pill>}
                 </div>
               ))}
             </div>
