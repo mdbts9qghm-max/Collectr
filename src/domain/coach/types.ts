@@ -3,6 +3,7 @@ import type { SessionKind } from './catalogue.ts';
 import type { ZoneNumber } from './zones.ts';
 import { CATALOGUE, HARD_LOAD } from './catalogue.ts';
 import { isBaseZone } from './zones.ts';
+import type { Capacity } from './capacity.ts';
 
 /**
  * Der Tag, wie der Coach ihn sieht.
@@ -36,10 +37,14 @@ export interface CoachDay {
   /** Beginn der nächsten Schlafphase. Der Vorschlaf zählt. */
   nextSleepStart: number;
   recovery: number;
+  /** Was die Schicht dieses Tages kostet, auf der Skala der Trainingslast. */
+  shiftLoad: number;
   /** Der Lauf des Tages. Höchstens einer. */
   run: PlannedItem | null;
   /** Die Krafteinheit des Tages. */
   strength: PlannedItem | null;
+  /** Warum der Tag eine zweite Einheit trägt — oder warum nicht. */
+  secondUnit: Capacity | null;
   /** Wahr, sobald der Tag stattgefunden hat und erfasst ist. */
   done: boolean;
   /** Wahr, wenn die Einheit dieses Tages abgestuft wurde. */
@@ -66,8 +71,21 @@ export function itemsOf(day: CoachDay): PlannedItem[] {
   return out;
 }
 
+/**
+ * Die Trainingslast des Tages. Ohne Schicht.
+ *
+ * Die Regeln — Belastungsverhältnis, Ruhetag je Zyklus — meinen Trainingslast,
+ * und die Schicht gehört nicht hinein: sonst hätte der Athlet nie einen Tag ohne
+ * Last, und das Verhältnis aus akut und chronisch würde unempfindlich gegen
+ * genau das, was es messen soll.
+ */
 export function loadOf(day: CoachDay): number {
   return itemsOf(day).reduce((sum, i) => sum + i.load, 0);
+}
+
+/** Was der Tag insgesamt trägt: Training plus Dienst. Grundlage des Tagesbudgets. */
+export function totalLoadOf(day: CoachDay): number {
+  return loadOf(day) + day.shiftLoad;
 }
 
 export function isHardDay(day: CoachDay): boolean {

@@ -7,6 +7,9 @@ import { FIXED_ZONES, proposeZones, retestState, zoneFor } from '../coach/zones.
 import { isDeloadCycle, targetFor } from '../coach/phases.ts';
 import { STAGE_TABLE, stageFor } from '../coach/intervals.ts';
 import { planStrength } from '../coach/strength.ts';
+import { MIN_CAPACITY } from '../coach/capacity.ts';
+import { shiftLoadFor } from '../coach/shift.ts';
+import { loadOf, totalLoadOf } from '../coach/types.ts';
 import { addDays, diffDays } from '../date.ts';
 
 const ROT: (1 | 2 | 3 | 4 | 5)[] = [1, 2, 3, 4, 5];
@@ -367,51 +370,92 @@ describe('Zonen', () => {
  * hörte zu. Ein Signal ohne Test ist ein Signal, das man verlieren kann.
  */
 /**
- * Wo die Doppeltage liegen.
+ * Wer über die zweite Einheit entscheidet.
  *
- * Zwei Einheiten an einem Tag gehören dorthin, wo die Erholung sie trägt. Der
- * Schlaftag hat mit sechs Stunden Tagschlaf nach 24 Stunden Wachzeit den
- * niedrigsten Erholungswert des Zyklus und trug trotzdem zwei Einheiten, während
- * ein freier Tag mit Erholung 100 nur eine trug. Das war verkehrt herum, und
- * dieser Test hält die Korrektur fest.
+ * Vorher stand das *Ob* als `strength: true` in der Zyklusvorlage, und die
+ * Kennzahlen durften nur noch das *Wie schwer* bestimmen. Dadurch entstanden
+ * Vorschläge, die aus Erholung und Belastung nie gefolgt wären — zwei Einheiten
+ * am Vormittag vor einer Zwölf-Stunden-Nachtschicht. Jetzt rechnet der Tag es
+ * selbst aus, und diese Tests halten fest, dass er es tut.
  */
-describe('Doppeltage liegen auf den freien Tagen', () => {
+describe('Das Tagesbudget entscheidet über die zweite Einheit', () => {
   const p = plan(ANCHOR, 4);
   const future = p.timeline.days.filter((d) => d.date >= ANCHOR).slice(0, 10);
-  const doubles = future.filter((d) => d.run && d.strength);
 
-  it('lässt den Schlaftag einfach', () => {
-    for (const d of future.filter((x) => x.cycleDay === 3)) {
-      expect(d.run).not.toBeNull();
+  it('doppelt nicht vor der Nachtschicht — der Dienst kostet schon zu viel', () => {
+    for (const d of future.filter((x) => x.cycleDay === 2)) {
       expect(d.strength).toBeNull();
+      expect(d.secondUnit!.remaining).toBeLessThan(MIN_CAPACITY);
+      expect(d.secondUnit!.reason).toMatch(/Schicht 55/);
     }
   });
 
-  it('gibt jedem freien Tag ohne Schlüsseleinheit seine Krafteinheit', () => {
-    const freeNonKey = future.filter(
+  it('lässt den Schlaftag einfach, weil nach 24 h Wachzeit nichts übrig ist', () => {
+    for (const d of future.filter((x) => x.cycleDay === 3)) {
+      expect(d.run).not.toBeNull();
+      expect(d.strength).toBeNull();
+      expect(d.secondUnit!.remaining).toBeLessThan(MIN_CAPACITY);
+    }
+  });
+
+  it('gibt dem freien Tag ohne Schlüsseleinheit seine zweite Einheit', () => {
+    const free = future.filter(
       (d) =>
         (d.cycleDay === 4 || d.cycleDay === 5) &&
         d.run != null &&
         !CATALOGUE[d.run.kind].isKeySession,
     );
-    expect(freeNonKey.length).toBeGreaterThan(0);
-    for (const d of freeNonKey) expect(d.strength).not.toBeNull();
-  });
-
-  it('doppelt nie auf einem Tag mit Schlüsseleinheit', () => {
-    for (const d of doubles) {
-      expect(CATALOGUE[d.run!.kind].isKeySession).toBe(false);
+    expect(free.length).toBe(2);
+    for (const d of free) {
+      expect(d.strength).not.toBeNull();
+      expect(d.secondUnit!.remaining).toBeGreaterThanOrEqual(MIN_CAPACITY);
     }
   });
 
-  it('hält die Kraftfrequenz bei zwei Einheiten je Zyklus', () => {
-    expect(future.filter((d) => d.strength).length).toBe(4);
+  it('doppelt nie auf einem Schlüsseltag', () => {
+    for (const d of future.filter((x) => x.run && CATALOGUE[x.run.kind].isKeySession)) {
+      expect(d.strength).toBeNull();
+      expect(d.secondUnit!.reason).toMatch(/Schlüsseleinheit/);
+    }
   });
 
-  it('rührt das Laufvolumen dabei nicht an', () => {
+  it('begründet jede Entscheidung mit den Zahlen, aus denen sie folgt', () => {
+    for (const d of future) {
+      expect(d.secondUnit).not.toBeNull();
+      expect(d.secondUnit!.reason.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('rührt das Laufvolumen nicht an', () => {
     const runMinutes = future.reduce((sum, d) => sum + (d.run?.minutes ?? 0), 0);
-    expect(runMinutes).toBeGreaterThan(0);
     expect(Math.abs(runMinutes - p.target.runMinutes)).toBeLessThanOrEqual(12);
+  });
+});
+
+/** Die Schicht ist eine Last, kein bloßes Zeitfenster. */
+describe('Schichtlast', () => {
+  it('gewichtet den Nachtdienst am schwersten und freie Tage mit null', () => {
+    expect(shiftLoadFor(2, false).load).toBeGreaterThan(shiftLoadFor(1, false).load);
+    expect(shiftLoadFor(1, false).load).toBeGreaterThan(shiftLoadFor(3, false).load);
+    expect(shiftLoadFor(4, false).load).toBe(0);
+    expect(shiftLoadFor(5, false).load).toBe(0);
+    expect(shiftLoadFor(null, false).load).toBe(0);
+  });
+
+  it('hält die Schichtlast aus der Trainingslast heraus', () => {
+    const p = plan(ANCHOR, 4);
+    const nightShift = p.timeline.days.find((d) => d.date >= ANCHOR && d.cycleDay === 2)!;
+    expect(nightShift.shiftLoad).toBe(55);
+    // loadOf zählt nur Training — sonst hätte kein Tag je die Last null.
+    expect(loadOf(nightShift)).toBeLessThan(nightShift.shiftLoad + loadOf(nightShift));
+    expect(totalLoadOf(nightShift)).toBe(loadOf(nightShift) + 55);
+  });
+
+  it('lässt den Tagschichttag lastfrei im Training, obwohl der Dienst zählt', () => {
+    const p = plan(ANCHOR, 4);
+    const dayShift = p.timeline.days.find((d) => d.date >= ANCHOR && d.cycleDay === 1)!;
+    expect(loadOf(dayShift)).toBe(0);
+    expect(dayShift.shiftLoad).toBe(30);
   });
 });
 

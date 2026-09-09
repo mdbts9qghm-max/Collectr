@@ -47,22 +47,20 @@ export interface Slot {
   kind: SessionKind;
   /** Anteil am Restvolumen, nachdem Schlüsseleinheiten abgezogen sind. */
   weight: number;
-  /** Ob an diesem Tag zusätzlich Kraft vorgesehen ist. */
-  strength: boolean;
   role: string;
 }
 
 export const MACROCYCLE_TEMPLATE: Slot[] = [
-  { index: 0, cycleDay: 1, kind: 'ruhe', weight: 0, strength: false, role: 'Ruhetag' },
-  { index: 1, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, strength: true, role: 'Lauf und Kraft im Vormittagsfenster' },
-  { index: 2, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, strength: false, role: 'Grundlage am Nachmittag' },
-  { index: 3, cycleDay: 4, kind: 'intervall', weight: 0, strength: false, role: 'Schlüsseleinheit: Bahn' },
-  { index: 4, cycleDay: 5, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage und Kraft am freien Tag' },
-  { index: 5, cycleDay: 1, kind: 'ruhe', weight: 0, strength: false, role: 'Ruhetag' },
-  { index: 6, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, strength: true, role: 'Lauf und Kraft im Vormittagsfenster' },
-  { index: 7, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, strength: false, role: 'Grundlage am Nachmittag' },
-  { index: 8, cycleDay: 4, kind: 'grundlagenlauf', weight: 1.2, strength: true, role: 'Grundlage und Kraft am freien Tag' },
-  { index: 9, cycleDay: 5, kind: 'longrun', weight: 0, strength: false, role: 'Schlüsseleinheit: Longrun' },
+  { index: 0, cycleDay: 1, kind: 'ruhe', weight: 0, role: 'Ruhetag' },
+  { index: 1, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, role: 'Lauf im Vormittagsfenster' },
+  { index: 2, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am Nachmittag' },
+  { index: 3, cycleDay: 4, kind: 'intervall', weight: 0, role: 'Schlüsseleinheit: Bahn' },
+  { index: 4, cycleDay: 5, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am freien Tag' },
+  { index: 5, cycleDay: 1, kind: 'ruhe', weight: 0, role: 'Ruhetag' },
+  { index: 6, cycleDay: 2, kind: 'lockerer_lauf', weight: 0.8, role: 'Lauf im Vormittagsfenster' },
+  { index: 7, cycleDay: 3, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am Nachmittag' },
+  { index: 8, cycleDay: 4, kind: 'grundlagenlauf', weight: 1.2, role: 'Grundlage am freien Tag' },
+  { index: 9, cycleDay: 5, kind: 'longrun', weight: 0, role: 'Schlüsseleinheit: Longrun' },
 ];
 
 /** Anteil des Zehn-Tage-Ziels, den der Longrun bekommt. Die Regel deckelt bei 35 %. */

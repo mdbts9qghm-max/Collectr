@@ -469,6 +469,14 @@ function CoachCalendar({
           )}
 
           {/*
+            Das Tagesbudget im Klartext. Es entscheidet, ob der Tag eine zweite
+            Einheit trägt, und es soll nachrechenbar sein statt geglaubt werden.
+          */}
+          {day.secondUnit && day.window && (
+            <div className="t-caption muted mt-2">{day.secondUnit.reason}</div>
+          )}
+
+          {/*
             Das Einflussfenster, an der Stelle, wo man ohnehin hinschaut: welche
             Regeln diesen Tag noch mit heute verbinden.
           */}

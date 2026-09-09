@@ -318,19 +318,62 @@ Anpassung entsteht aus der Wiederholung ähnlicher Reize.
 
 Die 48 Stunden zwischen den harten Einheiten stecken schon darin.
 
-**Doppeltage liegen auf den freien Tagen, nicht auf dem Schlaftag.** Der Schlaftag hat mit
-sechs Stunden Tagschlaf nach 24 Stunden Wachzeit den niedrigsten Erholungswert des Zyklus —
-zwei Einheiten gehören dorthin, wo die Erholung sie trägt. Er behält seinen Lauf, weil der
-den Schlafdruck für den Abend aufbaut; das war nie die Aufgabe der Krafteinheit.
+### Das Tagesbudget entscheidet über die zweite Einheit
 
-Jeder Zyklus trägt damit zwei Doppeltage: den Nachtschichttag im Vormittagsfenster und den
-freien Tag, der keine Schlüsseleinheit hat. Die anderen beiden freien Tage bleiben einfach,
-weil dort Bahn und Longrun liegen. An Tag 9 wird die Kraft von selbst zum Oberkörper, weil
-Tag 10 der Longrun ist — das entscheidet die Kraftberechnung, nicht die Vorlage.
+Die Vorlage legt nur fest, **welcher Lauf** wann liegt — daran hängen die 48 Stunden
+zwischen den harten Einheiten, und die will man garantiert und nicht jedes Mal neu gesucht.
+Ob ein Tag darüber hinaus eine **zweite Einheit** trägt, steht nirgends geschrieben. Der
+Tag rechnet es aus:
 
-Vorher lag es umgekehrt: der Schlaftag mit Erholung 60 trug zwei Einheiten, der freie Tag 9
-mit Erholung 100 nur eine und kam auf eine Tageslast von 27. Das Laufvolumen ändert sich
-durch die Umstellung nicht — Kraft konkurriert nicht um Laufminuten.
+```
+Restkapazität = Erholung − Schichtlast − geplante Trainingslast
+```
+
+Ab einer Restkapazität von 20 trägt der Tag eine zweite Einheit. Die Schwelle ist kein
+gefitteter Wert: die kleinste sinnvolle zweite Einheit — Mobilität und Rumpf — kostet 12
+Punkte, und wer die gerade so bezahlen kann, hat keinen Reiz mehr übrig, sondern nur noch
+Müdigkeit. Dazu drei Sperren, die nichts mit dem Budget zu tun haben: kein Fenster, eine
+Schlüsseleinheit am selben Tag, oder gestern schon Kraft.
+
+Über eine gewöhnliche Rotation ergibt das:
+
+| Tag | Erholung | − Schicht | − Training | = Rest | Ergebnis |
+| --- | --- | --- | --- | --- | --- |
+| T1 Tagschicht | 0 | 30 | 0 | −30 | kein Fenster |
+| T2 Nachtschicht | 75 | 55 | 19 | **1** | einfach |
+| T3 Schlaftag | 60 | 20 | 27 | **13** | einfach |
+| T4 frei (Bahn) | 100 | 0 | 60 | 40 | Schlüsseltag, einfach |
+| T5 frei | 90 | 0 | 27 | **63** | **Doppel** |
+| T4 frei | 100 | 0 | 27 | **73** | **Doppel** |
+| T5 frei (Longrun) | 90 | 0 | 66 | 24 | Schlüsseltag, einfach |
+
+Der Doppeltag vor der Nachtschicht fällt damit von selbst weg — nicht weil eine Regel ihn
+verbietet, sondern weil zwölf Stunden Nachtdienst das Budget aufgebraucht haben. Genau so
+sollte es sein: Erholung und Belastung sind die Steuergrößen, nicht eine Tabellenzeile.
+
+### Die Schicht ist eine Belastung
+
+Vorher kam der Dienst nur als Fenster vor — er sagte, *wann* trainiert werden kann, nie
+*wie viel schon getragen wird*. Zwölf Stunden Nachtdienst zählten null.
+
+| Schicht | Last | Begründung |
+| --- | --- | --- |
+| T1 Tagschicht | 30 | zwölf Stunden Dienst, aber im Takt des Tages |
+| T2 Nachtschicht | 55 | zwölf Stunden gegen den zirkadianen Rhythmus |
+| T3 Schlaftag | 20 | der Dienst ist vorbei, der Preis nicht: 24 h Wachzeit, 6 h Tagschlaf |
+| T4/T5 frei | 0 | — |
+| V-Schicht | 30 | zwölf Stunden Dienst, der Lauf liegt darin |
+
+**Diese Zahlen sind Urteil, keine Messung.** Sie liegen auf der Skala der Trainingslast,
+damit sie sich mit ihr verrechnen lassen; die Größenordnung stammt aus dem Vergleich, dass
+eine Nachtschicht mehr Erholung kostet als ein lockerer Lauf und weniger als ein Longrun.
+
+Die Schichtlast wirkt an **genau einer Stelle**: im Tagesbudget. Nicht im
+Belastungsverhältnis, weil das in der Literatur ein Verhältnis von *Trainingslast* ist —
+bei einer regelmäßigen Rotation stiege der Zähler ungefähr wie der Nenner, das Verhältnis
+bliebe fast gleich und würde nur unempfindlicher gegen den Trainingssprung, den es messen
+soll. Und nicht im Erholungswert des Folgetags, weil sie dort schon steckt: der Grundwert
+des Schlaftags ist 60 „nach 24 h Wachzeit", der des Tagschichttags 0.
 
 Die **V-Schicht** überschreibt den Tag: 30 bis 60 Minuten locker im Dienst. Das ist kein
 Abschreiben des Tages, aber keine Intensität.

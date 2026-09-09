@@ -13,6 +13,8 @@ import { CATALOGUE, HARD_LOAD, bearableStep, describeStepDown, stepDown, stepsTa
 import { FIXED_ZONES, formatZone } from './zones.ts';
 import { buildHorizon, rulesReaching } from './horizon.ts';
 import { MACROCYCLE_TEMPLATE, distribute, slotFor } from './template.ts';
+import { secondUnitCapacity } from './capacity.ts';
+import { shiftLoadFor } from './shift.ts';
 import { buildIntervalSession, stageFor, trackFallback } from './intervals.ts';
 import { isDeloadCycle, targetFor } from './phases.ts';
 import { planStrength } from './strength.ts';
@@ -304,8 +306,10 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
       window: w?.trainingWindow ?? null,
       nextSleepStart: w?.nextSleepStart ?? 22 * 60 + 15,
       recovery: ctx?.recovery ?? 50,
+      shiftLoad: shiftLoadFor(cycleDay, isVShift).load,
       run: null,
       strength: null,
+      secondUnit: null,
       done: ctx?.done ?? false,
       downgraded: ctx?.actual?.downgraded ?? false,
       hasRecord: ctx?.actual != null,
@@ -398,26 +402,45 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
 
   /* ---- 4. Kraft dorthin, wo sie passt ----------------------------- */
 
+  /*
+   * Ob ein Tag eine zweite Einheit trägt, steht nirgends geschrieben — er rechnet
+   * es aus. Erholung minus Schichtlast minus geplantes Training ergibt das
+   * Budget; erst wenn davon genug übrig ist, entscheidet die Kraftberechnung, wie
+   * schwer sie wird. Vorher stand das *Ob* als `strength: true` in der Vorlage,
+   * und dadurch konnten Vorschläge entstehen, die aus Erholung und Belastung nie
+   * gefolgt wären — zwei Einheiten am Vormittag vor einer Zwölf-Stunden-Nacht.
+   */
   for (const day of days) {
     if (day.done) continue;
-    const cycle = cycles.get(day.date);
-    if (cycle == null || day.cycleDay == null || day.isVShift) continue;
-    if (!slotFor(macroDayIndex(cycle, day.cycleDay)).strength) continue;
+    if (day.cycleDay == null && !day.isVShift) continue;
 
     const next = days.find((d) => d.date === addDays(day.date, 1));
     const prevStrength = lastStrengthBefore(days, day.date);
     const runMinutes = day.run?.minutes ?? 0;
     const windowMinutes = day.window ? day.window.end - day.window.start : 0;
+    const daysSinceStrength = prevStrength == null ? null : diffDays(day.date, prevStrength);
+
+    const capacity = secondUnitCapacity({
+      recovery: day.recovery,
+      shiftLoad: day.shiftLoad,
+      plannedLoad: day.run?.load ?? 0,
+      windowMinutes,
+      runMinutes,
+      keySessionToday: !!day.run && CATALOGUE[day.run.kind].isKeySession,
+      daysSinceStrength,
+    });
+    day.secondUnit = capacity;
+    if (!capacity.ok) continue;
 
     const plan = planStrength({
       recovery: day.recovery,
       hasWindow: !!day.window,
-      availableMinutes: Math.max(0, windowMinutes - runMinutes - 30),
+      availableMinutes: capacity.freeMinutes,
       hardRunTomorrow: !!next?.run && CATALOGUE[next.run.kind].isKeySession,
       hardRunToday: !!day.run && day.run.load >= HARD_LOAD,
       hardRunYesterday: hardYesterday(days, day.date),
       isDeload,
-      daysSinceStrength: prevStrength == null ? null : diffDays(day.date, prevStrength),
+      daysSinceStrength,
     });
 
     if (plan.kind) {
