@@ -235,16 +235,22 @@ function StrengthCard({ today }: { today: TodayDecision }) {
  * Der Kalender
  * ------------------------------------------------------------------ */
 
-const KIND_COLOR: Record<SessionKind, string> = {
+/*
+ * Jede Einheitenart braucht eine eigene Farbe, sonst ist der Kalender eine
+ * Behauptung statt einer Auskunft. Zwei Paare waren derselbe Ton: `--zone-4` und
+ * `--sport-run` (verkürzte Bahneinheit sah aus wie ein Longrun), sowie
+ * `--sport-mobility` und `--zone-2` (Mobilität sah aus wie ein Grundlagenlauf).
+ */
+export const KIND_COLOR: Record<SessionKind, string> = {
   ruhe: 'var(--surface-3)',
   gehen: 'var(--zone-1)',
   lockerer_lauf: 'var(--zone-2)',
   grundlagenlauf: 'var(--zone-2)',
   longrun_verkuerzt: 'var(--sport-hike)',
   longrun: 'var(--sport-run)',
-  intervall_kurz: 'var(--zone-4)',
+  intervall_kurz: 'var(--sport-other)',
   intervall: 'var(--zone-5)',
-  kraft_leicht: 'var(--sport-mobility)',
+  kraft_leicht: 'var(--sport-swim)',
   kraft_oberkoerper: 'var(--sport-strength)',
   kraft_ganzkoerper: 'var(--sport-strength)',
 };
@@ -259,12 +265,20 @@ const SHIFT_COLOR: Record<number, string> = {
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-const LEGEND: { kind: SessionKind; label: string }[] = [
+/*
+ * Vollständig: jede Farbe, die im Raster auftauchen kann, steht hier. Eine
+ * Legende, die eine Farbe auslässt, ist schlimmer als keine — man sucht dann
+ * nach etwas, das es nicht gibt.
+ */
+export const LEGEND: { kind: SessionKind; label: string }[] = [
   { kind: 'grundlagenlauf', label: 'Grundlage' },
   { kind: 'longrun', label: 'Longrun' },
+  { kind: 'longrun_verkuerzt', label: 'Longrun kurz' },
   { kind: 'intervall', label: 'Bahn' },
+  { kind: 'intervall_kurz', label: 'Bahn kurz' },
   { kind: 'gehen', label: 'Gehen' },
   { kind: 'kraft_ganzkoerper', label: 'Kraft' },
+  { kind: 'kraft_leicht', label: 'Mobilität' },
 ];
 
 /**

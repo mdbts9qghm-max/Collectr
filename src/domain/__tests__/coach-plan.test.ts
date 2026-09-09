@@ -17,6 +17,8 @@ import { MIN_CAPACITY } from '../coach/capacity.ts';
 import { shiftLoadFor } from '../coach/shift.ts';
 import { loadOf, totalLoadOf } from '../coach/types.ts';
 import { addDays, diffDays } from '../date.ts';
+import { SESSION_KINDS } from '../coach/catalogue.ts';
+import { KIND_COLOR, LEGEND } from '../../screens/Training.tsx';
 
 const ROT: (1 | 2 | 3 | 4 | 5)[] = [1, 2, 3, 4, 5];
 const RECOVERY: Record<number, number> = { 1: 0, 2: 75, 3: 62, 4: 95, 5: 88 };
@@ -644,5 +646,37 @@ describe('Schlafsignale greifen ins Training', () => {
     const quiet = withSleep({ debtHours: 1.2, downgradeNextHard: false, forceDeload: false });
     expect(quiet.today.kind).toBe(plan(ANCHOR, 4).today.kind);
     expect(quiet.isDeload).toBe(false);
+  });
+});
+
+/**
+ * Der Kalender behauptet mit Farbe. Zwei Einheitenarten in derselben Farbe sind
+ * keine Auskunft, sondern eine Verwechslung — genau das war zwischen Longrun und
+ * verkürzter Bahneinheit der Fall, weil `--sport-run` und `--zone-4` derselbe
+ * Ton sind.
+ */
+describe('Farben im Kalender', () => {
+  it('gibt jeder Laufart eine eigene Farbe', () => {
+    const runKinds = SESSION_KINDS.filter((k) => CATALOGUE[k].discipline === 'lauf');
+    // Nur die beiden Zone-2-Läufe teilen sich eine Farbe: dieselbe Sache in zwei
+    // Längen. Alles andere muss unterscheidbar sein.
+    expect(new Set(runKinds.map((k) => KIND_COLOR[k])).size).toBe(runKinds.length - 1);
+  });
+
+  it('verwechselt Kraft nicht mit einem Lauf', () => {
+    const runColors = new Set(
+      SESSION_KINDS.filter((k) => CATALOGUE[k].discipline === 'lauf').map((k) => KIND_COLOR[k]),
+    );
+    for (const k of SESSION_KINDS.filter((x) => CATALOGUE[x].discipline === 'kraft')) {
+      expect(runColors.has(KIND_COLOR[k])).toBe(false);
+    }
+  });
+
+  it('führt jede vorkommende Farbe in der Legende', () => {
+    const legendColors = new Set(LEGEND.map((l) => KIND_COLOR[l.kind]));
+    for (const kind of SESSION_KINDS) {
+      if (CATALOGUE[kind].discipline === 'ruhe') continue;
+      expect(legendColors.has(KIND_COLOR[kind])).toBe(true);
+    }
   });
 });
