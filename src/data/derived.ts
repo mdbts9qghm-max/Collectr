@@ -30,6 +30,8 @@ import type { SleepNight } from '../domain/sleep/debt.ts';
 import { medicalFlags } from '../domain/sleep/medical.ts';
 import type { DayContext as CoachDayContext } from '../domain/coach/coach.ts';
 import type { SessionKind as CoachSessionKind } from '../domain/coach/catalogue.ts';
+import type { PlannedSession } from '../domain/sleep/training.ts';
+import { CATALOGUE as COACH_CATALOGUE, isHardSession } from '../domain/coach/catalogue.ts';
 import { buildCoachPlan } from '../domain/coach/coach.ts';
 import { HORIZON_BACK, HORIZON_FORWARD } from '../domain/coach/horizon.ts';
 import { FIXED_ZONES } from '../domain/coach/zones.ts';
@@ -259,6 +261,30 @@ export function weeklySeries(data: AppData, endDate: ISODate, weeks: number) {
 
 
 /**
+ * Die Einheiten eines Tages in der Form, die das Schlafmodul versteht.
+ *
+ * Damit weiß der Schlaftab, wann gegessen werden sollte und wie viel Abstand bis
+ * zum Schlaf bleibt — statt es aus dem Zyklustag zu raten.
+ */
+export function plannedSessionsFor(plan: CoachView, date: ISODate): PlannedSession[] {
+  const day = plan.timeline.days.find((d) => d.date === date);
+  if (!day) return [];
+  const out: PlannedSession[] = [];
+  for (const item of [day.run, day.strength]) {
+    if (!item || item.startMinutes == null) continue;
+    const entry = COACH_CATALOGUE[item.kind];
+    out.push({
+      label: entry.label,
+      discipline: entry.discipline === 'kraft' ? 'kraft' : 'lauf',
+      startMinutes: item.startMinutes,
+      endMinutes: item.startMinutes + item.minutes,
+      isHard: isHardSession(item.kind, item.minutes),
+    });
+  }
+  return out;
+}
+
+/**
  * Die Signale des Schlafmoduls, so wie der Erholungswert sie braucht.
  *
  * Das Schlafmodul stuft nie selbst ab. Es liefert Signale, und diese eine Stelle
@@ -441,7 +467,18 @@ export type CoachView = ReturnType<typeof buildCoach>;
  * ------------------------------------------------------------------ */
 
 /** The sleep signals for a date, and the day's four advice tracks. */
-export function buildSleepView(data: AppData, idx: Indexes, date: ISODate, nowMinutes: number) {
+export function buildSleepView(
+  data: AppData,
+  idx: Indexes,
+  date: ISODate,
+  nowMinutes: number,
+  /*
+   * Was für diesen Tag geplant ist. Wird von außen hereingereicht und nicht hier
+   * geholt: `buildCoach` fragt seinerseits die Schlafsignale ab, und ein Aufruf
+   * in die andere Richtung schlösse den Kreis.
+   */
+  training: PlannedSession[] = [],
+) {
   const wake = data.settings.planner.dayShiftWakeMinutes;
   const detected = detectCycle(addDays(date, -13), date, idx.shiftAssignments, idx.shiftTypes);
   const todayEntry = detected.find((d) => d.date === date);
@@ -465,6 +502,8 @@ export function buildSleepView(data: AppData, idx: Indexes, date: ISODate, nowMi
       : null,
     nowMinutes,
     { offerCoffeeNap: data.settings.sleepCoaching?.offerCoffeeNap ?? false },
+    training,
+    windows?.nextSleepStart ?? null,
   );
 
   /*

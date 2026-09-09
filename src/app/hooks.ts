@@ -9,6 +9,7 @@ import {
   buildWeek,
   buildCoach,
   buildSleepView,
+  plannedSessionsFor,
   makeDayContextFn,
 } from '../data/derived.ts';
 import { today as todayIso } from '../domain/date.ts';
@@ -69,7 +70,14 @@ export function useSleepView(date: ISODate) {
     }, 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  return useMemo(() => buildSleepView(data, idx, date, nowMinutes), [data, idx, date, nowMinutes]);
+  // Der Schlaftab kennt jetzt die Einheit des Tages: wann sie endet, bestimmt
+  // die Eiweißempfehlung und den Abstand zum Schlaf.
+  const plan = useCoach(date);
+  const training = useMemo(() => plannedSessionsFor(plan, date), [plan, date]);
+  return useMemo(
+    () => buildSleepView(data, idx, date, nowMinutes, training),
+    [data, idx, date, nowMinutes, training],
+  );
 }
 
 /**

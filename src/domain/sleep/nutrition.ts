@@ -72,15 +72,6 @@ export function nutritionAdvice(ctx: DayContext): Advice[] {
       priority: 'normal',
     },
     {
-      id: 'food-post-run-protein',
-      track: 'food',
-      from: h(10),
-      to: h(14, 30),
-      label: 'Eiweiß innerhalb 60 min nach dem Lauf',
-      why: 'Vorschlaf und gestörter Nachtschlaf verkürzen die Regenerationsfenster — hier zählt das Timing mehr als sonst.',
-      priority: 'normal',
-    },
-    {
       id: 'food-fluids',
       track: 'food',
       from: h(19),

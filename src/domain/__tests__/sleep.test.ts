@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { trainingAdvice } from '../sleep/training.ts';
 import type { ISODate } from '../types.ts';
 import { buildSleepDay } from '../sleep/day.ts';
 import { caffeineCountdown, caffeineWindows, COFFEE_NAP } from '../sleep/caffeine.ts';
@@ -283,5 +284,96 @@ describe('Keine Gamification auf Schlafdaten', () => {
       h(12),
     );
     expect(nightDay.highPriority.map((a) => a.id)).toEqual(['sleep-nap-alarm']);
+  });
+});
+
+/**
+ * Der Schlaftab folgt dem Trainingsplan.
+ *
+ * Vorher stand die Eiweiß-Empfehlung „innerhalb 60 Minuten nach dem Lauf" fest
+ * am Nachtschichttag in einem festen Zeitfenster — auch wenn dort nichts
+ * geplant war, und nie an den Tagen, an denen tatsächlich eine Einheit lag.
+ */
+describe('Schlafempfehlungen richten sich nach der Einheit des Tages', () => {
+  const lauf = {
+    label: 'Grundlagenlauf',
+    discipline: 'lauf' as const,
+    startMinutes: 9 * 60,
+    endMinutes: 10 * 60,
+    isHard: false,
+  };
+
+  it('gibt an einem Tag ohne Einheit keine Empfehlung nach dem Training', () => {
+    expect(trainingAdvice([], 22 * 60)).toEqual([]);
+  });
+
+  it('hängt das Eiweißfenster an das Ende der Einheit', () => {
+    const [protein] = trainingAdvice([lauf], 22 * 60);
+    expect(protein.from).toBe(lauf.endMinutes);
+    expect(protein.to).toBe(lauf.endMinutes + 60);
+    expect(protein.label).toMatch(/nach dem Lauf/);
+  });
+
+  it('nennt die Krafteinheit beim Namen statt „nach dem Lauf"', () => {
+    const kraft = { ...lauf, label: 'Kraft, Oberkörper', discipline: 'kraft' as const };
+    expect(trainingAdvice([kraft], 22 * 60)[0].label).toMatch(/nach der Krafteinheit/);
+  });
+
+  it('warnt, wenn eine harte Einheit zu nah am Schlaf endet', () => {
+    const spaet = { ...lauf, isHard: true, startMinutes: 19 * 60, endMinutes: 20 * 60 };
+    const gap = trainingAdvice([spaet], 22 * 60).find((a) => a.id === 'sleep-load-gap')!;
+    expect(gap.priority).toBe('high');
+    expect(gap.label).toMatch(/Nur 2 h/);
+  });
+
+  it('meldet Entwarnung, wenn der Abstand reicht', () => {
+    const frueh = { ...lauf, isHard: true, startMinutes: 9 * 60, endMinutes: 10 * 60 };
+    const gap = trainingAdvice([frueh], 22 * 60).find((a) => a.id === 'sleep-load-gap')!;
+    expect(gap.priority).toBe('normal');
+    expect(gap.label).toMatch(/passt/);
+  });
+
+  it('richtet sich nach der letzten Einheit, wenn zwei anstehen', () => {
+    const kraft = {
+      label: 'Kraft, ganzer Körper',
+      discipline: 'kraft' as const,
+      startMinutes: 11 * 60,
+      endMinutes: 12 * 60,
+      isHard: false,
+    };
+    const [protein] = trainingAdvice([lauf, kraft], 22 * 60);
+    expect(protein.from).toBe(kraft.endMinutes);
+  });
+});
+
+/**
+ * Und dass sie auch angeschlossen ist.
+ *
+ * Die Tests darüber prüfen `trainingAdvice` für sich. Kappt man die Zeile, die
+ * sie in den Tag einhängt, bleiben sie grün — das ist genau die Sorte Lücke, an
+ * der in diesem Projekt schon dreimal ein Draht unbemerkt gerissen ist.
+ */
+describe('Die Einheit des Tages erreicht den Schlaftag', () => {
+  const ctx = { cycleDay: 2 as const, isVShift: false };
+  const window = { start: 22 * 60 + 15, end: 7 * 60, targetMinutes: 8 * 60 + 45, nap: null };
+
+  it('trägt die Empfehlung nach dem Training in den Tag ein', () => {
+    const withRun = buildSleepDay(ctx, window, 8 * 60, {}, [
+      {
+        label: 'Grundlagenlauf',
+        discipline: 'lauf',
+        startMinutes: 9 * 60,
+        endMinutes: 10 * 60,
+        isHard: false,
+      },
+    ], 15 * 60);
+    const protein = withRun.byTrack.food.find((a) => a.id === 'food-post-training-protein');
+    expect(protein).toBeDefined();
+    expect(protein!.from).toBe(10 * 60);
+  });
+
+  it('lässt sie an einem Tag ohne Einheit weg', () => {
+    const rest = buildSleepDay(ctx, window, 8 * 60, {}, [], 15 * 60);
+    expect(rest.byTrack.food.find((a) => a.id === 'food-post-training-protein')).toBeUndefined();
   });
 });

@@ -4,6 +4,8 @@ import { caffeineAdvice, caffeineWindows, caffeineCountdown, COFFEE_NAP } from '
 import type { Countdown } from './caffeine.ts';
 import { sleepAdvice } from './rules.ts';
 import { nutritionAdvice } from './nutrition.ts';
+import type { PlannedSession } from './training.ts';
+import { trainingAdvice } from './training.ts';
 
 /**
  * Everything the day timeline needs, in one call.
@@ -34,6 +36,10 @@ export function buildSleepDay(
   sleep: SleepWindow | null,
   nowMinutes: number,
   options: { offerCoffeeNap?: boolean } = {},
+  /** Was der Coach für diesen Tag geplant hat. Leer an einem Ruhetag. */
+  training: PlannedSession[] = [],
+  /** Beginn der nächsten Schlafphase. Der Vorschlaf zählt. */
+  nextSleepStart: number | null = null,
 ): SleepDay {
   const advice: Advice[] = [
     ...sleepFromWindow(sleep),
@@ -41,6 +47,7 @@ export function buildSleepDay(
     ...lightPlan(ctx),
     ...caffeineAdvice(ctx),
     ...nutritionAdvice(ctx),
+    ...trainingAdvice(training, nextSleepStart),
   ];
   if (options.offerCoffeeNap && ctx.cycleDay === 2 && !ctx.isVShift) advice.push(COFFEE_NAP);
 

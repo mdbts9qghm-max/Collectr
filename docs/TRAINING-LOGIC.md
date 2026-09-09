@@ -470,6 +470,23 @@ Jeder vierte **Zyklus** — nicht Makrozyklus — ist ein Deload: 40 % weniger L
 diesen fünf Tagen, keine Intensität, Longrun halbiert. Der Bahntag fällt dabei nicht weg, er
 wird ein Grundlagenlauf.
 
+### Was das Training dem Schlafmodul meldet
+
+Die Kopplung läuft in beide Richtungen, aber nicht symmetrisch. Das Schlafmodul liefert
+Signale an den Erholungswert und **stuft nie selbst ab** — darüber entscheidet ein einziger
+Ort, und das ist der Coach. Umgekehrt darf es die Einheit des Tages kennen: wann sie endet,
+bestimmt, wann gegessen wird und wie viel Abstand bis zum Schlaf bleibt.
+
+| Was der Schlaftab bekommt | Was er daraus macht |
+| --- | --- |
+| Art der Einheit | „Eiweiß innerhalb 60 min **nach dem Lauf**" oder „**nach der Krafteinheit**" |
+| Ende der Einheit | das Eiweißfenster hängt daran, statt fest im Vormittag zu stehen |
+| harte Einheit ja/nein | Abstand zur nächsten Schlafphase, mit Entwarnung oder Warnung |
+| kein Training | keine Empfehlung nach dem Training — sie fällt weg statt ins Leere zu zeigen |
+
+Vorher stand die Eiweiß-Empfehlung fest am Nachtschichttag in einem festen Zeitfenster,
+auch wenn dort gar nichts geplant war, und nie an den Tagen mit einer Einheit.
+
 ### Was das Schlafmodul ins Training meldet
 
 Das Schlafmodul entscheidet nie selbst über Abstufungen — es liefert Signale, und
@@ -631,16 +648,15 @@ Tage, statt sie als Fehlschlag zu werten.
 Habits mit `autoSource` füllen sich aus dem Tages-Check-in — dieselbe Zahl wird nie zweimal
 abgefragt.
 
-## 7. Aufgaben
+## 7. Entfernt: Aufgaben und Statistik
 
-Priorität, Kategorie, Fälligkeit mit Uhrzeit, Aufwandsschätzung, Habit-Verknüpfung.
+Beide Tabs gab es einmal und gibt es nicht mehr. Der Aufgabentab konnte schichtbasierte
+Wiederholungen („bei jeder Nachtschicht"), der Statistiktab zeigte den Hybrid Score aus
+sechs Säulen. Gelöscht wurde nicht nur die Anzeige, sondern der ganze Code dahinter —
+inklusive Datenablage, CSV-Export und den zugehörigen Antworten der Frage-Antwort-Seite.
 
-Wiederholungen: täglich, wöchentlich mit Wochentagen, monatlich — und **schichtbasiert**,
-also „bei jeder Nachtschicht". Das ist die Wiederholung, die in einem Schichtleben
-tatsächlich gebraucht wird und die Standard-Task-Apps nicht können.
-
-Eine erledigte Wiederholung wird abgeschlossen *und* erzeugt die nächste Instanz. Die
-Historie bleibt dadurch ehrlich, statt dass eine Zeile stillschweigend weiterwandert.
+Geblieben sind die Teile, die anderswo gebraucht werden: die Kennzahlen und die
+Bestleistungserkennung für den Zieltab, der Wochenrückblick für den Wochentab.
 
 ## 8. Schichtlogik
 
