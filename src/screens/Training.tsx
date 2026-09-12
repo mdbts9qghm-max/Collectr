@@ -344,6 +344,17 @@ function CoachCalendar({
   const day = selected ? byDate.get(selected) : null;
   const note = selected ? noteByDate.get(selected) : null;
 
+  /*
+   * Der Kalender fängt bei heute an. Was davor liegt, bleibt als leere Zelle
+   * stehen, damit die Wochentage in Spalten bleiben — nur so sieht man, wie der
+   * Fünf-Tage-Rhythmus durch die Sieben-Tage-Woche wandert.
+   *
+   * Die Rückschau des Coaches ist davon unberührt: er schaut für seine Regeln
+   * weiterhin 27 Tage zurück. Sie steht nur nicht mehr im Raster, weil dort
+   * nichts zu entscheiden ist.
+   */
+  const atCurrentMonth = month.slice(0, 7) === today.slice(0, 7);
+
   return (
     <Card tight>
       <div className="row between">
@@ -352,6 +363,8 @@ function CoachCalendar({
           className="cal-nav"
           onClick={() => onMonth(addDays(startOfMonth(month), -1))}
           aria-label="Voriger Monat"
+          disabled={atCurrentMonth}
+          style={atCurrentMonth ? { opacity: 0.25 } : undefined}
         >
           <IconChevronLeft size={17} />
         </button>
@@ -387,6 +400,16 @@ function CoachCalendar({
         {cells.map((date) => {
           const d = byDate.get(date);
           const isToday = date === today;
+
+          // Vergangene Tage halten nur die Spalte, sie sagen nichts mehr.
+          if (date < today) {
+            return (
+              <div key={date} className="cal-cell is-past" aria-hidden="true">
+                <span className="cal-num t-num">{Number(date.slice(8))}</span>
+              </div>
+            );
+          }
+
           return (
             <button
               key={date}

@@ -180,7 +180,15 @@ nachweislich ohne Einfluss und wird verworfen.
 | Deload-Rhythmus | 19 | 19 | vier Zyklen sind zwanzig Tage |
 | Belastungsverhältnis | 27 | 27 | der 28-Tage-Nenner ist die längste Regel — er spannt das Blickfeld auf |
 
-Das Blickfeld ist damit **27 Tage zurück und 27 voraus**. Sichtbar wird es im Kalender des
+Das Blickfeld ist damit **27 Tage zurück und 27 voraus**.
+
+Im Kalender **steht nur die Zukunft**. Vergangene Tage halten dort nur ihre Spalte, damit die
+Wochentage untereinander bleiben — sonst sähe man nicht, wie der Fünf-Tage-Rhythmus durch die
+Sieben-Tage-Woche wandert. Das ist eine Frage der Anzeige, nicht der Rechnung: für seine
+Regeln schaut der Coach unverändert siebenundzwanzig Tage zurück. Im Raster ist dort nur
+nichts mehr zu entscheiden.
+
+Sichtbar wird das Blickfeld im Kalender des
 Coach-Tabs: jeder Tag lässt sich antippen und nennt neben Schicht und Einheit auch die Regeln,
 über die er heute noch wirkt. Wo keine mehr reicht, sagt der Coach das ausdrücklich — er kann
 auch das Vergessen begründen.

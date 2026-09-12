@@ -1250,6 +1250,11 @@
 }
 /* Die Tage der Nachbarmonate füllen nur die Zeile auf. */
 .cal-cell.is-outside { opacity: 0.38; }
+/* Vergangene Tage halten die Spalte, damit die Wochentage untereinander bleiben. */
+.cal-cell.is-past {
+  background: transparent;
+  opacity: 0.22;
+}
 .cal-cell.is-today {
   border-color: var(--accent);
   background: var(--accent-soft);

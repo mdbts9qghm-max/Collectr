@@ -177,6 +177,22 @@ const cells = await page.locator('.cal-cell').count();
 if (cells % 7 !== 0 || cells < 28) {
   throw new Error(`the calendar renders ${cells} cells, expected whole weeks`);
 }
+
+/*
+ * Der Kalender fängt bei heute an. Vergangene Tage halten nur die Spalte, damit
+ * die Wochentage untereinander bleiben — sie tragen weder Schicht noch Einheit
+ * und lassen sich nicht antippen.
+ */
+const past = await page.locator('.cal-cell.is-past').count();
+if ((await page.locator('.cal-cell.is-past .cal-bar').count()) > 0) {
+  throw new Error('a past day still shows a planned session');
+}
+if ((await page.locator('.cal-cell.is-past .cal-shift').count()) > 0) {
+  throw new Error('a past day still shows a shift');
+}
+const backDisabled = await page.getByRole('button', { name: 'Voriger Monat' }).isDisabled();
+if (!backDisabled) throw new Error('the calendar still pages back before today');
+console.log(`✓ Kalender beginnt heute: ${past} vergangene Tage nur als Platzhalter, kein Zurück`);
 if ((await page.locator('.cal-cell.is-today').count()) !== 1) {
   throw new Error('the calendar does not mark today');
 }
