@@ -1,6 +1,6 @@
-import type { ISODate } from '../types.ts';
+import type { ISODate } from './types.ts';
 import type { Baseline } from './whoop.ts';
-import type { CycleDayNumber } from './types.ts';
+import type { CycleDayNumber } from './rotation/types.ts';
 
 /**
  * The recovery value **does not plan, it downgrades**.

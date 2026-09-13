@@ -1,4 +1,4 @@
-import type { CycleDayNumber } from './types.ts';
+import type { CycleDayNumber } from './rotation/types.ts';
 
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 

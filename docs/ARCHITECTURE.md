@@ -55,29 +55,15 @@ src/
 │   ├── shifts.ts            Schichtkontext, Trainingsfenster, Rotation
 │   ├── readiness.ts         Erholungsbewertung aus vorhandenen Inputs
 │   ├── phases.ts            Periodisierung, 3:1-Welle, Wochenziele
-│   ├── outlook.ts           7-Tage-Horizont: Kapazität, Schlaf, geplante Last
-│   ├── engine.ts            Kandidatengenerierung, harte Gates, Scoring
-│   ├── personalization.ts   gelernte Präferenzen aus dem Verhalten
 │   ├── habits.ts            Zeitpläne, Streaks mit Schutztagen, Quoten
 │   ├── goals.ts             Fortschritt, Meilensteine, Plan-Abgleich
 │   ├── metrics.ts           Kennzahlen aus Rohdaten, PR-Erkennung
 │   ├── review.ts            Wochenrückblick mit generierter Bewertung
-│   ├── answers.ts           regelbasierte Antworten auf eigene Daten (Frage-Antwort-Tab)
-│   ├── coach/               die Trainingslogik — ein Ort, eine Antwort
-│   │   ├── horizon.ts           das Einflussfenster: Reichweite je Regel in Tagen
-│   │   ├── zones.ts             feste Zonen in Schlägen, 30-Minuten-Nachkalibrierung
-│   │   ├── catalogue.ts         Läufe, Kraft, Gehen, Ruhe — Abstufung endet auf Gehen
-│   │   ├── phases.ts            P0–P3 in Laufminuten, 8-%-Grenze über dem Phasenziel
-│   │   ├── intervals.ts         Bahnstufen 8×100 m bis 4×4, zwei saubere Zyklen je Stufe
-│   │   ├── template.ts          Rollen im Makrozyklus, Verteilung, Deload je Zyklus
-│   │   ├── strength.ts          Kraft dort, wo sie passt; Intensität gerechnet
-│   │   ├── rules.ts             die harten Regeln als einzeln zitierbare Objekte
-│   │   ├── recovery.ts          Abstufungsfilter mit WHOOP-Baseline je Zyklustag
-│   │   ├── whoop.ts             Schlafzuordnung, rollierende Baselines
-│   │   ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag
-│   │   ├── types.ts             der Tag, wie der Coach ihn sieht
-│   │   ├── toSession.ts         Übersetzung der Entscheidung in eine Session
-│   │   └── coach.ts             die Entscheidung über das ganze Blickfeld
+│   ├── recovery.ts          Erholungswert je Tag — misst, plant nicht
+│   ├── zones.ts             feste Herzfrequenzzonen, 30-Minuten-Nachkalibrierung
+│   ├── whoop.ts             Schlafzuordnung, rollierende Baselines je Zyklustag
+│   ├── windows.ts           Schlaf- und Trainingsfenster je Zyklustag
+│   ├── rotation/            Schichtrotation: Zyklustag aus der Schichtart
 │   ├── sleep/               Schlafcoaching — Licht, Koffein, Ernährung, Substanzen
 │   │   ├── types.ts             die vier Spuren, Empfehlung mit Begründung
 │   │   ├── light.ts             Lichtplan je Zyklustag
@@ -171,8 +157,9 @@ gekennzeichnet — es gibt keine Schaltfläche, die nichts tut.
 ## 6. Navigation
 
 Mobile: feste Tableiste mit **Heute · Training · Schlaf · Habits · Mehr**.
-Woche, Ziele, Coach und Profil liegen unter *Mehr* — neun gleichrangige Tabs sind auf
-einem iPhone nicht mit dem Daumen bedienbar.
+Ziele und Profil liegen unter *Mehr* — sieben gleichrangige Tabs sind auf einem iPhone
+nicht mit dem Daumen bedienbar. `/week` leitet auf `/training` um: es gab beide, und beide
+zeigten die Woche.
 
 Ab 860 px wird die Tableiste durch eine Seitenleiste mit allen Zielen ersetzt.
 
@@ -184,30 +171,26 @@ liegen Verläufe und Bestleistungen im Ziele-Tab und nicht auf dem Tagesbildschi
 
 **Check-in** — der erste Bildschirm des Tages. Öffnet sich beim ersten Start automatisch
 und führt in fünf Schritten durch Schicht, Schlaf, Befinden, optionale Gerätewerte und
-endet mit dem Ergebnis: Readiness plus die daraus errechnete Einheit, direkt einplanbar.
+endet mit dem Ergebnis: Readiness und Erholungswert, mit dem, was den Wert bewegt hat.
+**Kein Trainingsvorschlag** — der Check-in sammelt, was nur der Athlet wissen kann, und
+zeigt, wie der Tag dasteht. Was daraus folgt, entscheidet er.
 Jede Antwort ist ein Tap, nichts braucht die Tastatur außer den optionalen Gerätewerten,
 und der Flow lässt sich jederzeit überspringen. Er erscheint pro Tag genau einmal —
 Überspringen darf nicht zu Nörgeln werden.
 
-**Heute** — bewusst schmal: Datum und Schicht, die Empfehlung mit ausklappbarem „Warum?",
-ein Statusblock aus Readiness-Ring, Schlaf- und Wochenbalken, dann die handlungsrelevanten
-Listen: heutiges Training und Habits zum Abhaken. Keine Verläufe, keine Scores, keine
-Vorschauen — was heute nicht handlungsrelevant ist, steht hier nicht.
+**Heute** — bewusst schmal: Datum und Schicht, dann wie der Tag dasteht (Dienst,
+Trainingsfenster, Erholungswert), ein Statusblock aus Readiness-Ring, Schlaf- und
+Wochenbalken, dann die handlungsrelevanten Listen: heutiges Training und Habits zum
+Abhaken. Keine Verläufe, keine Scores, keine Vorschauen — und seit Abschnitt 4b der
+Trainingslogik auch keine Empfehlung.
 
-**Training** — der Wochenplaner als Kalender. Die Woche steht permanent oben als
-Sieben-Spalten-Raster: pro Tag Wochentag, Datum, Schichtkürzel und die Einheiten als
-Blöcke. Die Blockhöhe folgt der Dauer, sodass die Form der Woche ablesbar ist — ein
-Long Run sieht größer aus als eine Mobility-Einheit. Erledigtes ist gefüllt, Geplantes
-gestrichelt umrandet. Ein Tag ist ausgewählt; darunter stehen seine Schicht, seine
-Einheiten und die Vorschläge.
+**Training** — die Wochenansicht. Sieben Spalten oben: pro Tag Wochentag, Datum,
+Schichtkürzel und die Einheiten als Blöcke; die Blockhöhe folgt der Dauer, sodass die Form
+der Woche ablesbar ist. Erledigtes ist gefüllt, Geplantes gestrichelt umrandet. Ein Tag ist
+ausgewählt; darunter stehen seine Schicht und seine Einheiten, beide dort eintragbar.
 
 Der Grund für die Wochenansicht: Wie viel ein Dienstag wert ist, ergibt sich erst neben dem
 freien Samstag. Eine Tagesansicht kann diese Frage nicht stellen.
-
-Sichtbar ist genau **ein** Vorschlag, als kompakte Zeile mit Titel, Dauer, Zone und einem
-Plus zum Einplanen; Antippen zeigt die Begründung. Alternativen, nicht empfohlene Optionen,
-Verteilung, Ausblick und Belastungsstatus liegen hinter Aufklappern, damit der Kalender
-selbst der Inhalt bleibt.
 
 Tage ohne eingetragene Schicht zeigen keine erfundene Kapazität, sondern "Schicht eintragen";
 vergangene Tage ohne Einheit zeigen "nichts erfasst" statt freier Zeit.

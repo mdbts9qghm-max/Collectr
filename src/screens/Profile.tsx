@@ -4,7 +4,7 @@ import { INTENSITIES } from '../domain/types.ts';
 import { INTENSITY_META, formatDuration, formatPace } from '../domain/format.ts';
 import { PHASE_META } from '../domain/phases.ts';
 import { clockToMinutes, minutesToClock } from '../domain/date.ts';
-import { FIXED_ZONES, retestState, zoneRanges } from '../domain/coach/zones.ts';
+import { FIXED_ZONES, TEST_PROTOCOL, retestState, zoneRanges } from '../domain/zones.ts';
 import { today as todayIso } from '../domain/date.ts';
 import { storageEstimate } from '../data/db.ts';
 import {
@@ -23,6 +23,7 @@ import { forceRefresh } from '../app/updates.ts';
 import {
   Button,
   Card,
+  Disclosure,
   Field,
   Pill,
   SectionTitle,
@@ -339,10 +340,10 @@ export function Profile() {
         </div>
       </Card>
 
-      {/* ---------- Cycle planner ---------- */}
+      {/* ---------- Tageszeiten ---------- */}
       <SectionTitle
-        title="Zyklusplaner"
-        subtitle="Der Planer leitet alles aus Schichten, Schlaf und Befinden ab. Hier stehen nur die Werte, die er nicht wissen kann."
+        title="Tageszeiten"
+        subtitle="Werte, die die App nicht wissen kann. Sie bestimmen die Schlaf- und Zeitfenster deiner Schichttage."
       />
       <Card>
         <div className="grid-2">
@@ -367,24 +368,6 @@ export function Profile() {
             />
           </Field>
         </div>
-        <SettingRow
-          label="Steigerung pro Makrozyklus"
-          hint="Wie viel mehr Last zwei Zyklen gegenüber den zwei davor tragen dürfen."
-        >
-          <TextInput
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            style={{ width: 92 }}
-            value={settings.planner.maxMacrocycleGrowth}
-            onChange={(e) => setPlanner({ maxMacrocycleGrowth: Number(e.target.value) || 1 })}
-          />
-        </SettingRow>
-        <p className="t-caption muted mt-2">
-          Was trainiert wird, steht in der Zyklusvorlage und ist bewusst nicht einstellbar: die
-          Rotation ist vorhersehbar, und ein Plan, der sich jedes Mal anders entscheidet, erzeugt
-          keine Anpassung. Der Erholungswert stuft nur ab.
-        </p>
       </Card>
 
       {/* ---------- Zonen ---------- */}
@@ -394,7 +377,7 @@ export function Profile() {
       />
       <Card>
         <div className="list dense">
-          {zoneRanges(settings.coachZones ?? FIXED_ZONES).map((r) => (
+          {zoneRanges(settings.hrZones ?? FIXED_ZONES).map((r) => (
             <div className="list-item" key={r.zone}>
               <span className="grow">
                 <span className="t-body" style={{ display: 'block' }}>
@@ -409,10 +392,21 @@ export function Profile() {
           ))}
         </div>
         <div className="t-caption muted mt-3">
-          {retestState(settings.coachZones ?? FIXED_ZONES, todayIso()).message} Der Test steht im
-          Coach-Tab unter „Zonen und Nachkalibrierung". Die App verschiebt keine Zone von selbst:
-          eine Zone, die sich unbemerkt verschiebt, macht jeden Vergleich mit den Wochen davor
-          wertlos.
+          {retestState(settings.hrZones ?? FIXED_ZONES, todayIso()).message} Die App verschiebt
+          keine Zone von selbst: eine Zone, die sich unbemerkt verschiebt, macht jeden Vergleich
+          mit den Wochen davor wertlos.
+        </div>
+        <div className="mt-3">
+          <Disclosure summary={<span className="t-small" style={{ fontWeight: 600 }}>{TEST_PROTOCOL.title}</span>}>
+            <ol className="coach-steps mt-2">
+              {TEST_PROTOCOL.steps.map((step) => (
+                <li key={step} className="t-caption secondary">
+                  {step}
+                </li>
+              ))}
+            </ol>
+            <div className="t-caption muted mt-2">{TEST_PROTOCOL.caveat}</div>
+          </Disclosure>
         </div>
       </Card>
 

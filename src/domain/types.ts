@@ -8,7 +8,7 @@
  */
 
 import type { PlannerSettings } from './rotation/types.ts';
-import type { ZoneBounds } from './coach/zones.ts';
+import type { ZoneBounds } from './zones.ts';
 
 /** 'YYYY-MM-DD' in local time. The primary key for everything day-shaped. */
 export type ISODate = string;
@@ -504,7 +504,8 @@ export interface AppSettings {
    * fehlt der Wert, gelten die gemessenen Grenzen. Geschrieben wird er nur,
    * wenn ein Nachkalibrierungstest angenommen wurde.
    */
-  coachZones?: ZoneBounds;
+  /** Herzfrequenzzonen in Schlägen. Gemessen, nicht gerechnet. */
+  hrZones?: ZoneBounds;
   /**
    * Modes the athlete switched by hand, keyed by "date:slot".
    *
@@ -528,15 +529,6 @@ export interface AppSettings {
   shiftRotation: string[];
   /** Ab wo sich das Muster selbst fortschreibt. Ohne Anker wird nichts erfunden. */
   shiftAnchor?: ShiftAnchor | null;
-  /**
-   * Der Tag, an dem der Plan mit Woche 1 anfängt.
-   *
-   * Davon hängt alles ab, was sich über die Zeit aufbaut: die Phase, das
-   * Laufminutenziel, die Bahnstufe, der Deload-Rhythmus. Ohne diese Angabe
-   * zählte der Coach jeden erkannten Zyklus des letzten Jahres mit — wer
-   * Schichten nachträgt, sprang damit ungewollt Wochen nach vorn.
-   */
-  trainingStart?: ISODate | null;
   updatedAt: ISOTimestamp;
 }
 

@@ -9,6 +9,7 @@ import type {
 import { addDays, nowTimestamp, today } from '../domain/date.ts';
 import { makeId } from '../domain/ids.ts';
 import { DEFAULT_PLANNER_SETTINGS } from '../domain/rotation/types.ts';
+import type { ZoneBounds } from '../domain/zones.ts';
 
 export const SETTINGS_VERSION = 4;
 
@@ -204,8 +205,6 @@ export function defaultSettings(): AppSettings {
     // Ohne Anker wird nichts erfunden: der Rhythmus schreibt sich erst fort,
     // wenn eingestellt ist, welcher Tag welcher ist.
     shiftAnchor: null,
-    // Ohne Planbeginn fängt der Plan am ersten bekannten Schichttag an.
-    trainingStart: null,
     planner: { ...DEFAULT_PLANNER_SETTINGS },
     modeOverrides: {},
     sleepCoaching: {
@@ -236,7 +235,8 @@ export function migrateSettings(stored: AppSettings): AppSettings {
     recovery: { ...base.recovery, ...stored.recovery },
     notifications: { ...base.notifications, ...stored.notifications },
     planner: { ...base.planner, ...stored.planner },
-    coachZones: stored.coachZones ?? base.coachZones,
+    // Alter Name aus der Coach-Zeit: gespeicherte Zonen sollen den Umbau überleben.
+    hrZones: stored.hrZones ?? (stored as { coachZones?: ZoneBounds }).coachZones ?? base.hrZones,
     modeOverrides: stored.modeOverrides ?? {},
     sleepCoaching: { ...base.sleepCoaching, ...stored.sleepCoaching },
     version: SETTINGS_VERSION,

@@ -4,16 +4,15 @@ import { useStore } from '../data/store.ts';
 import type { AppData } from '../data/store.ts';
 import {
   buildDayView,
-  coachSessionDiff,
   buildIndexes,
   buildMetrics,
   buildWeek,
-  buildCoach,
+  recoveryOn,
   buildSleepView,
   plannedSessionsFor,
   makeDayContextFn,
 } from '../data/derived.ts';
-import { nowTimestamp, today as todayIso } from '../domain/date.ts';
+import { today as todayIso } from '../domain/date.ts';
 import type { ISODate } from '../domain/types.ts';
 
 /** The raw persisted data, as one object the pure domain functions can take. */
@@ -71,50 +70,20 @@ export function useSleepView(date: ISODate) {
     }, 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  // Der Schlaftab kennt jetzt die Einheit des Tages: wann sie endet, bestimmt
-  // die Eiweißempfehlung und den Abstand zum Schlaf.
-  const plan = useCoach(date);
-  const training = useMemo(() => plannedSessionsFor(plan, date), [plan, date]);
+  // Der Schlaftab kennt die Einheiten des Tages: wann sie enden, bestimmt die
+  // Eiweißempfehlung und den Abstand zum Schlaf.
+  const training = useMemo(() => plannedSessionsFor(idx, idx.shiftTypes, date), [idx, date]);
   return useMemo(
     () => buildSleepView(data, idx, date, nowMinutes, training),
     [data, idx, date, nowMinutes, training],
   );
 }
 
-/**
- * Der Coach für einen Tag, mit dem ganzen Einflussfenster darum.
- *
- * Das Fenster ist fest — 27 Tage in jede Richtung —, deshalb gibt es hier
- * nichts einzustellen. Was weiter weg liegt, beeinflusst den Tag nicht.
- */
-export function useCoach(anchor: ISODate) {
+/** Der Erholungswert eines Tages. Er misst — geplant wird hier nichts mehr. */
+export function useRecovery(date: ISODate) {
   const data = useData();
   const idx = useIndexes();
-  return useMemo(() => buildCoach(data, idx, anchor), [data, idx, anchor]);
-}
-
-/**
- * Hält die eingeplante Einheit des Tages auf dem Stand des Coaches.
- *
- * Der Coach rechnet bei jedem Öffnen neu — die gespeicherte Einheit nicht. Ohne
- * diesen Abgleich zeigt der Kopf 24 Minuten und die Liste darunter 40, und
- * abgehakt würde die 40. Es entscheidet eine Stelle, also folgt die gespeicherte
- * Einheit dieser Stelle, solange sie geplant und unberührt ist.
- *
- * Läuft im Rahmen, nicht in einem Bildschirm: der Abgleich soll auch greifen,
- * wenn die App auf dem Schlaf- oder Trainingstab geöffnet wird.
- */
-export function useCoachSync(date: ISODate) {
-  const plan = useCoach(date);
-  const sessions = useStore((s) => s.sessions);
-  const saveSession = useStore((s) => s.saveSession);
-  const deleteSession = useStore((s) => s.deleteSession);
-
-  useEffect(() => {
-    const diff = coachSessionDiff(sessions, plan, date, nowTimestamp());
-    for (const session of diff.update) saveSession(session);
-    for (const id of diff.remove) deleteSession(id);
-  }, [sessions, plan, date, saveSession, deleteSession]);
+  return useMemo(() => recoveryOn(data, idx, date), [data, idx, date]);
 }
 
 export function useMetrics(date: ISODate) {

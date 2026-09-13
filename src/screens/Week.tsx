@@ -87,7 +87,10 @@ export function Week() {
                   {day.shift.short}
                 </span>
               ) : (
-                <span className="shift-tag" style={{ background: 'var(--surface-3)', color: 'var(--text-muted)' }}>
+                <span
+                  className="shift-tag is-empty"
+                  style={{ background: 'var(--surface-3)', color: 'var(--text-muted)' }}
+                >
                   ?
                 </span>
               )}

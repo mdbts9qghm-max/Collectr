@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ISODate } from '../types.ts';
-import { computeRecovery } from '../coach/recovery.ts';
-import { assignSleep, baselineFor } from '../coach/whoop.ts';
-import { vShiftWindows, windowsFor } from '../coach/windows.ts';
+import { computeRecovery } from '../recovery.ts';
+import { assignSleep, baselineFor } from '../whoop.ts';
+import { vShiftWindows, windowsFor } from '../windows.ts';
 import { addDays } from '../date.ts';
 
 /**

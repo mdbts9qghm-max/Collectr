@@ -1,7 +1,7 @@
 import type { ISODate, ShiftAssignment, ShiftType } from '../types.ts';
-import type { CycleDayNumber, DayShape, PlannerSettings } from './types.ts';
+import type { CycleDayNumber, DayShape } from './types.ts';
 import { addDays, dateRange } from '../date.ts';
-import { buildDayShape } from './windows.ts';
+
 
 /**
  * Derives the cycle position from the shifts the athlete already enters.
@@ -71,51 +71,4 @@ export function detectCycle(
   }
 
   return out.filter((d) => d.date >= from);
-}
-
-export function buildDayShapes(
-  detected: DetectedDay[],
-  settings: PlannerSettings,
-  lookupAfter: (date: ISODate) => DetectedDay | undefined,
-): DayShape[] {
-  return detected.map((day) => {
-    const next = lookupAfter(day.date);
-    const followingIsDayShift = next?.cycleDay === 1;
-    return buildDayShape(
-      day.date,
-      day.cycleDay,
-      day.isVShift,
-      followingIsDayShift,
-      day.outOfRotation,
-      settings,
-    );
-  });
-}
-
-/**
- * Groups detected days into cycles. A cycle starts on a day-shift day; days
- * before the first one form a partial leading cycle.
- */
-export function groupIntoCycles(days: DetectedDay[]): DetectedDay[][] {
-  const cycles: DetectedDay[][] = [];
-  let current: DetectedDay[] = [];
-  for (const day of days) {
-    if (day.cycleDay === 1 && current.length > 0) {
-      cycles.push(current);
-      current = [];
-    }
-    current.push(day);
-  }
-  if (current.length > 0) cycles.push(current);
-  return cycles;
-}
-
-/** Index of the cycle a date belongs to, counted from the first day shift. */
-export function cycleIndexOf(days: DetectedDay[], date: ISODate): number {
-  let index = 0;
-  for (const day of days) {
-    if (day.cycleDay === 1 && day.date !== days[0]?.date) index += 1;
-    if (day.date === date) return index;
-  }
-  return index;
 }

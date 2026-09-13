@@ -1,5 +1,5 @@
-import type { ISODate } from '../types.ts';
-import { diffDays } from '../date.ts';
+import type { ISODate } from './types.ts';
+import { diffDays } from './date.ts';
 
 /**
  * Herzfrequenzzonen in Schlägen — fest, nicht gerechnet.

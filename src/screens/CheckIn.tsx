@@ -1,21 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DailyCheckIn, ISODate, TrainingSession } from '../domain/types.ts';
+import type { DailyCheckIn, ISODate } from '../domain/types.ts';
 import { addDays, nowTimestamp } from '../domain/date.ts';
-import { formatDateLong, formatDuration, SPORT_META, weekdayLong, weekdayShort } from '../domain/format.ts';
+import { formatDateLong, formatDuration, weekdayLong, weekdayShort } from '../domain/format.ts';
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
 import { shiftSleepMinutes } from '../domain/shifts.ts';
-import { CATALOGUE } from '../domain/coach/catalogue.ts';
-import { RECOVERY_BAND_META } from '../domain/coach/recovery.ts';
-import { formatClock, windowsFor } from '../domain/coach/windows.ts';
-import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
-import { makeId } from '../domain/ids.ts';
+import { windowsFor } from '../domain/windows.ts';
 import { useStore } from '../data/store.ts';
 import { shiftTypeOn } from '../data/derived.ts';
-import { useCoach, useDayView, useIndexes, useToday } from '../app/hooks.ts';
+import { baseReasonFor } from '../domain/recovery.ts';
+import { useDayView, useIndexes, useRecovery, useToday } from '../app/hooks.ts';
 import { Button, Card, Pill, ReasonList, TextInput } from '../ui/primitives.tsx';
 import { Ring } from '../ui/charts.tsx';
-import { IconChevronLeft, IconCheck, IconPlus } from '../ui/icons.tsx';
+import { IconChevronLeft, IconCheck } from '../ui/icons.tsx';
 import { markCheckInSeen } from '../app/checkinGate.ts';
 
 type Step = 'shift' | 'sleep' | 'body' | 'devices' | 'result';
@@ -38,7 +35,6 @@ export function CheckIn() {
   const shiftTypes = useStore((s) => s.shiftTypes);
   const saveCheckIn = useStore((s) => s.saveCheckIn);
   const setShift = useStore((s) => s.setShift);
-  const saveSession = useStore((s) => s.saveSession);
   const toast = useStore((s) => s.toast);
 
   const [step, setStep] = useState<Step>(existing ? 'result' : 'shift');
@@ -54,8 +50,7 @@ export function CheckIn() {
    * Check-in fragte nach etwas, das er schon weiß.
    */
   const todayShiftId = view.shift.type?.id ?? null;
-  const coachToday = useCoach(today);
-  const cycleDayToday = coachToday.timeline.days.find((d) => d.date === today)?.cycleDay ?? null;
+  const cycleDayToday = view.cycleDay;
   const hasNap = cycleDayToday != null && !!windowsFor(cycleDayToday, 5 * 60 + 30).nap;
 
   // Seed the sleep field from what the shift plan makes possible, so the
@@ -335,7 +330,7 @@ export function CheckIn() {
         )}
 
         {step === 'result' && (
-          <Result view={view} onPlan={saveSession} onDone={finish} today={today} />
+          <Result view={view} onDone={finish} today={today} />
         )}
       </div>
 
@@ -509,59 +504,21 @@ function UpcomingShifts({ today }: { today: ISODate }) {
 
 function Result({
   view,
-  onPlan,
   onDone,
   today,
 }: {
   view: ReturnType<typeof useDayView>;
-  onPlan: (s: TrainingSession) => unknown;
   onDone: () => void;
   today: ISODate;
 }) {
-  const toast = useStore((s) => s.toast);
-  const [planned, setPlanned] = useState(false);
   const meta = READINESS_LEVEL_META[view.readiness.level];
 
   /*
-   * Dieselbe Antwort wie im Coach-Tab und auf dem Tagesbildschirm. Der Entwurf
-   * ist vor diesem Schritt schon gespeichert, also steckt das, was gerade
-   * eingetippt wurde, bereits im Erholungswert — und der Coach hat die
-   * Abstufung schon vorgenommen.
-   *
-   * Es gibt hier bewusst keinen zweiten Abstufungsvorschlag. Zwei Stellen, die
-   * über Abstufungen entscheiden, sind der Weg, auf dem ein Plan anfängt, sich
-   * selbst zu widersprechen.
+   * Kein Trainingsvorschlag mehr. Der Check-in sammelt, was nur du wissen
+   * kannst — Schicht, Schlaf, Befinden — und zeigt, was daraus folgt:
+   * Readiness und Erholung. Was du daraus machst, entscheidest du.
    */
-  const coach = useCoach(today);
-  const decision = coach.today;
-  const coachDay = coach.timeline.days.find((d) => d.date === today) ?? null;
-  const band: 'red' | 'amber' | 'green' =
-    coachDay == null || coachDay.recovery < 45 ? 'red' : coachDay.recovery < 75 ? 'amber' : 'green';
-  const spec = decision.kind === 'ruhe' ? null : CATALOGUE[decision.kind];
-
-  const plan = () => {
-    const stamp = nowTimestamp();
-    const run = sessionFromDecision(decision, {
-      id: makeId('ses'),
-      createdAt: stamp,
-      updatedAt: stamp,
-    });
-    if (!run) {
-      onDone();
-      return;
-    }
-    onPlan(run);
-    if (decision.strength?.kind) {
-      const strength = sessionFromStrength(today, decision.strength, {
-        id: makeId('ses'),
-        createdAt: stamp,
-        updatedAt: stamp,
-      });
-      if (strength) onPlan(strength);
-    }
-    setPlanned(true);
-    toast(`${CATALOGUE[decision.kind].label} eingeplant`, 'good');
-  };
+  const recovery = useRecovery(today);
 
   return (
     <>
@@ -588,89 +545,44 @@ function Result({
         <div className="t-small muted mt-2">{meta.description}</div>
       </div>
 
-      {coachDay && (
-        <Card hero accentEdge>
-          <div className="row between">
-            <div className="t-label">Dein Training heute</div>
-            <Pill tone={band === 'green' ? 'good' : band === 'amber' ? 'warn' : 'bad'}>
-              Erholung {coachDay.recovery}
-            </Pill>
+      <Card hero accentEdge>
+        <div className="row between">
+          <div className="t-label">Wie der Tag dasteht</div>
+          <Pill
+            tone={
+              recovery.band === 'green' ? 'good' : recovery.band === 'amber' ? 'warn' : 'bad'
+            }
+          >
+            Erholung {recovery.value}
+          </Pill>
+        </div>
+
+        <div className="t-small secondary mt-3">{baseReasonFor({ cycleDay: view.cycleDay, isVShift: view.isVShift, outOfRotation: null })}</div>
+
+        {recovery.adjustments.length > 0 && (
+          <>
+            <div className="divider mt-4" />
+            <div className="t-label mb-3">Was den Wert bewegt hat</div>
+            <ReasonList
+              reasons={recovery.adjustments.map((a) => ({
+                text: `${a.label}: ${a.delta > 0 ? '+' : ''}${a.delta}`,
+                impact: a.delta < 0 ? ('negative' as const) : ('positive' as const),
+              }))}
+            />
+          </>
+        )}
+
+        {recovery.blocked && recovery.blockedReason && (
+          <div className="callout mt-4 warn">
+            <div className="t-heading">Heute nicht</div>
+            <div className="t-small secondary mt-2">{recovery.blockedReason}</div>
           </div>
+        )}
 
-          {spec ? (
-            <>
-              <div className="row gap-3 mt-3">
-                <span style={{ fontSize: 28, lineHeight: 1 }}>
-                  {SPORT_META[shapeOf(decision.kind).sport].icon}
-                </span>
-                <div className="grow">
-                  <div className="t-title">{spec.label}</div>
-                  <div className="t-small secondary mt-2">
-                    {[
-                      formatDuration(decision.minutes),
-                      decision.zoneLabel,
-                      decision.startMinutes != null ? `ab ${formatClock(decision.startMinutes)}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </div>
-                </div>
-              </div>
-
-              {decision.stepsDown > 0 && (
-                <div className={`callout mt-4 warn`}>
-                  <div className="t-heading">
-                    {decision.stepsDown === 1
-                      ? 'Eine Stufe zurück'
-                      : `${decision.stepsDown} Stufen zurück`}
-                  </div>
-                  <div className="t-small secondary mt-2">
-                    Geplant war {CATALOGUE[decision.plannedKind].label}. Deine Antworten von eben
-                    stecken schon in diesem Wert — abgestuft wird an genau einer Stelle, und das ist
-                    der Coach.
-                  </div>
-                </div>
-              )}
-
-              <div className="divider mt-4" />
-              <div className="t-label mb-3">Warum</div>
-              <ReasonList
-                reasons={decision.reasons.slice(0, 4).map((r) => ({
-                  text: `${r.title}: ${r.detail}`,
-                  impact:
-                    r.effect === 'sperrt' || r.effect === 'stuft ab' || r.effect === 'begrenzt'
-                      ? ('negative' as const)
-                      : ('neutral' as const),
-                }))}
-              />
-            </>
-          ) : (
-            <div className="t-small secondary mt-3">
-              {decision.headline} {RECOVERY_BAND_META[band].advice}
-            </div>
-          )}
-
-          {spec && (
-            <Button
-              variant={planned ? 'outline' : 'primary'}
-              block
-              className="mt-4"
-              disabled={planned}
-              onClick={plan}
-            >
-              {planned ? (
-                <>
-                  <IconCheck size={16} /> Eingeplant
-                </>
-              ) : (
-                <>
-                  <IconPlus size={16} /> Für heute einplanen
-                </>
-              )}
-            </Button>
-          )}
-        </Card>
-      )}
+        <Button variant="primary" block className="mt-4" onClick={onDone}>
+          Weiter zum Tag
+        </Button>
+      </Card>
 
       {view.readiness.missingInputs.length > 0 && (
         <p className="t-caption muted">

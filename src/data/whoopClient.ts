@@ -1,6 +1,6 @@
 import type { ISODate } from '../domain/types.ts';
-import { assignSleep } from '../domain/coach/whoop.ts';
-import type { SleepPeriod } from '../domain/coach/whoop.ts';
+import { assignSleep } from '../domain/whoop.ts';
+import type { SleepPeriod } from '../domain/whoop.ts';
 
 /**
  * The client half of the WHOOP connection.

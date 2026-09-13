@@ -106,8 +106,15 @@ await page.waitForTimeout(500);
 
 const result = await page.locator('.checkin-body').innerText();
 if (!/READY|MODERATE|RECOVERY/.test(result)) throw new Error('check-in did not produce a readiness level');
-if (!/dein training heute/i.test(result)) throw new Error('check-in did not produce a recommendation');
-console.log('✓ check-in produced readiness and a session');
+// Kein Trainingsvorschlag mehr: der Check-in zeigt, wie der Tag dasteht.
+if (!/wie der tag dasteht/i.test(result)) {
+  throw new Error('der Check-in zeigt nicht, wie der Tag dasteht');
+}
+if (!/erholung/i.test(result)) throw new Error('der Check-in nennt keinen Erholungswert');
+if (/einplanen|dein training heute/i.test(result)) {
+  throw new Error('der Check-in schlägt wieder Training vor');
+}
+console.log('✓ Check-in liefert Readiness und Erholung, ohne Vorschlag');
 await shot('02-checkin-result');
 
 await page.getByRole('button', { name: 'Fertig' }).click();
@@ -131,14 +138,20 @@ const readiness = await page.locator('.card', { hasText: 'Readiness' }).first().
 if (!/READY|MODERATE|RECOVERY/.test(readiness)) throw new Error('readiness level missing');
 console.log('✓ readiness on the daily screen →', readiness.split('\n').slice(0, 2).join(' '));
 
-// Accept the recommendation.
-const plan = page.getByRole('button', { name: /Einplanen/ }).first();
-if (await plan.isVisible()) {
-  await plan.click();
-  await page.waitForTimeout(500);
-  console.log('✓ recommendation planned');
+/*
+ * Eine Einheit selbst eintragen. Es gibt keinen Vorschlag mehr, den man
+ * annehmen könnte: was trainiert wird, entscheidet der Athlet.
+ */
+await page.getByRole('button', { name: /Einheit eintragen/ }).first().click();
+await page.waitForSelector('.sheet');
+await page.locator('.sheet input').first().fill('Lauf');
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.waitForTimeout(600);
+if ((await page.locator('.list .check').count()) === 0) {
+  throw new Error('die eingetragene Einheit steht nicht in der Liste');
 }
-await shot('04-planned');
+console.log('✓ Einheit selbst eingetragen');
+await shot('04-eingetragen');
 
 // Completing a session must take a single tap and survive a reload — this is
 // the evening half of the daily loop.
@@ -153,93 +166,6 @@ if ((await page.locator('.list .check.checked').count()) === 0) {
 }
 console.log('✓ session completed with one tap and persisted');
 await shot('05-session-done');
-
-/*
- * Der Coach-Tab. Geprüft wird, was die Anforderung ausmacht: die Anweisung steht
- * ganz oben, die Begründung liegt hinter einem Knopf, und das Blickfeld reicht
- * über Wochen in beide Richtungen und sagt pro Tag, warum er noch zählt.
- */
-await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.cal-grid');
-await page.waitForSelector('.coach-headline');
-await page.waitForTimeout(400);
-
-const headline = (await page.locator('.coach-headline').innerText()).trim();
-if (headline.length < 5) throw new Error('the coach has no headline');
-
-// Die Begründung darf erst nach einem Tap sichtbar sein.
-if ((await page.locator('.coach-reasons').count()) > 0) {
-  throw new Error('the reasons must start hidden behind a button');
-}
-await page.getByRole('button', { name: /Warum heute das/ }).click();
-await page.waitForSelector('.coach-reasons');
-const reasons = await page.locator('.coach-reasons li').count();
-if (reasons === 0) throw new Error('the coach gave no reason');
-console.log(`✓ coach: "${headline}" — ${reasons} Begründungen hinter dem Knopf`);
-
-/*
- * Der Kalender: Schicht und Einheit pro Tag, blätterbar, und beim Antippen
- * eines Tages steht dort auch, welche Regeln ihn noch mit heute verbinden —
- * das Einflussfenster ist in die Tagesansicht gewandert, nicht verschwunden.
- */
-const cells = await page.locator('.cal-cell').count();
-if (cells % 7 !== 0 || cells < 28) {
-  throw new Error(`the calendar renders ${cells} cells, expected whole weeks`);
-}
-
-/*
- * Der Kalender fängt bei heute an. Vergangene Tage halten nur die Spalte, damit
- * die Wochentage untereinander bleiben — sie tragen weder Schicht noch Einheit
- * und lassen sich nicht antippen.
- */
-const past = await page.locator('.cal-cell.is-past').count();
-if ((await page.locator('.cal-cell.is-past .cal-bar').count()) > 0) {
-  throw new Error('a past day still shows a planned session');
-}
-if ((await page.locator('.cal-cell.is-past .cal-shift').count()) > 0) {
-  throw new Error('a past day still shows a shift');
-}
-const backDisabled = await page.getByRole('button', { name: 'Voriger Monat' }).isDisabled();
-if (!backDisabled) throw new Error('the calendar still pages back before today');
-console.log(`✓ Kalender beginnt heute: ${past} vergangene Tage nur als Platzhalter, kein Zurück`);
-if ((await page.locator('.cal-cell.is-today').count()) !== 1) {
-  throw new Error('the calendar does not mark today');
-}
-const shiftBadges = await page.locator('.cal-shift:not(.cal-shift-empty)').count();
-if (shiftBadges === 0) throw new Error('no shift shows in the calendar');
-const sessionBars = await page.locator('.cal-cell .cal-bar').count();
-if (sessionBars === 0) throw new Error('no planned session shows in the calendar');
-console.log(`✓ Kalender: ${cells} Tage, ${shiftBadges} Schichten, ${sessionBars} Einheiten`);
-
-// Einen geplanten Tag antippen: Schicht, Einheit und die Verbindung zu heute.
-await page.locator('.cal-cell', { has: page.locator('.cal-bar') }).first().click();
-await page.waitForSelector('.cal-detail');
-const detail = await page.locator('.cal-detail').innerText();
-if (!/verbindet|beeinflusst heute nichts/.test(detail)) {
-  throw new Error('a calendar day does not say why it still matters');
-}
-if (!/min/.test(detail)) throw new Error('a planned day shows no session');
-console.log(`✓ Tagesansicht: ${detail.split('\n')[0]} — mit Einheit und Regelbezug`);
-
-// Blättern: der Vormonat muss sich zeigen und der Weg zurück da sein.
-const monthBefore = await page.locator('.cal-head').locator('..').locator('.t-label').first().innerText();
-await page.getByRole('button', { name: 'Nächster Monat' }).click();
-await page.waitForTimeout(300);
-const monthAfter = await page.locator('.cal-head').locator('..').locator('.t-label').first().innerText();
-if (monthBefore === monthAfter) throw new Error('the calendar does not page to the next month');
-if ((await page.getByText('zu heute').count()) === 0) {
-  throw new Error('no way back to today after paging');
-}
-await page.getByText('zu heute').click();
-await page.waitForTimeout(300);
-console.log(`✓ blättert ${monthBefore} → ${monthAfter} und zurück`);
-
-// Es wird gelaufen: kein Rad, kein Rudergerät, kein Crosstrainer als Vorschlag.
-const coachText = await page.locator('.app-main').innerText();
-if (OTHER_SPORTS.test(coachText.replace(HARD_RULE, ''))) {
-  throw new Error(`the coach must never propose another sport: ${coachText.match(OTHER_SPORTS)[0]}`);
-}
-console.log('✓ nur Laufen, Kraft, Gehen und Ruhe');
 
 /*
  * The sleep tab: four tracks, every recommendation tappable with its reason, no
@@ -278,7 +204,6 @@ for (const [path, name] of [
   ['#/week', '06-week'],
   ['#/habits', '07-habits'],
   ['#/goals', '10-goals'],
-  ['#/coach', '11-coach'],
   ['#/profile', '12-profile'],
 ]) {
   await page.goto(`${BASE}/${path}`, { waitUntil: 'networkidle' });
@@ -289,101 +214,6 @@ for (const [path, name] of [
   await shot(name);
   console.log(`✓ ${path} rendered (${text.length} chars)`);
 }
-
-/*
- * Der Tagesbildschirm muss dieselbe Einheit nennen wie der Coach-Tab. Genau hier
- * ist es schon auseinandergelaufen: seit die Läufe auf vier Tage je zehn liegen,
- * tragen die übrigen Tage Kraft ohne Lauf — und „Heute" meldete Ruhe, während
- * die Krafteinheit darunter in der Liste stand.
- */
-await page.goto(`${BASE}/#/today`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.card-hero');
-await page.waitForTimeout(400);
-const todayHero = (await page.locator('.card-hero .t-title').first().innerText()).trim();
-if (!headline.includes(todayHero)) {
-  throw new Error(
-    `Heute und der Coach-Tab widersprechen sich:\n  Coach: ${headline}\n  Heute: ${todayHero}`,
-  );
-}
-if (/Ruhetag/.test(todayHero) !== /Ruhetag/.test(headline)) {
-  throw new Error(`Ruhetag nur auf einem der beiden Bildschirme: ${todayHero} / ${headline}`);
-}
-console.log(`✓ Heute deckt sich mit dem Coach-Tab: ${todayHero}`);
-
-/*
- * Die eingeplante Einheit muss dieselbe Zahl tragen wie die Empfehlung.
- *
- * Genau das lief auseinander: oben stand „24 min", in der Liste darunter
- * „40 min". Der Coach rechnet jeden Tag neu, die einmal gespeicherte Einheit
- * nicht — und abgehakt worden wäre die 40. Hier wird eine veraltete Einheit
- * direkt in die Datenbank gelegt und geprüft, dass die App sie nachzieht.
- */
-await page.evaluate(async () => {
-  const d = new Date();
-  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const request = indexedDB.open('hybrid-athlete');
-  const db = await new Promise((resolve) => { request.onsuccess = () => resolve(request.result); });
-  const tx = db.transaction('sessions', 'readwrite');
-  tx.objectStore('sessions').put({
-    id: 'ses_veraltet',
-    date: iso,
-    sport: 'run',
-    title: 'Lockerer Lauf',
-    status: 'planned',
-    plannedDurationMin: 137,
-    plannedIntensity: 'easy',
-    muscleGroups: [],
-    source: 'coach',
-    createdAt: d.toISOString(),
-    updatedAt: d.toISOString(),
-  });
-  await new Promise((resolve) => { tx.oncomplete = resolve; });
-});
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('.card-hero');
-await page.waitForTimeout(900);
-
-const heroLine = (await page.locator('.card-hero .t-small.secondary').first().innerText()).trim();
-const heroDuration = heroLine.split('·')[0].trim();
-const plannedList = await page.locator('.app-main').innerText();
-if (/137 min|2:17 h/.test(plannedList)) {
-  throw new Error('eine veraltete Einheit steht weiter unter der Empfehlung');
-}
-if (!plannedList.includes(heroDuration)) {
-  throw new Error(
-    `Empfehlung und eingeplante Einheit nennen verschiedene Dauern: ${heroDuration} fehlt in der Liste`,
-  );
-}
-console.log(`✓ die eingeplante Einheit folgt dem Coach: ${heroDuration}`);
-
-/*
- * Und auf diesem Bildschirm gilt die harte Regel genauso. Der Hinweis unter der
- * Empfehlung nannte einmal das Rad — die Prüfung unten hat ihn nicht gesehen,
- * weil sie nur nach „Radfahren" suchte.
- */
-const todayText = (await page.locator('.app-main').innerText()).replace(HARD_RULE, '');
-if (OTHER_SPORTS.test(todayText)) {
-  throw new Error(`der Tagesbildschirm nennt eine andere Sportart: ${todayText.match(OTHER_SPORTS)[0]}`);
-}
-console.log('✓ Heute nennt keine andere Sportart');
-
-/*
- * Die Frage-Antwort-Seite muss dasselbe sagen wie der Coach-Tab. Zwei Stellen,
- * die verschiedene Einheiten vorschlagen, sind der Fehler, an dem man aufhört,
- * dem Plan zu glauben — deshalb steht der Abgleich hier fest im Test.
- */
-await page.goto(`${BASE}/#/coach`, { waitUntil: 'networkidle' });
-await page.getByText('Was soll ich heute trainieren?').click();
-await page.waitForSelector('.bubble.coach');
-const answer = await page.locator('.bubble.coach').first().innerText();
-if (answer.length < 20) throw new Error('coach answer too short');
-if (!answer.includes(headline)) {
-  throw new Error(
-    `the answer screen and the coach tab disagree:\n  Tab:    ${headline}\n  Antwort: ${answer.split('\n')[0]}`,
-  );
-}
-console.log(`✓ Frage-Antwort deckt sich mit dem Coach-Tab: ${answer.split('\n')[0]}`);
-await shot('13-coach-answer');
 
 // Habits: tick one and confirm it persists across a reload.
 // The sleep habit is auto-filled from the check-in, so pick one that is not
@@ -431,99 +261,6 @@ if (!/Ziel|von/i.test(afterEdit)) {
 console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the week target`);
 
 /*
- * Eine Schicht im Kalender eintragen, und der Plan fügt sich ein.
- *
- * Die Schicht bestimmt Zyklustag, Zeitfenster und Schichtlast — und damit, was
- * an dem Tag überhaupt geht. Deshalb wird sie dort eingetragen, wo der Plan
- * steht, und der Tag muss sich sofort mitbewegen.
- */
-await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.cal-cell');
-await page.waitForTimeout(400);
-
-// Einen künftigen Tag mit geplanter Einheit nehmen: da ist etwas zu verlieren.
-const lauftag = page
-  .locator('.cal-cell:not(.is-past):not(.is-today)')
-  .filter({ has: page.locator('.cal-bar') })
-  .first();
-if ((await lauftag.count()) === 0) throw new Error('kein künftiger Tag mit Einheit im Kalender');
-await lauftag.click();
-await page.waitForSelector('.cal-detail');
-const detailVorher = await page.locator('.cal-detail').innerText();
-if (!/min/.test(detailVorher)) throw new Error('der gewählte Tag trägt keine Einheit');
-
-const schichtChips = page.locator('.cal-detail .chip-row .chip');
-if ((await schichtChips.count()) === 0) {
-  throw new Error('im Kalender lässt sich keine Schicht eintragen');
-}
-// Die Tagschicht: zwölf Stunden Dienst, kein Trainingsfenster.
-await schichtChips.first().click();
-await page.waitForTimeout(600);
-const detailNachher = await page.locator('.cal-detail').innerText();
-if (detailNachher === detailVorher) {
-  throw new Error('der Plan reagiert nicht auf die eingetragene Schicht');
-}
-if (!/kein Trainingsfenster|Keine Einheit geplant/i.test(detailNachher)) {
-  throw new Error(
-    `nach der Tagschicht müsste der Tag ohne Einheit dastehen: ${detailNachher.replace(/\n/g, ' | ')}`,
-  );
-}
-console.log('✓ Schicht eingetragen, der Plan fügt sich ein');
-await shot('17-schicht-eintragen');
-
-/*
- * Ab wann der Plan mit Woche 1 zählt, ist eine Angabe und kein Nebeneffekt.
- *
- * Vorher zählte der Coach jeden erkannten Zyklus des letzten Jahres: wer
- * Schichten nachtrug, sprang ungewollt Wochen nach vorn. Hier wird der Beginn
- * gesetzt und geprüft, dass die Wochenzahl im Coach ihm folgt.
- */
-await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-await page.waitForSelector('.coach-facts');
-await page.waitForTimeout(400);
-
-// Auf die Karte eingrenzen: die Kennzahlenreihe gibt es auch in der Karte für
-// heute, und die zeigt keine Wochenzahl.
-const planKarte = page.locator('.card', { hasText: /wo der plan steht/i });
-const wocheJetzt = async () => {
-  const text = await planKarte.locator('.coach-facts').first().innerText();
-  const match = text.match(/(\d+)\s*\n\s*Woche/i);
-  if (!match) throw new Error(`der Coach zeigt keine Wochenzahl: ${text.replace(/\n/g, ' | ')}`);
-  return Number(match[1]);
-};
-
-const planStartFeld = planKarte.locator('input[type="date"]').first();
-if ((await planStartFeld.count()) === 0) {
-  throw new Error('der Coach lässt den Planbeginn nicht einstellen');
-}
-
-const isoVor = (tage) => {
-  const d = new Date();
-  d.setDate(d.getDate() - tage);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-await planStartFeld.fill(isoVor(70));
-await page.waitForTimeout(600);
-const wocheFrueh = await wocheJetzt();
-await planStartFeld.fill(isoVor(7));
-await page.waitForTimeout(600);
-const wocheSpaet = await wocheJetzt();
-
-if (!(wocheFrueh > wocheSpaet)) {
-  throw new Error(
-    `der Planbeginn bewegt die Wochenzahl nicht: 70 Tage → Woche ${wocheFrueh}, 7 Tage → Woche ${wocheSpaet}`,
-  );
-}
-if (wocheFrueh !== 11 || wocheSpaet !== 2) {
-  throw new Error(
-    `die Wochen stimmen nicht: 70 Tage müssten Woche 11 sein (${wocheFrueh}), 7 Tage Woche 2 (${wocheSpaet})`,
-  );
-}
-console.log(`✓ Planbeginn einstellbar: vor 70 Tagen → Woche ${wocheFrueh}, vor 7 Tagen → Woche ${wocheSpaet}`);
-await shot('16-planbeginn');
-
-/*
  * Der Schichtrhythmus schreibt sich fort.
  *
  * Vorher endete der Kalender am letzten von Hand eingetragenen Tag — hier sind
@@ -532,17 +269,17 @@ await shot('16-planbeginn');
  */
 const zweiMonateVor = async () => {
   await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.cal-cell');
-  for (let i = 0; i < 2; i++) {
-    await page.getByRole('button', { name: 'Nächster Monat' }).click();
-    await page.waitForTimeout(250);
+  await page.waitForSelector('.app-main');
+  for (let i = 0; i < 9; i++) {
+    await page.getByRole('button', { name: 'Nächste Woche' }).click();
+    await page.waitForTimeout(120);
   }
-  return page.locator('.cal-cell .cal-shift:not(.cal-shift-empty)').count();
+  return page.locator('.shift-tag:not(.is-empty)').count();
 };
 
 const vorherWeit = await zweiMonateVor();
 if (vorherWeit > 0) {
-  throw new Error(`ohne Rhythmus dürfte in zwei Monaten keine Schicht stehen, es sind ${vorherWeit}`);
+  throw new Error(`ohne Rhythmus dürfte dort keine Schicht stehen, es sind ${vorherWeit}`);
 }
 
 await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
@@ -564,10 +301,10 @@ console.log('✓ Rhythmus im Profil eingerichtet, mit Vorschau');
 await shot('15-schichtrhythmus');
 
 const nachherWeit = await zweiMonateVor();
-if (nachherWeit < 20) {
-  throw new Error(`der Rhythmus füllt zwei Monate voraus nur ${nachherWeit} Tage`);
+if (nachherWeit !== 7) {
+  throw new Error(`der Rhythmus füllt die Woche nicht: ${nachherWeit} von 7 Tagen`);
 }
-console.log(`✓ Kalender steht zwei Monate voraus: ${nachherWeit} Schichten, keine davon eingetippt`);
+console.log('✓ Wochenansicht steht zwei Monate voraus, keine davon eingetippt');
 
 /*
  * Und eine Ausnahme sticht ihn trotzdem: eine V-Schicht auf einem künftigen Tag

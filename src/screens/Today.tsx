@@ -1,32 +1,25 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TrainingSession } from '../domain/types.ts';
-import { isoWeekNumber, nowTimestamp } from '../domain/date.ts';
+import { isoWeekNumber } from '../domain/date.ts';
 import {
-  SPORT_META,
   formatDateLong,
   formatDuration,
   formatHours,
   weekdayLong,
 } from '../domain/format.ts';
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
-import type { TodayDecision } from '../domain/coach/coach.ts';
-import { CATALOGUE } from '../domain/coach/catalogue.ts';
-import { formatClock } from '../domain/coach/windows.ts';
-import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
+import { formatClock, vShiftWindows, windowsFor } from '../domain/windows.ts';
 import { statusOn } from '../domain/habits.ts';
-import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
 import { activeHabits, entriesFor } from '../data/derived.ts';
-import { useCoach, useData, useDayContext, useDayView, useIndexes, useToday } from '../app/hooks.ts';
+import { useData, useDayContext, useDayView, useIndexes, useRecovery, useToday } from '../app/hooks.ts';
 import {
   Button,
   Card,
   Check,
-  Disclosure,
   Pill,
   ProgressBar,
-  ReasonList,
   SectionTitle,
 } from '../ui/primitives.tsx';
 import { Ring } from '../ui/charts.tsx';
@@ -49,8 +42,6 @@ export function Today() {
   const view = useDayView(today);
   const contextFor = useDayContext(today);
   const logHabit = useStore((s) => s.logHabit);
-  const saveSession = useStore((s) => s.saveSession);
-  const toast = useStore((s) => s.toast);
 
   const [shiftOpen, setShiftOpen] = useState(false);
   const [editing, setEditing] = useState<TrainingSession | null>(null);
@@ -68,38 +59,20 @@ export function Today() {
   const done = view.sessions.filter((x) => x.status === 'completed').length;
 
   /*
-   * Dieselbe Quelle wie der Coach-Tab. Es gibt einen Plan, also gibt es eine
-   * Antwort — zwei Bildschirme, die verschiedene Einheiten vorschlagen, sind
-   * genau der Fehler, den diese Karte einmal hatte.
+   * Die Erholung misst, sie plant nicht. Was heute trainiert wird, steht in
+   * den Einheiten, die eingetragen sind — nirgends sonst.
    */
-  const coach = useCoach(today);
-  const decision = coach.today;
+  const recovery = useRecovery(today);
+  const cycleDayToday = view.cycleDay;
+  const windows =
+    view.shift.type && cycleDayToday != null
+      ? view.isVShift
+        ? vShiftWindows()
+        : windowsFor(cycleDayToday, data.settings.planner.dayShiftWakeMinutes)
+      : null;
 
-  /*
-   * Die Einheit des Tages ist nicht zwangsläufig ein Lauf. Seit die Läufe auf
-   * vier Tage je zehn liegen, tragen die übrigen Tage Kraft — und ein Tag mit
-   * Krafteinheit ist kein Ruhetag.
-   */
-  const mainKind = decision.kind !== 'ruhe' ? decision.kind : (decision.strength?.kind ?? null);
-  const mainMinutes = decision.kind !== 'ruhe' ? decision.minutes : (decision.strength?.minutes ?? 0);
-  const coachDay = coach.timeline.days.find((d) => d.date === today) ?? null;
-  const recoveryBand: 'red' | 'amber' | 'green' =
-    decision.verdict === 'ruhe' ? 'red' : decision.verdict === 'reduziert' ? 'amber' : 'green';
-
-  const planToday = (d: TodayDecision) => {
-    const stamp = nowTimestamp();
-    const run = sessionFromDecision(d, { id: makeId('ses'), createdAt: stamp, updatedAt: stamp });
-    if (run) saveSession(run);
-    if (d.strength?.kind) {
-      const strength = sessionFromStrength(today, d.strength, {
-        id: makeId('ses'),
-        createdAt: stamp,
-        updatedAt: stamp,
-      });
-      if (strength) saveSession(strength);
-    }
-    if (run) toast(`${CATALOGUE[d.kind].label} eingeplant`, 'good');
-  };
+  const plannedToday = view.sessions.filter((x) => x.status === 'planned');
+  const plannedMinutes = plannedToday.reduce((sum, x) => sum + (x.plannedDurationMin ?? 0), 0);
 
   return (
     <>
@@ -130,103 +103,76 @@ export function Today() {
       </div>
 
       {/*
-        ---------- Die eine Antwort ----------
-        From the cycle planner, the same source the training tab and the morning
-        check-in read. There is one plan, so there is one answer.
+        ---------- Wie der Tag dasteht ----------
+        Kein Vorschlag mehr. Die Karte sagt, was der Tag hergibt — Schicht,
+        Fenster, Erholung — und was du dafür eingetragen hast. Entschieden wird
+        von dir.
       */}
       <Card hero accentEdge>
         <div className="row between">
           <span className="t-label">Heute</span>
-          {coachDay && coachDay.cycleDay != null && (
-            <Pill tone={recoveryBand === 'green' ? 'good' : recoveryBand === 'amber' ? 'warn' : 'bad'}>
-              Erholung {coachDay.recovery}
+          {cycleDayToday != null && (
+            <Pill
+              tone={
+                recovery.band === 'green' ? 'good' : recovery.band === 'amber' ? 'warn' : 'bad'
+              }
+            >
+              Erholung {recovery.value}
             </Pill>
           )}
         </div>
-        {mainKind ? (
+
+        {view.shift.type ? (
           <>
-            <div className="row gap-3 mt-3">
-              <span style={{ fontSize: 32, lineHeight: 1 }}>
-                {SPORT_META[shapeOf(mainKind).sport].icon}
-              </span>
-              <div className="grow">
-                <div className="t-title">{decision.label}</div>
-                <div className="t-small secondary mt-2">
-                  {[
-                    formatDuration(mainMinutes),
-                    decision.kind !== 'ruhe' ? decision.zoneLabel : `RPE ${decision.strength?.rpe}`,
-                    decision.kind !== 'ruhe'
-                      ? decision.startMinutes != null
-                        ? `ab ${formatClock(decision.startMinutes)}`
-                        : null
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </div>
-              </div>
+            <div className="t-title mt-3">
+              {view.shift.type.icon} {view.shift.type.label}
             </div>
-
-            {/* Steht beides an, gehört die zweite Einheit auch auf die Karte. */}
-            {decision.kind !== 'ruhe' && decision.strength?.kind && (
-              <div className="t-caption secondary mt-2">
-                Dazu {CATALOGUE[decision.strength.kind].label} ·{' '}
-                {formatDuration(decision.strength.minutes)} · RPE {decision.strength.rpe}
+            <div className="t-small secondary mt-2">
+              {[
+                view.shift.type.work
+                  ? `Dienst ${view.shift.type.work.start}–${view.shift.type.work.end}`
+                  : 'kein Dienst',
+                windows?.trainingWindow
+                  ? `Fenster ${formatClock(windows.trainingWindow.start)}–${formatClock(windows.trainingWindow.end)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+            {recovery.blocked && recovery.blockedReason && (
+              <div className="t-caption mt-2" style={{ color: 'var(--bad)' }}>
+                {recovery.blockedReason}
               </div>
             )}
-
-            {/*
-              * Was hier steht, muss zu dieser Entscheidung passen, nicht zu
-              * einem Erholungsband. Geplant war X, daraus wurde Y — und die
-              * einzige Richtung nach unten ist weniger Laufen, nie eine andere
-              * Sportart.
-              */}
-            {decision.stepsDown > 0 && (
-              <div className="t-caption mt-3" style={{ color: 'var(--warn)' }}>
-                {decision.stepsDown === 1 ? 'Eine Stufe zurück' : `${decision.stepsDown} Stufen zurück`}
-                {': geplant war '}
-                {CATALOGUE[decision.plannedKind].label}.
-              </div>
-            )}
-
-            <div className="mt-4">
-              <Disclosure summary={<span className="t-label">Warum?</span>}>
-                <ReasonList
-                  reasons={decision.reasons.map((r) => ({
-                    text: `${r.title}: ${r.detail}`,
-                    impact:
-                      r.effect === 'sperrt'
-                        ? ('negative' as const)
-                        : r.effect === 'stuft ab' || r.effect === 'begrenzt'
-                          ? ('negative' as const)
-                          : ('neutral' as const),
-                  }))}
-                />
-              </Disclosure>
-            </div>
-
-            <div className="row gap-2 mt-4">
-              <Button variant="primary" onClick={() => planToday(decision)}>
-                <IconPlus size={16} /> Einplanen
-              </Button>
-              <Link to="/training" className="btn btn-outline">
-                Zum Coach <IconChevronRight size={15} />
-              </Link>
-            </div>
           </>
         ) : (
-          <div className="mt-3">
-            <div className="t-title">{decision.headline}</div>
+          <>
+            <div className="t-title mt-3">Keine Schicht eingetragen</div>
             <p className="t-small secondary mt-2">
-              {coachDay?.cycleDay == null
-                ? 'Ohne Schicht weiß die App nicht, was der Tag mit deinem Schlaf macht — und plant ihn deshalb nicht.'
-                : decision.steps[0]}
+              Ohne Schicht weiß die App nicht, wie viel Zeit der Tag hat und was er mit deinem
+              Schlaf macht.
             </p>
-            <div className="row gap-2 mt-4">
-              <Link to="/training" className="btn btn-outline">
-                Zum Coach <IconChevronRight size={15} />
-              </Link>
-            </div>
+            <Button variant="primary" className="mt-3" onClick={() => setShiftOpen(true)}>
+              Schicht eintragen
+            </Button>
+          </>
+        )}
+
+        {view.shift.type && (
+          <div className="row gap-2 mt-4">
+            <Button variant="primary" onClick={() => setEditing(emptySession(today))}>
+              <IconPlus size={16} /> Einheit eintragen
+            </Button>
+            <Link to="/training" className="btn btn-outline">
+              Zur Woche <IconChevronRight size={15} />
+            </Link>
+          </div>
+        )}
+
+        {plannedToday.length > 0 && (
+          <div className="t-caption muted mt-3">
+            {plannedToday.length === 1 ? 'Eine Einheit' : `${plannedToday.length} Einheiten`} geplant
+            {plannedMinutes > 0 ? ` · ${formatDuration(plannedMinutes)}` : ''}.
           </div>
         )}
       </Card>

@@ -143,16 +143,16 @@ for (const d of DEVICES) {
   }
 
   /*
-   * Kleinste Tap-Ziele messen — auf beiden dichten Bildschirmen. Der Coach-Tab
-   * hat mit dem Blickfeld 55 Tagesspalten nebeneinander; genau dort entsteht der
-   * Druck, sie schmaler zu machen, als ein Daumen treffen kann.
+   * Kleinste Tap-Ziele messen — auf beiden dichten Bildschirmen. Die
+   * Wochenansicht hat sieben Tagesspalten nebeneinander; genau dort entsteht
+   * der Druck, sie schmaler zu machen, als ein Daumen treffen kann.
    */
-  for (const [route, wait] of [['/#/training', '.cal-cell'], ['/#/sleep', '.advice-row']]) {
+  for (const [route, wait] of [['/#/training', '.week-strip'], ['/#/sleep', '.advice-row']]) {
   await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
   await page.waitForSelector(wait);
   await page.waitForTimeout(500);
   const smallest = await page.evaluate(() => {
-    const sel = '.tabbar-item, .check, .stepper > button, .chip, .advice-row, .cal-cell, .cal-nav';
+    const sel = '.tabbar-item, .check, .stepper > button, .chip, .advice-row, .week-day';
     let min = Infinity; let which = '';
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();

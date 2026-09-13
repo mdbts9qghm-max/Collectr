@@ -1,4 +1,4 @@
-import type { ISODate } from '../types.ts';
+import type { ISODate } from './types.ts';
 
 /**
  * WHOOP data, and the two things that go wrong if you take it at face value on

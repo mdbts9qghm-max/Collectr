@@ -85,16 +85,6 @@ export const IconGoal = (p: IconProps = {}) =>
     p,
   );
 
-export const IconCoach = (p: IconProps = {}) =>
-  svg(
-    <>
-      <path d="M21 12a8 8 0 1 1-3.2-6.4" />
-      <path d="M8.5 15.5c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5" />
-      <path d="M9 10h.01M15 10h.01" />
-    </>,
-    p,
-  );
-
 export const IconProfile = (p: IconProps = {}) =>
   svg(
     <>
