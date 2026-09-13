@@ -128,30 +128,103 @@ ersetzt) und `personalization.ts` (gelernte Vorlieben, die in einem regelbasiert
 nichts zu suchen haben). Geblieben sind Belastungsmodell, Readiness und Phasen — die
 braucht auch der Coach.
 
-## 4b. Entfernt: der Coach
+## 4b. Der Coach
 
-Es gab einen Coach: ein Phasenmodell P0–P3 in Laufminuten je zehn Tage, eine feste
-Zyklusvorlage, Bahn- und Kraftstufen, eine 8-%-Wachstumsgrenze, Deload alle vier Zyklen,
-ein Tagesbudget aus Erholung minus Schichtlast, Abstufungsketten bis Gehen, und ein
-Einflussfenster von 27 Tagen in jede Richtung, das jede Regel mit einer eigenen Reichweite
-führte. Er ist gelöscht — auf ausdrückliche Ansage des Athleten: *„die Automatik ist
-falsch."*
+Es gab ihn schon einmal, und er wurde auf Ansage gelöscht: *„die Automatik ist falsch."*
+Was jetzt steht, ist neu gebaut, und die Unterschiede sind die Lehre aus dem ersten Versuch.
 
-Der Grund ist nicht, dass die Rechnung falsch war. Sie stimmte, und sie war geprüft. Der
-Grund ist, dass ein Plan, der jeden Tag selbst entscheidet, dem Athleten die Entscheidung
-abnimmt, die er selbst treffen will — und dass jede Korrektur daran eine weitere Regel
-hinzufügte, statt eine wegzunehmen.
+### Der Schichtrhythmus
 
-**Was geblieben ist, misst.** Belastungsmodell und ACWR, Readiness, der Erholungswert, die
-Herzfrequenzzonen, das Schlafmodul, die Schichtlogik samt Rhythmus. Diese Werte sagen, wie
-der Tag dasteht.
+**T · N · Ü · DF · DF**, siebenmal hintereinander — 35 Tage, danach fällt dasselbe Muster
+wieder auf denselben Wochentag. Geplant wird auf den fünf Tagen; die 35 sind eine
+Kalenderaussage, keine Trainingsaussage. Dienstbeginn ist jeweils 15 Minuten vor
+Schichtbeginn: T 06:45–19:00, N 18:45–07:00.
 
-**Was weg ist, entschied.** Was trainiert wird, wie lange, in welcher Zone, wann, und was
-passiert, wenn die Erholung nicht reicht. Das entscheidet der Athlet, und er trägt es ein.
+| Tag | Schlaf | Trainingsfenster | Rolle |
+| --- | --- | --- | --- |
+| T | 23:30 → 05:30 | keins | Ruhe, und der leere Tag der Woche |
+| N | 23:30 → 08:00, Vorschlaf 15:00–17:30 | 09:00–13:30 | locker, vor dem Vorschlaf |
+| Ü | 08:00 → 14:00 | 15:30–21:00 | locker oder Kraft, **nie Intensität** |
+| DF1 | 00:00 → 08:00 | 09:00–19:00 | die Schlüsseleinheit |
+| DF2 | 23:30 → 08:00 | 09:00–17:00 | Grundlage, Bett um 22:00 |
 
-Mit dem Coach gingen die Frage-Antwort-Seite (`answers.ts`), der Coach-Tab und der
-Wochenplaner-Rest. Der Trainingstab ist jetzt die Wochenansicht: Schichten eintragen,
-Einheiten eintragen, sehen was steht.
+### Das Volumen wächst aus der Messung, nicht aus einer Tabelle
+
+Die ursprüngliche Vorgabe hatte eine Spalte „aerobe Minuten je 10 Tage" (300 → 850). Sie
+ist gestrichen, und das ist die sicherere Konstruktion: eine absolute Vorgabe kennt den
+Ausgangspunkt nicht. Wer bei 120 Laufminuten steht und eine Tabelle liest, die 300
+verlangt, bekommt entweder eine Überlastung oder eine Zahl, die zwei Monate lang
+unerreichbar bleibt und deshalb nichts steuert.
+
+Gesteuert wird über die **Steigerung**: höchstens 8 % mehr je zehn Tage, gerechnet auf das,
+was tatsächlich gelaufen wurde. Solange es nichts zu messen gibt, gilt ein **Startvolumen
+aus den Einstellungen** — der einzige Wert im Modell, den die App nicht herleiten kann.
+
+Die Phase bestimmt dann nur noch den Charakter: Läufe je Woche, Anteil des langen Laufs,
+Fokus. Das sind Anteile, und Anteile funktionieren auf jedem Niveau.
+
+| Phase | Zeitraum | Läufe/Woche | Longrun-Anteil | Fokus |
+| --- | --- | --- | --- | --- |
+| P0 | Woche 1–8 | 3 | 30 % | Laufgewöhnung, Intervalle kurz und wenige |
+| P1 | Monat 3–6 | 4 | 33 % | Zone-2-Minuten tragen den Zuwachs |
+| P2 | Monat 7–10 | 4 | 35 % | VO2max und Schwelle |
+| P3 | ab Monat 11 | 4 | 35 % | rotierende Blöcke, unbefristet |
+
+### Das Blickfeld rollt
+
+Jede Regel trägt ihre eigene Reichweite in Tagen. Ein Tag zählt für heute, solange
+mindestens eine Regel so weit reicht; reicht keine mehr, ist er nachweislich ohne
+Einfluss — und wird begründet vernachlässigt, nicht vergessen.
+
+Es gibt deshalb kein „diese Woche". Das Fenster hat keine Kanten, an denen etwas abreißt:
+ein Montag verliert seinen Einfluss nicht dadurch, dass eine neue Kalenderwoche anfängt,
+sondern dadurch, dass genug Tage vergangen sind. Die meisten Regeln reichen sechs Tage in
+jede Richtung; zwei reichen weiter, weil sie es müssen — die Steigerungsgrenze vergleicht
+zehn Tage mit zehn Tagen, die Bahnstufe verlangt zwei saubere Wochen.
+
+Im Coach-Tab ist das ein Streifen, kein Kalender, und er reicht **drei Tage über das
+Fenster hinaus**. Sonst wäre jeder gezeigte Tag per Definition einer mit Einfluss, und die
+Kante, um die es geht, unsichtbar.
+
+### Fünf Tage gegen sieben
+
+Der Schichtrhythmus läuft in fünf Tagen, die Regeln in sieben. Diese Zahlen gehen nicht
+ineinander auf, und daraus folgt etwas Konkretes: **der Rhythmus kann nicht jede Umdrehung
+eine Schlüsseleinheit tragen.** Zweimal alle fünf Tage sind zwei in sieben, und erlaubt ist
+eine. Ungefähr jede vierte Umdrehung fällt aus.
+
+Genau dieses Paar rutschte in der ersten Fassung durch die Prüfung, weil sie „drei Tage
+zurück, drei voraus" um jeden Tag schaute: zwei Tage im Abstand von fünf liegen in keinem
+dieser Fenster. Geprüft wird jetzt über **jedes** Fenster aus sieben aufeinanderfolgenden
+Tagen.
+
+### Wo zwei Vorgaben sich widersprechen
+
+„Intervalle sind von Anfang an mit dabei" und „Zone 2 ≥ 80 % der Laufminuten" gehen bei
+kleinem Volumen nicht beide. Eine Bahneinheit von 40 Minuten verlangt rund 160 Minuten
+lockeres Laufen daneben; darunter ist eines von beidem nicht zu haben.
+
+Der Coach behält die Bahneinheit und **schreibt den Konflikt hin**, statt eine der beiden
+Regeln still fallen zu lassen. Aufgelöst wird er durch mehr Grundlagenvolumen, nicht durch
+eine leisere Regel.
+
+### Das Rad
+
+Geplant wird nie Rad. Es steht an genau einer Stelle jeder Abstufungskette: unter dem
+lockeren Lauf, über dem Gehen.
+
+`Intervalle → kürzere Intervalle → lockerer Lauf → Rad → Gehen → Ruhe`
+
+Warum dort: an dieser Stelle ist der Grund für die Abstufung fast immer muskuloskelettal,
+nicht kardial. Wer keinen Stoß mehr verträgt, kann meist noch treten — und hält damit den
+aeroben Reiz, statt ihn ganz zu verlieren.
+
+### Was der Coach nicht entscheidet
+
+Er stuft ab, er plant nicht am Athleten vorbei. Erholung, Schlafschuld und Schicht können
+eine Einheit kleiner machen; was überhaupt trainiert wird, kommt aus Phase, Rhythmus und
+Volumen. Und jede Einheit lässt sich von Hand überschreiben — ab dann gehört sie dem
+Athleten und der Coach führt sie nicht mehr nach.
 
 
 ## 4c. Schlaf und Regeneration

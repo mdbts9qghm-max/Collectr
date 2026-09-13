@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
+  IconCalendar,
   IconGoal,
   IconHabits,
   IconProfile,
@@ -22,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/today', label: 'Heute', shortLabel: 'Heute', icon: IconToday, primary: true },
   { to: '/training', label: 'Training', shortLabel: 'Training', icon: IconTraining, primary: true },
   { to: '/sleep', label: 'Schlaf & Erholung', shortLabel: 'Schlaf', icon: IconSleep, primary: true },
+  { to: '/week', label: 'Woche', shortLabel: 'Woche', icon: IconCalendar, primary: false },
   { to: '/habits', label: 'Habits', shortLabel: 'Habits', icon: IconHabits, primary: true },
   { to: '/goals', label: 'Ziele', shortLabel: 'Ziele', icon: IconGoal, primary: false },
   { to: '/profile', label: 'Profil & Einstellungen', shortLabel: 'Profil', icon: IconProfile, primary: false },

@@ -81,10 +81,10 @@ export function sleepAdvice(ctx: DayContext): Advice[] {
         {
           id: 'sleep-day-late-bed',
           track: 'sleep',
-          from: h(22, 45),
-          to: h(23),
-          label: 'Abends bewusst später ins Bett — 22:45',
-          why: 'Nach sechs Stunden Tagschlaf ist der Schlafdruck niedrig. Zu früh hinlegen erzeugt Einschlafprobleme und zementiert die Verschiebung.',
+          from: h(23, 45),
+          to: h(24),
+          label: 'Abends bewusst später ins Bett — 00:00',
+          why: 'Nach sechs Stunden Tagschlaf ist der Schlafdruck niedrig. Zu früh hinlegen erzeugt Einschlafprobleme und zementiert die Verschiebung. Die Uhrzeit ist die angegebene, nicht eine hergeleitete.',
           priority: 'normal',
         },
       ];

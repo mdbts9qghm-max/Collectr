@@ -90,13 +90,18 @@ describe('Licht', () => {
 });
 
 describe('Schlaf', () => {
-  it('schlägt am Schlaftag 22:45 vor, nicht 22:15 wie an anderen freien Tagen', () => {
+  it('schlägt am Übergangstag 00:00 vor, wie angegeben — und stimmt mit dem Trainingsmodul überein', () => {
+    /*
+     * Die Uhrzeit stand hier einmal auf 22:45, während das Trainingsmodul mit
+     * 00:00 rechnete. Zwei Stellen, zwei Wahrheiten: der Schlaftab riet zu
+     * etwas anderem, als der Plan annahm. Der Test hält beide zusammen.
+     */
     const sleepDay = sleepAdvice(day(3)).find((a) => a.id === 'sleep-day-late-bed');
-    expect(sleepDay?.label).toMatch(/22:45/);
+    expect(sleepDay?.label).toMatch(/00:00/);
     expect(sleepDay?.why).toMatch(/Schlafdruck/);
-    // Zum Vergleich das Fenster aus dem Trainingsmodul.
     expect(windowsFor(3, h(5, 30)).sleepStart).toBe(h(8));
-    expect(windowsFor(5, h(5, 30)).sleepStart).toBe(h(22, 15));
+    expect(windowsFor(3, h(5, 30)).nextSleepStart).toBe(h(24));
+    expect(windowsFor(5, h(5, 30)).nextSleepStart).toBe(h(22));
   });
 
   it('nennt den Vorschlaf-Wecker als hohe Priorität und fest auf 17:30', () => {

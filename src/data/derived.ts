@@ -23,11 +23,16 @@ import { computeReadiness } from '../domain/readiness.ts';
 import { weekTarget } from '../domain/phases.ts';
 import { currentMetrics } from '../domain/metrics.ts';
 import { effectiveDuration, loadStateOn, periodStats, weekStats } from '../domain/load.ts';
-import { clockToMinutes } from '../domain/date.ts';
+import { clockToMinutes, diffDays } from '../domain/date.ts';
 import { detectCycle } from '../domain/rotation/detect.ts';
 import { computeRecovery as computeAerobicRecovery } from '../domain/recovery.ts';
 import { baselineFor } from '../domain/whoop.ts';
 import { vShiftWindows, windowsFor } from '../domain/windows.ts';
+import type { DayContext as CoachDayContext } from '../domain/coach/coach.ts';
+import type { SessionKind as CoachSessionKind } from '../domain/coach/catalogue.ts';
+import { buildCoachPlan } from '../domain/coach/coach.ts';
+import { HORIZON_BACK, HORIZON_FORWARD } from '../domain/coach/horizon.ts';
+import { FIXED_ZONES } from '../domain/zones.ts';
 import { buildSleepDay } from '../domain/sleep/day.ts';
 import { sleepSignals } from '../domain/sleep/debt.ts';
 import type { SleepNight } from '../domain/sleep/debt.ts';
@@ -322,6 +327,187 @@ export function plannedSessionsFor(
  * ------------------------------------------------------------------ */
 
 /** The sleep signals for a date, and the day's four advice tracks. */
+/* ------------------------------------------------------------------ *
+ * Der Coach
+ * ------------------------------------------------------------------ */
+
+/** Tatsächlich gelaufene Minuten in einem Zeitraum. Null ohne jede Einheit. */
+function runMinutesInWindow(data: AppData, from: ISODate, to: ISODate): number | null {
+  const inRange = data.sessions.filter(
+    (s) => s.status === 'completed' && s.sport === 'run' && s.date >= from && s.date <= to,
+  );
+  if (!inRange.length) return null;
+  return inRange.reduce((sum, s) => sum + effectiveDuration(s), 0);
+}
+
+/** Tatsächlich gehobene Minuten in einem Zeitraum. Null ohne jede Einheit. */
+function strengthMinutesInWindow(data: AppData, from: ISODate, to: ISODate): number | null {
+  const inRange = data.sessions.filter(
+    (s) =>
+      s.status === 'completed' &&
+      (s.sport === 'strength' || s.sport === 'mobility') &&
+      s.date >= from &&
+      s.date <= to,
+  );
+  if (!inRange.length) return null;
+  return inRange.reduce((sum, s) => sum + effectiveDuration(s), 0);
+}
+
+/**
+ * Aus einer erfassten Einheit die Katalogform ableiten.
+ *
+ * Festgemacht an Intensität und Dauer, nicht am Titel: der Titel ist frei
+ * getippt, die Intensität kommt aus dem Formular.
+ */
+function runKindOf(session: TrainingSession): CoachSessionKind {
+  const minutes = effectiveDuration(session);
+  const intensity = session.plannedIntensity;
+  if (session.sport === 'bike') return 'rad';
+  if (intensity === 'vo2' || intensity === 'max') return minutes >= 50 ? 'intervall' : 'intervall_kurz';
+  if (intensity === 'threshold') return 'intervall_kurz';
+  if (minutes >= 70) return 'longrun';
+  if (minutes >= 50) return 'longrun_verkuerzt';
+  if (minutes >= 40) return 'grundlagenlauf';
+  return 'lockerer_lauf';
+}
+
+/** Was an einem vergangenen Tag tatsächlich gelaufen und gehoben wurde. */
+function actualFor(idx: Indexes, date: ISODate): CoachDayContext['actual'] {
+  const sessions = (idx.sessionsByDate.get(date) ?? []).filter((s) => s.status === 'completed');
+  if (!sessions.length) return undefined;
+  const run = sessions.find((s) => s.sport === 'run' || s.sport === 'bike');
+  const strength = sessions.find((s) => s.sport === 'strength' || s.sport === 'mobility');
+  if (!run && !strength) return undefined;
+  return {
+    kind: run ? runKindOf(run) : 'ruhe',
+    minutes: run ? effectiveDuration(run) : 0,
+    strengthKind: strength ? (strength.sport === 'mobility' ? 'kraft_leicht' : 'kraft_ganzkoerper') : undefined,
+    strengthMinutes: strength ? effectiveDuration(strength) : undefined,
+  };
+}
+
+/** Die Längen der letzten langen Läufe, älteste zuerst. */
+function longrunHistory(data: AppData, before: ISODate): number[] {
+  return data.sessions
+    .filter(
+      (s) =>
+        s.status === 'completed' &&
+        s.sport === 'run' &&
+        s.date < before &&
+        effectiveDuration(s) >= 50,
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-6)
+    .map(effectiveDuration);
+}
+
+/** Je harter Einheit: sauber durchgezogen? Gemessen an der geplanten Dauer. */
+function sessionHistory(
+  data: AppData,
+  before: ISODate,
+  match: (s: TrainingSession) => boolean,
+): boolean[] {
+  return data.sessions
+    .filter((s) => s.status === 'completed' && s.date < before && match(s))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-8)
+    .map((s) => effectiveDuration(s) >= (s.plannedDurationMin ?? 0) * 0.9);
+}
+
+/**
+ * Der Coach für einen Tag — mit dem ganzen Einflussfenster darum herum.
+ *
+ * Geladen wird das gesamte Fenster, nicht ein Zyklus: der Coach entscheidet den
+ * Tag aus den Tagen davor und danach, und was er nicht sieht, kann er nicht
+ * begründen. Alles jenseits davon fehlt nicht — es ist nachweislich ohne
+ * Einfluss.
+ */
+export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
+  const wake = data.settings.planner.dayShiftWakeMinutes;
+  const from = addDays(anchor, -HORIZON_BACK);
+  const to = addDays(anchor, HORIZON_FORWARD);
+
+  const detected = detectCycle(from, to, idx.shiftAssignments, idx.shiftTypes);
+  const sleep = buildSleepView(data, idx, anchor, 0).signals;
+
+  const days: CoachDayContext[] = detected.map((d) => ({
+    date: d.date,
+    cycleDay: d.cycleDay,
+    isVShift: d.isVShift,
+    outOfRotation: d.outOfRotation,
+    recovery: recoveryOn(data, idx, d.date).value,
+    /*
+     * Erledigt heißt vergangen, nicht „vor dem Ankertag". Der Anker ist der Tag,
+     * über den entschieden wird — der Kalender setzt ihn auch mal in einen
+     * anderen Monat, und dann wären die Tage bis dahin sonst fälschlich
+     * erledigt und ohne Einheit.
+     */
+    done: d.date < todayIso(),
+    actual: actualFor(idx, d.date),
+  }));
+
+  const planStart = planStartFor(data, idx, anchor);
+  /*
+   * Die Woche seit Planbeginn, am Kalender gezählt. Nicht an erkannten
+   * Zyklusanfängen: eine Lücke im Schichtplan fror den Plan sonst ein, und wer
+   * Schichten nachträgt, sprang ungewollt Wochen nach vorn.
+   */
+  const week = anchor < planStart ? 0 : Math.floor(diffDays(anchor, planStart) / 7);
+
+  return {
+    ...buildCoachPlan({
+      anchor,
+      days,
+      week,
+      dayShiftWakeMinutes: wake,
+      measuredRunMinutes: runMinutesInWindow(data, addDays(anchor, -10), addDays(anchor, -1)),
+      startRunMinutes: data.settings.startRunMinutes ?? null,
+      measuredStrengthMinutes: strengthMinutesInWindow(
+        data,
+        addDays(anchor, -10),
+        addDays(anchor, -1),
+      ),
+      longrunHistory: longrunHistory(data, anchor),
+      intervalHistory: sessionHistory(
+        data,
+        anchor,
+        (s) => s.sport === 'run' && (s.plannedIntensity === 'vo2' || s.plannedIntensity === 'max'),
+      ),
+      strengthHistory: sessionHistory(data, anchor, (s) => s.sport === 'strength'),
+      zones: data.settings.hrZones ?? FIXED_ZONES,
+      sleep: {
+        debtHours: sleep.debtHours,
+        downgradeNextHard: sleep.downgradeNextHard,
+        forceDeload: sleep.forceDeload,
+      },
+    }),
+    planStart,
+    planWeek: week + 1,
+  };
+}
+
+export type CoachView = ReturnType<typeof buildCoach>;
+
+/**
+ * Ab wann der Plan mit Woche 1 zählt.
+ *
+ * Eingestellt sticht alles andere. Ohne Einstellung fängt der Plan am ersten
+ * Tag an, an dem überhaupt eine Schicht bekannt ist — der früheste Zeitpunkt,
+ * an dem ein Zyklus erkennbar wäre. Weiter als ein Jahr zurück wird nicht
+ * gesucht; was länger her ist, sagt über die heutige Form nichts mehr.
+ */
+export function planStartFor(data: AppData, idx: Indexes, anchor: ISODate): ISODate {
+  const configured = data.settings.trainingStart;
+  if (configured) return configured;
+  const earliest = addDays(anchor, -365);
+  let found: ISODate | null = null;
+  for (const date of idx.shiftAssignments.keys()) {
+    if (date < earliest || date > anchor) continue;
+    if (!found || date < found) found = date;
+  }
+  return found ?? anchor;
+}
+
 /* ------------------------------------------------------------------ *
  * Erholung
  * ------------------------------------------------------------------ */

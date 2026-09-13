@@ -205,6 +205,9 @@ export function defaultSettings(): AppSettings {
     // Ohne Anker wird nichts erfunden: der Rhythmus schreibt sich erst fort,
     // wenn eingestellt ist, welcher Tag welcher ist.
     shiftAnchor: null,
+    // Ohne Planbeginn fängt der Plan am ersten bekannten Schichttag an.
+    trainingStart: null,
+    startRunMinutes: null,
     planner: { ...DEFAULT_PLANNER_SETTINGS },
     modeOverrides: {},
     sleepCoaching: {

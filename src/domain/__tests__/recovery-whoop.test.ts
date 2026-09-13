@@ -108,10 +108,14 @@ describe('Fenster der Rotation', () => {
     expect(w.nextSleepStart).toBe(15 * 60);
   });
 
-  it('legt den Schlaftag auf 16:00–20:00 nach sechs Stunden Tagschlaf', () => {
+  it('legt den Übergangstag auf 15:30–21:00 nach sechs Stunden Tagschlaf', () => {
+    // Aufstehen um 14:00, Bett um 00:00 — die Zeiten sind angegeben, nicht
+    // hergeleitet, und dieser Test hält sie fest.
     const w = windowsFor(3, 5 * 60 + 30);
-    expect(w.trainingWindow).toEqual({ start: 16 * 60, end: 20 * 60 });
+    expect(w.trainingWindow).toEqual({ start: 15 * 60 + 30, end: 21 * 60 });
     expect(w.sleepTargetMinutes).toBe(6 * 60);
+    expect(w.sleepEnd).toBe(14 * 60);
+    expect(w.nextSleepStart).toBe(24 * 60);
   });
 
   it('verlängert den Schlaf vor der Nachtschicht statt ihn zu kürzen', () => {

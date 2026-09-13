@@ -1355,3 +1355,84 @@
 .zone-seg.is-active::before {
   opacity: 1;
 }
+
+/* ------------------------------------------------------------------ *
+ * Blickfeld
+ *
+ * Ein Streifen, kein Kalender. Ein Kalender hat Kanten, an denen etwas
+ * aufhört — genau das soll dieses Fenster nicht haben. Der Streifen läuft
+ * durch, heute steht darin, und ein Tag wird blass, wenn keine Regel ihn mehr
+ * mit heute verbindet.
+ * ------------------------------------------------------------------ */
+
+.horizon-scroll {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-block: var(--s2);
+  margin-inline: calc(var(--s4) * -1);
+  padding-inline: var(--s4);
+  -webkit-overflow-scrolling: touch;
+}
+.horizon-scroll::-webkit-scrollbar { height: 0; }
+
+.horizon-day {
+  flex: none;
+  width: 46px;
+  min-height: 78px;
+  scroll-snap-align: center;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  padding: 6px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+}
+.horizon-day.is-today {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.horizon-day.is-selected { border-color: var(--border-strong); background: var(--surface-3); }
+/* Erledigt: der Tag zählt noch, aber es ist nichts mehr zu entscheiden. */
+.horizon-day.is-done { opacity: 0.6; }
+/* Keine Regel reicht mehr so weit. Das ist eine Aussage, keine Lücke. */
+.horizon-day.is-faded { opacity: 0.22; }
+
+.horizon-dow {
+  font-size: 9px;
+  font-weight: 660;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.horizon-num { font-size: 13px; font-weight: 650; line-height: 1; }
+.horizon-day.is-today .horizon-num { color: var(--accent); }
+.horizon-shift {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+.horizon-marks {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  margin-top: auto;
+  min-height: 24px;
+}
+/* Im Streifen stehen die Balken senkrecht: die Höhe ist die Dauer. */
+.horizon-marks .cal-bar { width: 5px; height: 4px; }
+.horizon-today-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}

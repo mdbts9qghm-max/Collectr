@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TrainingSession } from '../domain/types.ts';
-import { isoWeekNumber } from '../domain/date.ts';
+import { isoWeekNumber, nowTimestamp } from '../domain/date.ts';
 import {
   formatDateLong,
   formatDuration,
@@ -10,16 +10,21 @@ import {
 } from '../domain/format.ts';
 import { READINESS_LEVEL_META } from '../domain/readiness.ts';
 import { formatClock, vShiftWindows, windowsFor } from '../domain/windows.ts';
+import { CATALOGUE } from '../domain/coach/catalogue.ts';
+import { sessionFromDecision } from '../domain/coach/toSession.ts';
+import { makeId } from '../domain/ids.ts';
 import { statusOn } from '../domain/habits.ts';
 import { useStore } from '../data/store.ts';
 import { activeHabits, entriesFor } from '../data/derived.ts';
-import { useData, useDayContext, useDayView, useIndexes, useRecovery, useToday } from '../app/hooks.ts';
+import { useCoach, useData, useDayContext, useDayView, useIndexes, useRecovery, useToday } from '../app/hooks.ts';
 import {
   Button,
   Card,
   Check,
+  Disclosure,
   Pill,
   ProgressBar,
+  ReasonList,
   SectionTitle,
 } from '../ui/primitives.tsx';
 import { Ring } from '../ui/charts.tsx';
@@ -42,6 +47,8 @@ export function Today() {
   const view = useDayView(today);
   const contextFor = useDayContext(today);
   const logHabit = useStore((s) => s.logHabit);
+  const saveSession = useStore((s) => s.saveSession);
+  const toast = useStore((s) => s.toast);
 
   const [shiftOpen, setShiftOpen] = useState(false);
   const [editing, setEditing] = useState<TrainingSession | null>(null);
@@ -64,6 +71,26 @@ export function Today() {
    */
   const recovery = useRecovery(today);
   const cycleDayToday = view.cycleDay;
+
+  /*
+   * Dieselbe Quelle wie der Coach-Tab. Es gibt einen Plan, also gibt es eine
+   * Antwort — zwei Bildschirme, die verschiedene Einheiten vorschlagen, sind
+   * genau der Fehler, den diese Karte einmal hatte.
+   */
+  const coach = useCoach(today);
+  const decision = coach.today;
+  const coachDay = coach.days.find((d) => d.date === today) ?? null;
+
+  const planToday = () => {
+    const stamp = nowTimestamp();
+    const run = sessionFromDecision(decision, {
+      id: makeId('ses'),
+      createdAt: stamp,
+      updatedAt: stamp,
+    });
+    if (run) saveSession(run);
+    if (run) toast(`${decision.label} eingeplant`, 'good');
+  };
   const windows =
     view.shift.type && cycleDayToday != null
       ? view.isVShift
@@ -124,33 +151,56 @@ export function Today() {
 
         {view.shift.type ? (
           <>
-            <div className="t-title mt-3">
-              {view.shift.type.icon} {view.shift.type.label}
-            </div>
+            <div className="t-title mt-3">{decision.headline}</div>
             <div className="t-small secondary mt-2">
               {[
-                view.shift.type.work
-                  ? `Dienst ${view.shift.type.work.start}–${view.shift.type.work.end}`
-                  : 'kein Dienst',
+                view.shift.type.label,
                 windows?.trainingWindow
                   ? `Fenster ${formatClock(windows.trainingWindow.start)}–${formatClock(windows.trainingWindow.end)}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+                  : 'kein Trainingsfenster',
+              ].join(' · ')}
             </div>
-            {recovery.blocked && recovery.blockedReason && (
-              <div className="t-caption mt-2" style={{ color: 'var(--bad)' }}>
-                {recovery.blockedReason}
+
+            {coachDay?.strength && (
+              <div className="t-caption secondary mt-2">
+                Dazu {CATALOGUE[coachDay.strength.kind].label} ·{' '}
+                {formatDuration(coachDay.strength.minutes)}
               </div>
             )}
+
+            {/*
+              Was hier steht, muss zu dieser Entscheidung passen. Geplant war X,
+              daraus wurde Y — und nach unten geht es über weniger Laufen, das
+              Rad und das Gehen, nie über eine frei gewählte Sportart.
+            */}
+            {decision.stepsDown > 0 && (
+              <div className="t-caption mt-3" style={{ color: 'var(--warn)' }}>
+                {decision.stepsDown === 1 ? 'Eine Stufe zurück' : `${decision.stepsDown} Stufen zurück`}
+                {': geplant war '}
+                {CATALOGUE[decision.plannedKind].label}.
+              </div>
+            )}
+
+            <div className="mt-4">
+              <Disclosure summary={<span className="t-label">Warum?</span>}>
+                <ReasonList
+                  reasons={decision.reasons.map((r) => ({
+                    text: `${r.title}: ${r.detail}`,
+                    impact:
+                      r.effect === 'sperrt' || r.effect === 'stuft ab' || r.effect === 'begrenzt'
+                        ? ('negative' as const)
+                        : ('neutral' as const),
+                  }))}
+                />
+              </Disclosure>
+            </div>
           </>
         ) : (
           <>
             <div className="t-title mt-3">Keine Schicht eingetragen</div>
             <p className="t-small secondary mt-2">
               Ohne Schicht weiß die App nicht, wie viel Zeit der Tag hat und was er mit deinem
-              Schlaf macht.
+              Schlaf macht — und plant ihn deshalb nicht.
             </p>
             <Button variant="primary" className="mt-3" onClick={() => setShiftOpen(true)}>
               Schicht eintragen
@@ -160,11 +210,13 @@ export function Today() {
 
         {view.shift.type && (
           <div className="row gap-2 mt-4">
-            <Button variant="primary" onClick={() => setEditing(emptySession(today))}>
-              <IconPlus size={16} /> Einheit eintragen
-            </Button>
+            {decision.kind !== 'ruhe' && (
+              <Button variant="primary" onClick={planToday}>
+                <IconPlus size={16} /> Einplanen
+              </Button>
+            )}
             <Link to="/training" className="btn btn-outline">
-              Zur Woche <IconChevronRight size={15} />
+              Zum Coach <IconChevronRight size={15} />
             </Link>
           </div>
         )}

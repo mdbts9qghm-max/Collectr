@@ -7,6 +7,7 @@ import {
   buildIndexes,
   buildMetrics,
   buildWeek,
+  buildCoach,
   recoveryOn,
   buildSleepView,
   plannedSessionsFor,
@@ -77,6 +78,19 @@ export function useSleepView(date: ISODate) {
     () => buildSleepView(data, idx, date, nowMinutes, training),
     [data, idx, date, nowMinutes, training],
   );
+}
+
+/**
+ * Der Coach für einen Tag, mit dem ganzen Einflussfenster darum.
+ *
+ * Das Fenster ist fest — so weit, wie die weitestreichende Regel reicht —,
+ * deshalb gibt es hier nichts einzustellen. Was weiter weg liegt, beeinflusst
+ * den Tag nicht.
+ */
+export function useCoach(anchor: ISODate) {
+  const data = useData();
+  const idx = useIndexes();
+  return useMemo(() => buildCoach(data, idx, anchor), [data, idx, anchor]);
 }
 
 /** Der Erholungswert eines Tages. Er misst — geplant wird hier nichts mehr. */

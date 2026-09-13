@@ -507,6 +507,23 @@ export interface AppSettings {
   /** Herzfrequenzzonen in Schlägen. Gemessen, nicht gerechnet. */
   hrZones?: ZoneBounds;
   /**
+   * Der Tag, an dem der Plan mit Woche 1 anfängt.
+   *
+   * Davon hängt alles ab, was sich über die Zeit aufbaut: Phase, Bahnstufe,
+   * Kraftstufe, Entlastungsrhythmus. Ohne Angabe wird der erste Tag mit
+   * bekannter Schicht angenommen, und die Oberfläche sagt, dass das eine
+   * Annahme ist.
+   */
+  trainingStart?: ISODate | null;
+  /**
+   * Laufminuten der letzten zehn Tage, von Hand angegeben.
+   *
+   * Der Startpunkt des Volumenmodells, solange es nichts zu messen gibt. Der
+   * einzige Wert, den die App nicht herleiten kann — und deshalb der einzige,
+   * den sie erfragt statt zu raten.
+   */
+  startRunMinutes?: number | null;
+  /**
    * Modes the athlete switched by hand, keyed by "date:slot".
    *
    * Kept in settings rather than on the session, because the session does not

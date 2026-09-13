@@ -10,6 +10,7 @@ import { Today } from './screens/Today.tsx';
 import { CheckIn } from './screens/CheckIn.tsx';
 import { Sleep } from './screens/Sleep.tsx';
 import { Week } from './screens/Week.tsx';
+import { Training } from './screens/Training.tsx';
 import { Habits } from './screens/Habits.tsx';
 import { Goals } from './screens/Goals.tsx';
 import { Profile } from './screens/Profile.tsx';
@@ -73,14 +74,9 @@ export default function App() {
           <Route path="/" element={<Navigate to="/today" replace />} />
           <Route path="/today" element={<Today />} />
           <Route path="/checkin" element={<CheckIn />} />
-          {/*
-            Der Trainingstab ist die Wochenansicht: Schichten eintragen,
-            Einheiten eintragen, sehen was steht. Ein zweiter Bildschirm, der
-            dasselbe anders zeigt, war genau das Problem.
-          */}
-          <Route path="/training" element={<Week />} />
+          <Route path="/training" element={<Training />} />
+          <Route path="/week" element={<Week />} />
           <Route path="/sleep" element={<Sleep />} />
-          <Route path="/week" element={<Navigate to="/training" replace />} />
           <Route path="/habits" element={<Habits />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/profile" element={<Profile />} />

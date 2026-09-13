@@ -12,7 +12,7 @@ const BASE = process.env.SMOKE_URL ?? 'http://localhost:4173';
  * Sie wird deshalb aus dem Text herausgeschnitten, bevor er darauf geprüft wird,
  * dass keine andere Sportart vorgeschlagen wird.
  */
-const HARD_RULE = /Das gesamte Ausdauervolumen[\s\S]*?weniger Laufen oder Ruhe\./;
+const HARD_RULE = /Das gesamte Ausdauervolumen[\s\S]*?letzte Stufe vor Ruhe\./;
 
 /*
  * Jede Sportart, die nicht Laufen ist, mitsamt der kurzen Formen. Die frühere
@@ -139,22 +139,86 @@ if (!/READY|MODERATE|RECOVERY/.test(readiness)) throw new Error('readiness level
 console.log('✓ readiness on the daily screen →', readiness.split('\n').slice(0, 2).join(' '));
 
 /*
- * Eine Einheit selbst eintragen. Es gibt keinen Vorschlag mehr, den man
- * annehmen könnte: was trainiert wird, entscheidet der Athlet.
+ * Den Vorschlag des Coaches annehmen. Steht heute Ruhe an, gibt es keinen —
+ * dann wird von Hand eingetragen, damit die Abhak-Prüfung darunter etwas hat.
  */
-await page.getByRole('button', { name: /Einheit eintragen/ }).first().click();
-await page.waitForSelector('.sheet');
-await page.locator('.sheet input').first().fill('Lauf');
-await page.getByRole('button', { name: 'Speichern' }).click();
-await page.waitForTimeout(600);
-if ((await page.locator('.list .check').count()) === 0) {
-  throw new Error('die eingetragene Einheit steht nicht in der Liste');
+const einplanen = page.getByRole('button', { name: /Einplanen/ }).first();
+if (await einplanen.count()) {
+  await einplanen.click();
+  await page.waitForTimeout(600);
+  console.log('✓ Vorschlag des Coaches eingeplant');
+} else {
+  await page.getByRole('button', { name: /Einheit eintragen/ }).first().click();
+  await page.waitForSelector('.sheet');
+  await page.locator('.sheet input').first().fill('Lauf');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.waitForTimeout(600);
+  console.log('✓ Einheit selbst eingetragen (heute Ruhetag)');
 }
-console.log('✓ Einheit selbst eingetragen');
-await shot('04-eingetragen');
+if ((await page.locator('.list .check').count()) === 0) {
+  throw new Error('die Einheit steht nicht in der Liste');
+}
+await shot('04-eingeplant');
+
+/*
+ * Der Coach-Tab. Geprüft wird, was die Anforderung ausmacht: die Anweisung
+ * steht ganz oben, die Begründung liegt hinter einem Knopf, und das Blickfeld
+ * ist rollend — ein Tag wird blass, sobald keine Regel mehr bis zu ihm reicht.
+ */
+await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.coach-headline');
+await page.waitForTimeout(400);
+
+const headline = (await page.locator('.coach-headline').first().innerText()).trim();
+if (headline.length < 4) throw new Error('der Coach sagt nicht, was heute ansteht');
+
+// Die Begründung darf erst nach einem Tap sichtbar sein.
+if ((await page.locator('.reasons').count()) > 0) {
+  throw new Error('die Begründung steht offen statt hinter dem Knopf');
+}
+await page.getByText('Warum?').first().click();
+await page.waitForTimeout(300);
+const reasons = await page.locator('.reasons .reason').count();
+if (reasons < 3) throw new Error(`nur ${reasons} Begründungen hinter dem Knopf`);
+console.log(`✓ Coach: "${headline}" — ${reasons} Begründungen hinter dem Knopf`);
+
+// Das Blickfeld: rollend, mit blassen Rändern.
+const horizonDays = await page.locator('.horizon-day').count();
+if (horizonDays < 14) throw new Error(`das Blickfeld zeigt nur ${horizonDays} Tage`);
+if ((await page.locator('.horizon-day.is-today').count()) !== 1) {
+  throw new Error('das Blickfeld markiert heute nicht');
+}
+const faded = await page.locator('.horizon-day.is-faded').count();
+if (faded === 0) {
+  throw new Error('kein Tag ist blass — dann greift die Reichweite der Regeln nicht');
+}
+console.log(`✓ Blickfeld: ${horizonDays} Tage, ${faded} davon ohne Einfluss auf heute`);
+
+// Einen Tag antippen: Schicht, Einheit, und welche Regeln ihn mit heute verbinden.
+await page.locator('.horizon-day:not(.is-faded)').nth(2).click();
+await page.waitForSelector('.cal-detail');
+const detail = await page.locator('.cal-detail').innerText();
+if (!/verbindet|beeinflusst heute nichts/.test(detail)) {
+  throw new Error('ein Tag im Blickfeld sagt nicht, warum er noch zählt');
+}
+console.log(`✓ Tagesansicht: ${detail.split('\n')[0]} — mit Regelbezug`);
+await shot('05-coach');
+
+// Rad wird nie geplant. Es darf nur als Abstufungsstufe auftauchen.
+// Die harte Regel nennt die verbotenen Formen, um sie zu verbieten — sie darf
+// die Prüfung nicht auslösen.
+const coachText = (await page.locator('.app-main').innerText()).replace(HARD_RULE, '');
+if (/\b(Rudern|Rudergerät|Crosstrainer|Ergometer|Schwimmen)\b/.test(coachText)) {
+  throw new Error('der Coach nennt eine unzulässige Trainingsform');
+}
+console.log('✓ nur Laufen, Kraft, Gehen und Ruhe geplant');
 
 // Completing a session must take a single tap and survive a reload — this is
-// the evening half of the daily loop.
+// the evening half of the daily loop. Zurück auf den Tagesbildschirm: die
+// Einheitenliste steht dort, nicht im Coach.
+await page.goto(`${BASE}/#/today`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.app-main');
+await page.waitForTimeout(400);
 const sessionCheck = page.locator('.list .check').first();
 await sessionCheck.click();
 await page.waitForTimeout(600);
@@ -268,8 +332,9 @@ console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the wee
  * Ein Tap im Profil sagt, welcher Tag heute ist; ab da steht jeder kommende Tag.
  */
 const zweiMonateVor = async () => {
-  await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.app-main');
+  // Die Wochenansicht liegt unter /#/week, der Coach-Tab unter /#/training.
+  await page.goto(`${BASE}/#/week`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.week-strip');
   for (let i = 0; i < 9; i++) {
     await page.getByRole('button', { name: 'Nächste Woche' }).click();
     await page.waitForTimeout(120);
