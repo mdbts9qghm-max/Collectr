@@ -157,8 +157,28 @@ verlangt, bekommt entweder eine Überlastung oder eine Zahl, die zwei Monate lan
 unerreichbar bleibt und deshalb nichts steuert.
 
 Gesteuert wird über die **Steigerung**: höchstens 8 % mehr je zehn Tage, gerechnet auf das,
-was tatsächlich gelaufen wurde. Solange es nichts zu messen gibt, gilt ein **Startvolumen
-aus den Einstellungen** — der einzige Wert im Modell, den die App nicht herleiten kann.
+was tatsächlich gelaufen wurde. Solange es nichts zu messen gibt, gilt eine **Einstufung**.
+
+Gefragt wird dabei nicht nach Minuten. „Wie viele Laufminuten hattest du in den letzten
+zehn Tagen" verlangt eine Buchhaltung, die niemand führt, der noch nicht strukturiert
+trainiert — wer sie beantworten könnte, bräuchte sie nicht. Gefragt wird, was man über sich
+weiß: wie lange am Stück, wie oft.
+
+| Einstufung | zugrunde gelegt | Laufminuten / 10 Tage |
+| --- | --- | --- |
+| Wiedereinstieg | 2 × 20 min | 55 |
+| Anfänger mit Grundlage | 3 × 30 min | 130 |
+| Regelmäßig | 3 × 45 min | 195 |
+| Fortgeschritten | 4 × 50 min | 285 |
+
+Die Zahlen sehen niedrig aus, und das ist Absicht. Der begrenzende Faktor beim Laufeinstieg
+ist nicht das Herz-Kreislauf-System, sondern Knochen, Sehnen und Faszien: die kardiale
+Anpassung kommt in Wochen, der Knochenumbau läuft über Zyklen von drei bis vier Monaten.
+Deshalb häufen sich Stressreaktionen an Schienbein und Mittelfuß in den ersten acht bis
+zwölf Wochen eines Laufprogramms — bei Leuten, deren Puls längst mehr hergäbe. Ein Einstieg,
+der sich zu leicht anfühlt, ist die Bedingung dafür, dass in sechs Monaten noch gelaufen
+wird: 8 % je zehn Tage bringen von 130 Minuten in einem halben Jahr auf über 500, ohne dass
+eine Woche einen Sprung macht.
 
 Die Phase bestimmt dann nur noch den Charakter: Läufe je Woche, Anteil des langen Laufs,
 Fokus. Das sind Anteile, und Anteile funktionieren auf jedem Niveau.
@@ -198,15 +218,21 @@ zurück, drei voraus" um jeden Tag schaute: zwei Tage im Abstand von fünf liege
 dieser Fenster. Geprüft wird jetzt über **jedes** Fenster aus sieben aufeinanderfolgenden
 Tagen.
 
-### Wo zwei Vorgaben sich widersprechen
+### Was an einer Bahneinheit wirklich hart ist
 
-„Intervalle sind von Anfang an mit dabei" und „Zone 2 ≥ 80 % der Laufminuten" gehen bei
-kleinem Volumen nicht beide. Eine Bahneinheit von 40 Minuten verlangt rund 160 Minuten
-lockeres Laufen daneben; darunter ist eines von beidem nicht zu haben.
+Hier stand einmal ein Konflikt: „Intervalle von Anfang an" und „Zone 2 ≥ 80 %" sollten bei
+kleinem Volumen nicht beide gehen.
 
-Der Coach behält die Bahneinheit und **schreibt den Konflikt hin**, statt eine der beiden
-Regeln still fallen zu lassen. Aufgelöst wird er durch mehr Grundlagenvolumen, nicht durch
-eine leisere Regel.
+Den Konflikt gab es nie. Er war eine Folge davon, dass eine **ganze** Bahneinheit als
+Zone 5 verbucht wurde. Eine Stufe-I-Einheit dauert 39 Minuten: 15 Minuten einlaufen, gut
+drei Minuten auf der Bahn, elf Minuten Trabpause, zehn Minuten auslaufen. Hart sind die
+drei. Wer die 39 als Zone 5 bucht, rechnet um den Faktor zwölf falsch — und verbietet sich
+damit Intervalle, die längst hineinpassen.
+
+Jede geplante Einheit trägt deshalb ihre Belastungsminuten getrennt von ihrer Dauer. Der
+Zone-2-Anteil liegt damit auch bei Anfängervolumen über 95 %. Die Konfliktmeldung gibt es
+weiterhin, aber sie greift erst, wenn wirklich zu viel hart wäre — auf hohen Bahnstufen
+sind die Belastungsminuten ein Vielfaches.
 
 ### Das Rad
 

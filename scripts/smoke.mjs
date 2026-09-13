@@ -182,6 +182,31 @@ const reasons = await page.locator('.reasons .reason').count();
 if (reasons < 3) throw new Error(`nur ${reasons} Begründungen hinter dem Knopf`);
 console.log(`✓ Coach: "${headline}" — ${reasons} Begründungen hinter dem Knopf`);
 
+/*
+ * Der Einstieg wird als Einstufung gewählt, nicht als Minutenzahl getippt.
+ * Und die Wahl muss das Volumenziel bewegen — sonst ist sie Dekoration.
+ */
+const zielJetzt = async () => {
+  const text = await page.locator('.coach-facts').first().innerText();
+  const match = text.match(/(\d+)\s*\n\s*Laufminuten/i);
+  if (!match) throw new Error(`kein Volumenziel im Coach: ${text.replace(/\n/g, ' | ')}`);
+  return Number(match[1]);
+};
+const stufe = (name) => page.locator('button', { hasText: name }).first();
+if ((await stufe('Wiedereinstieg').count()) === 0) {
+  throw new Error('die Einstufung fehlt im Coach');
+}
+await stufe('Wiedereinstieg').click();
+await page.waitForTimeout(500);
+const zielKlein = await zielJetzt();
+await stufe('Fortgeschritten').click();
+await page.waitForTimeout(500);
+const zielGross = await zielJetzt();
+if (!(zielGross > zielKlein)) {
+  throw new Error(`die Einstufung bewegt das Ziel nicht: ${zielKlein} → ${zielGross}`);
+}
+console.log(`✓ Einstufung steuert das Volumen: Wiedereinstieg ${zielKlein} → Fortgeschritten ${zielGross} min`);
+
 // Das Blickfeld: rollend, mit blassen Rändern.
 const horizonDays = await page.locator('.horizon-day').count();
 if (horizonDays < 14) throw new Error(`das Blickfeld zeigt nur ${horizonDays} Tage`);

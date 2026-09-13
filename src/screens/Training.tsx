@@ -5,6 +5,7 @@ import type { SessionKind } from '../domain/coach/catalogue.ts';
 import { CATALOGUE, HARTE_REGEL_LAUFEN } from '../domain/coach/catalogue.ts';
 import { rulesReaching } from '../domain/coach/horizon.ts';
 import { weeksUntilDeload } from '../domain/coach/phases.ts';
+import { DEFAULT_ENTRY_LEVEL, ENTRY_LEVELS } from '../domain/coach/entry.ts';
 import { CYCLE_DAY_META, formatClock } from '../domain/windows.ts';
 import { FIXED_ZONES, TEST_PROTOCOL, zoneRanges } from '../domain/zones.ts';
 import { formatDateLong, formatDuration, weekdayShort } from '../domain/format.ts';
@@ -396,7 +397,7 @@ function VolumeCard({ plan }: { plan: CoachView }) {
  */
 function PlanSettings({ plan }: { plan: CoachView }) {
   const trainingStart = useStore((s) => s.settings.trainingStart);
-  const startRunMinutes = useStore((s) => s.settings.startRunMinutes);
+  const entry = useStore((s) => s.settings.entryLevel);
   const updateSettings = useStore((s) => s.updateSettings);
   const toast = useStore((s) => s.toast);
   const today = todayIso();
@@ -405,8 +406,7 @@ function PlanSettings({ plan }: { plan: CoachView }) {
   return (
     <>
       <div className="divider mt-3" />
-      <div className="grid-2">
-        <Field label="Woche 1 beginnt am" hint="Bestimmt Phase, Stufen und Entlastungsrhythmus.">
+      <Field label="Woche 1 beginnt am" hint="Bestimmt Phase, Stufen und Entlastungsrhythmus.">
           <TextInput
             type="date"
             max={today}
@@ -415,37 +415,60 @@ function PlanSettings({ plan }: { plan: CoachView }) {
               if (!e.target.value) return;
               updateSettings({ trainingStart: e.target.value });
               toast('Planbeginn gesetzt', 'good');
-            }}
-          />
-        </Field>
+          }}
+        />
+      </Field>
+
+      {measured == null && (
         <Field
-          label="Startvolumen (min / 10 Tage)"
-          hint="Wie viel du gerade läufst. Gilt, bis zehn Tage erfasst sind."
+          label="Wo stehst du gerade?"
+          hint="Nur solange es nichts zu messen gibt. Der Plan rechnet die Minuten daraus."
         >
-          <TextInput
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={10}
-            value={startRunMinutes ?? ''}
-            placeholder="150"
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              updateSettings({ startRunMinutes: Number.isFinite(value) && value > 0 ? value : null });
-            }}
-          />
+          <div className="col gap-2">
+            {ENTRY_LEVELS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                className="list-item clickable"
+                style={{
+                  borderRadius: 'var(--r-md)',
+                  border: `1px solid ${
+                    (entry ?? DEFAULT_ENTRY_LEVEL) === l.id ? 'var(--accent)' : 'var(--border)'
+                  }`,
+                  background:
+                    (entry ?? DEFAULT_ENTRY_LEVEL) === l.id ? 'var(--surface-2)' : 'transparent',
+                }}
+                onClick={() => {
+                  updateSettings({ entryLevel: l.id });
+                  toast(`${l.label}: ${l.minutesPerTenDays} Laufminuten auf zehn Tage`, 'good');
+                }}
+              >
+                <span className="grow">
+                  <span className="t-body" style={{ fontWeight: 600, display: 'block' }}>
+                    {l.label}
+                  </span>
+                  <span className="t-caption muted">{l.description}</span>
+                </span>
+                <span className="t-num t-caption" style={{ whiteSpace: 'nowrap' }}>
+                  {l.runsPerWeek} × {l.minutesPerRun} min
+                </span>
+              </button>
+            ))}
+          </div>
         </Field>
-      </div>
+      )}
+
       <div className="t-caption muted">
         {measured != null ? (
           <>
-            Gemessen: {measured} Laufminuten in den zehn Tagen davor. Das Startvolumen spielt keine
+            Gemessen: {measured} Laufminuten in den zehn Tagen davor. Die Einstufung spielt keine
             Rolle mehr — der Plan rechnet mit dem, was du wirklich gelaufen bist.
           </>
         ) : (
           <>
-            Noch nichts zu messen. Sobald zehn Tage mit erfassten Läufen vorliegen, ersetzt die
-            Messung diese Angabe.
+            Ein Einstieg, der sich zu leicht anfühlt, ist kein Fehler: beim Laufen begrenzen
+            Knochen und Sehnen, nicht die Lunge, und sie brauchen Monate statt Wochen. Sobald zehn
+            Tage mit erfassten Läufen vorliegen, ersetzt die Messung diese Angabe.
           </>
         )}
         {!trainingStart && ` Planbeginn ist angenommen, nicht angegeben: ${formatDateLong(plan.planStart)}.`}

@@ -32,6 +32,7 @@ import type { DayContext as CoachDayContext } from '../domain/coach/coach.ts';
 import type { SessionKind as CoachSessionKind } from '../domain/coach/catalogue.ts';
 import { buildCoachPlan } from '../domain/coach/coach.ts';
 import { HORIZON_BACK, HORIZON_FORWARD } from '../domain/coach/horizon.ts';
+import { DEFAULT_ENTRY_LEVEL, entryLevel } from '../domain/coach/entry.ts';
 import { FIXED_ZONES } from '../domain/zones.ts';
 import { buildSleepDay } from '../domain/sleep/day.ts';
 import { sleepSignals } from '../domain/sleep/debt.ts';
@@ -461,7 +462,7 @@ export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
       week,
       dayShiftWakeMinutes: wake,
       measuredRunMinutes: runMinutesInWindow(data, addDays(anchor, -10), addDays(anchor, -1)),
-      startRunMinutes: data.settings.startRunMinutes ?? null,
+      startRunMinutes: entryLevel(data.settings.entryLevel ?? DEFAULT_ENTRY_LEVEL).minutesPerTenDays,
       measuredStrengthMinutes: strengthMinutesInWindow(
         data,
         addDays(anchor, -10),

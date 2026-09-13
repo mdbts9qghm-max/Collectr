@@ -516,13 +516,12 @@ export interface AppSettings {
    */
   trainingStart?: ISODate | null;
   /**
-   * Laufminuten der letzten zehn Tage, von Hand angegeben.
+   * Die Einstufung beim Start, solange es nichts zu messen gibt.
    *
-   * Der Startpunkt des Volumenmodells, solange es nichts zu messen gibt. Der
-   * einzige Wert, den die App nicht herleiten kann — und deshalb der einzige,
-   * den sie erfragt statt zu raten.
+   * Gefragt wird nicht nach Minuten, sondern danach, was man über sich weiß —
+   * wie lange am Stück und wie oft. Die Minuten rechnet der Plan daraus.
    */
-  startRunMinutes?: number | null;
+  entryLevel?: 'wieder' | 'anfang' | 'regelmaessig' | 'fortgeschritten' | null;
   /**
    * Modes the athlete switched by hand, keyed by "date:slot".
    *

@@ -207,7 +207,7 @@ export function defaultSettings(): AppSettings {
     shiftAnchor: null,
     // Ohne Planbeginn fängt der Plan am ersten bekannten Schichttag an.
     trainingStart: null,
-    startRunMinutes: null,
+    entryLevel: null,
     planner: { ...DEFAULT_PLANNER_SETTINGS },
     modeOverrides: {},
     sleepCoaching: {

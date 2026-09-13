@@ -11,6 +11,7 @@ import {
 } from '../../data/defaults.ts';
 import { CATALOGUE, isHardSession } from '../coach/catalogue.ts';
 import { HORIZON_BACK, HORIZON_FORWARD, INFLUENCE_RULES, rulesReaching } from '../coach/horizon.ts';
+import { DEFAULT_ENTRY_LEVEL, ENTRY_LEVELS, entryLevel } from '../coach/entry.ts';
 import { addDays, today as todayIso } from '../date.ts';
 
 /**
@@ -32,7 +33,7 @@ function data(patch: Partial<AppData['settings']> = {}): AppData {
       shiftRotation: MUSTER,
       shiftAnchor: { date: addDays(TODAY, -70), index: 0 },
       trainingStart: addDays(TODAY, -70),
-      startRunMinutes: 300,
+      entryLevel: 'fortgeschritten',
       ...patch,
     },
     shiftTypes: defaultShiftTypes(),
@@ -58,6 +59,16 @@ function plan(patch: Partial<AppData['settings']> = {}) {
 function future() {
   return plan().days.filter((d) => !d.done);
 }
+
+describe('die Einstufung', () => {
+  it('hat für jede Stufe eine Frage, die man beantworten kann', () => {
+    for (const l of ENTRY_LEVELS) {
+      expect(l.description.length).toBeGreaterThan(40);
+      expect(l.minutesPerTenDays).toBe(Math.round((l.runsPerWeek * l.minutesPerRun * 10) / 7 / 5) * 5);
+    }
+    expect(ENTRY_LEVELS.map((l) => l.id)).toContain(DEFAULT_ENTRY_LEVEL);
+  });
+});
 
 describe('das Schichtmodell', () => {
   it('kennt den Fünftagerhythmus T · N · Ü · DF · DF', () => {
@@ -129,10 +140,20 @@ describe('die harten Regeln', () => {
   it('hält mindestens 80 % der Laufminuten in Zone 2 oder darunter', () => {
     const runs = future().filter((d) => d.run && CATALOGUE[d.run.kind].discipline === 'lauf');
     const total = runs.reduce((sum, d) => sum + d.run!.minutes, 0);
-    const base = runs
-      .filter((d) => (CATALOGUE[d.run!.kind].zone ?? 1) <= 2)
-      .reduce((sum, d) => sum + d.run!.minutes, 0);
-    expect(base / total).toBeGreaterThanOrEqual(0.8);
+    const hard = runs.reduce((sum, d) => sum + d.run!.hardMinutes, 0);
+    expect((total - hard) / total).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('verbucht von einer Bahneinheit nur die Belastungsminuten als hart', () => {
+    /*
+     * Der Fehler, den dieser Test festhält: eine Stufe-I-Einheit dauert
+     * 39 Minuten — 15 einlaufen, gut 3 auf der Bahn, 11 traben, 10 auslaufen.
+     * Sie als 39 Zone-5-Minuten zu verbuchen, rechnet um den Faktor zwölf
+     * falsch und verbietet Intervalle, die längst hineinpassen.
+     */
+    const day = future().find((d) => d.run && d.run.hardMinutes > 0);
+    if (!day) return;
+    expect(day.run!.hardMinutes).toBeLessThan(day.run!.minutes / 3);
   });
 
   it('legt keine schwere Beinkraft in die 24 Stunden vor einen langen Lauf', () => {
@@ -171,35 +192,55 @@ describe('das Volumen', () => {
     expect(minutes).toBeLessThanOrEqual(p.target.runMinutes * 1.1);
   });
 
-  it('nimmt das eingestellte Startvolumen, solange nichts gemessen ist', () => {
-    expect(plan({ startRunMinutes: 400 }).target.runMinutes).toBe(400);
-    expect(plan({ startRunMinutes: 200 }).target.runMinutes).toBe(200);
+  it('rechnet die Minuten aus der Einstufung, solange nichts gemessen ist', () => {
+    // Gefragt wird, was man über sich weiß — die Minuten rechnet der Plan.
+    expect(plan({ entryLevel: 'fortgeschritten' }).target.runMinutes).toBe(
+      entryLevel('fortgeschritten').minutesPerTenDays,
+    );
+    expect(plan({ entryLevel: 'wieder' }).target.runMinutes).toBe(
+      entryLevel('wieder').minutesPerTenDays,
+    );
+  });
+
+  it('staffelt die Einstufungen aufsteigend und bleibt beim Einstieg vorsichtig', () => {
+    const minutes = ENTRY_LEVELS.map((l) => l.minutesPerTenDays);
+    expect(minutes).toEqual([...minutes].sort((a, b) => a - b));
+    // Der Wiedereinstieg liegt unter zweimal dreißig Minuten die Woche.
+    expect(minutes[0]).toBeLessThan(90);
   });
 
   it('trägt bei kleinem Startvolumen trotzdem die Bahneinheit', () => {
     // Der Reiz ist das Letzte, was ein Plan aufgibt — das Volumen geht zuerst.
-    const days = plan({ startRunMinutes: 150 }).days.filter((d) => !d.done);
+    const days = plan({ entryLevel: 'anfang' }).days.filter((d) => !d.done);
     expect(days.some((d) => d.run && CATALOGUE[d.run.kind].zone === 5)).toBe(true);
   });
 });
 
-describe('wo zwei Vorgaben sich widersprechen', () => {
+describe('der Zone-2-Anteil bei kleinem Volumen', () => {
   /*
-   * „Intervalle sind von Anfang an mit dabei" und „Zone 2 ≥ 80 % der
-   * Laufminuten" gehen bei kleinem Volumen nicht beide: eine Bahneinheit von
-   * 40 Minuten verlangt rund 160 Minuten lockeres Laufen daneben.
+   * Hier stand einmal ein Test, der einen Konflikt zwischen zwei Vorgaben
+   * festhielt: „Intervalle von Anfang an" und „Zone 2 ≥ 80 %" sollten bei
+   * kleinem Volumen nicht beide gehen.
+   *
+   * Den Konflikt gab es nie. Er war eine Folge davon, dass eine ganze
+   * Bahneinheit als Zone 5 verbucht wurde — 39 Minuten, von denen gut drei
+   * wirklich hart sind. Mit richtiger Verbuchung liegt der Anteil auch bei
+   * Anfängervolumen über 95 %, und die Bahneinheit passt mühelos hinein.
+   *
+   * Der Test steht jetzt andersherum: er hält fest, dass es **keinen** Konflikt
+   * gibt, und würde sofort rot, wenn jemand die Verbuchung zurückdreht.
    */
-  it('sagt es, statt eine der beiden Regeln still fallen zu lassen', () => {
-    const p = plan({ startRunMinutes: 120 });
-    expect(p.zone2Share).toBeLessThan(0.8);
-    expect(p.conflict).toMatch(/Zone 2/);
-    expect(p.conflict).toMatch(/Bahneinheit bleibt/);
-    // Die Bahneinheit ist trotzdem geplant.
-    expect(p.days.some((d) => !d.done && d.run && (CATALOGUE[d.run.kind].zone ?? 1) >= 3)).toBe(true);
+  it('trägt eine Bahneinheit auch bei Anfängervolumen ohne Regelverstoß', () => {
+    const p = plan({ entryLevel: 'wieder' });
+    expect(p.zone2Share).toBeGreaterThanOrEqual(0.8);
+    expect(p.conflict).toBeNull();
+    expect(p.days.some((d) => !d.done && d.run && d.run.hardMinutes > 0)).toBe(true);
   });
 
-  it('meldet keinen Konflikt, sobald das Volumen beide Regeln trägt', () => {
-    const p = plan({ startRunMinutes: 400 });
+  it('meldet erst dann einen Konflikt, wenn wirklich zu viel hart wäre', () => {
+    // Die Mechanik bleibt: auf hohen Bahnstufen sind die Belastungsminuten ein
+    // Vielfaches, und dann kann der Anteil sehr wohl kippen.
+    const p = plan({ entryLevel: 'fortgeschritten' });
     expect(p.zone2Share).toBeGreaterThanOrEqual(0.8);
     expect(p.conflict).toBeNull();
   });

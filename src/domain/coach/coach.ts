@@ -104,6 +104,16 @@ export interface PlannedItem {
   load: number;
   startMinutes: number | null;
   isHard: boolean;
+  /**
+   * Die Minuten, die wirklich über Zone 2 liegen.
+   *
+   * Nicht dasselbe wie `minutes` bei einer Bahneinheit, und das ist der Punkt:
+   * eine Stufe-I-Einheit dauert 39 Minuten, davon sind 15 Minuten Einlaufen,
+   * 11 Minuten Trabpause und 10 Minuten Auslaufen. Hart sind gut drei Minuten.
+   * Wer die ganze Einheit als Zone 5 verbucht, rechnet um den Faktor zwölf
+   * falsch — und verbietet sich damit Intervalle, die längst hineinpassen.
+   */
+  hardMinutes: number;
 }
 
 export interface CoachDay {
@@ -175,7 +185,13 @@ function windowsOf(day: DayContext, wake: number) {
   return day.isVShift ? vShiftWindows() : windowsFor(day.cycleDay, wake);
 }
 
-function itemFrom(kind: SessionKind, minutes: number, start: number | null): PlannedItem {
+function itemFrom(
+  kind: SessionKind,
+  minutes: number,
+  start: number | null,
+  /** Nur bei Bahneinheiten: die reinen Belastungsminuten. */
+  hardMinutesOverride?: number,
+): PlannedItem {
   const entry = CATALOGUE[kind];
   // Die Belastung folgt der geplanten Dauer, nicht der Katalogdauer. Sonst
   // kostet eine gekürzte Einheit so viel wie die volle.
@@ -187,6 +203,8 @@ function itemFrom(kind: SessionKind, minutes: number, start: number | null): Pla
     load: Math.round(entry.load * Math.min(1.4, Math.max(0.3, scale))),
     startMinutes: start,
     isHard: isHardSession(kind, minutes),
+    hardMinutes:
+      hardMinutesOverride ?? ((entry.zone ?? 1) >= 3 && entry.discipline === 'lauf' ? minutes : 0),
   };
 }
 
@@ -577,7 +595,7 @@ function distributeMinutes(
     (d) => d.run!.kind === 'intervall' || d.run!.kind === 'intervall_kurz',
   );
   for (const d of intervalDays) {
-    d.run = itemFrom(d.run!.kind, interval.totalMinutes, d.run!.startMinutes);
+    d.run = itemFrom(d.run!.kind, interval.totalMinutes, d.run!.startMinutes, interval.workMinutes);
   }
   const fixed = intervalDays.reduce((sum, d) => sum + d.run!.minutes, 0);
 
@@ -662,21 +680,24 @@ function reconcile(
     const runs = future().filter((d) => CATALOGUE[d.run!.kind].discipline === 'lauf');
     const total = runs.reduce((sum, d) => sum + d.run!.minutes, 0);
     if (total === 0) return 1;
-    const base = runs
-      .filter((d) => (CATALOGUE[d.run!.kind].zone ?? 1) <= 2)
-      .reduce((sum, d) => sum + d.run!.minutes, 0);
-    return base / total;
+    const hard = runs.reduce((sum, d) => sum + d.run!.hardMinutes, 0);
+    return (total - hard) / total;
   };
 
   guard = 0;
   while (shareNow() < MIN_ZONE2_SHARE && guard++ < 20) {
     const worst = future()
-      .filter((d) => (CATALOGUE[d.run!.kind].zone ?? 1) >= 3)
-      .sort((a, b) => b.run!.minutes - a.run!.minutes)[0];
+      .filter((d) => d.run!.hardMinutes > 0)
+      .sort((a, b) => b.run!.hardMinutes - a.run!.hardMinutes)[0];
     if (!worst) break;
     const shorter = buildIntervalSession(interval.stage, Math.max(2, interval.reps - 1));
     if (shorter.totalMinutes >= worst.run!.minutes) break;
-    worst.run = itemFrom(worst.run!.kind, shorter.totalMinutes, worst.run!.startMinutes);
+    worst.run = itemFrom(
+      worst.run!.kind,
+      shorter.totalMinutes,
+      worst.run!.startMinutes,
+      shorter.workMinutes,
+    );
     worst.note = `Auf ${shorter.reps} Wiederholungen gekürzt, damit mindestens ${Math.round(
       MIN_ZONE2_SHARE * 100,
     )} % der Laufminuten in Zone 2 bleiben.`;
