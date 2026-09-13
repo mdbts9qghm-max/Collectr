@@ -4,6 +4,7 @@ import { useStore } from '../data/store.ts';
 import type { AppData } from '../data/store.ts';
 import {
   buildDayView,
+  coachSessionDiff,
   buildIndexes,
   buildMetrics,
   buildWeek,
@@ -12,7 +13,7 @@ import {
   plannedSessionsFor,
   makeDayContextFn,
 } from '../data/derived.ts';
-import { today as todayIso } from '../domain/date.ts';
+import { nowTimestamp, today as todayIso } from '../domain/date.ts';
 import type { ISODate } from '../domain/types.ts';
 
 /** The raw persisted data, as one object the pure domain functions can take. */
@@ -90,6 +91,30 @@ export function useCoach(anchor: ISODate) {
   const data = useData();
   const idx = useIndexes();
   return useMemo(() => buildCoach(data, idx, anchor), [data, idx, anchor]);
+}
+
+/**
+ * Hält die eingeplante Einheit des Tages auf dem Stand des Coaches.
+ *
+ * Der Coach rechnet bei jedem Öffnen neu — die gespeicherte Einheit nicht. Ohne
+ * diesen Abgleich zeigt der Kopf 24 Minuten und die Liste darunter 40, und
+ * abgehakt würde die 40. Es entscheidet eine Stelle, also folgt die gespeicherte
+ * Einheit dieser Stelle, solange sie geplant und unberührt ist.
+ *
+ * Läuft im Rahmen, nicht in einem Bildschirm: der Abgleich soll auch greifen,
+ * wenn die App auf dem Schlaf- oder Trainingstab geöffnet wird.
+ */
+export function useCoachSync(date: ISODate) {
+  const plan = useCoach(date);
+  const sessions = useStore((s) => s.sessions);
+  const saveSession = useStore((s) => s.saveSession);
+  const deleteSession = useStore((s) => s.deleteSession);
+
+  useEffect(() => {
+    const diff = coachSessionDiff(sessions, plan, date, nowTimestamp());
+    for (const session of diff.update) saveSession(session);
+    for (const id of diff.remove) deleteSession(id);
+  }, [sessions, plan, date, saveSession, deleteSession]);
 }
 
 export function useMetrics(date: ISODate) {

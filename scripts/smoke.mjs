@@ -13,6 +13,14 @@ const BASE = process.env.SMOKE_URL ?? 'http://localhost:4173';
  * dass keine andere Sportart vorgeschlagen wird.
  */
 const HARD_RULE = /Das gesamte Ausdauervolumen[\s\S]*?weniger Laufen oder Ruhe\./;
+
+/*
+ * Jede Sportart, die nicht Laufen ist, mitsamt der kurzen Formen. Die frühere
+ * Fassung suchte nur nach „Radfahren" und ließ deshalb genau den Satz durch,
+ * der auf dem Tagesbildschirm stand: „Reicht für die Einheit auf dem Rad."
+ */
+const OTHER_SPORTS =
+  /\b(Rad|Räder|Radfahren|Fahrrad|Ergometer|Rudern|Rudergerät|Crosstrainer|Schwimmen|Ellipsentrainer)\b/;
 const errors = [];
 
 const browser = await launchChromium();
@@ -227,8 +235,8 @@ console.log(`✓ blättert ${monthBefore} → ${monthAfter} und zurück`);
 
 // Es wird gelaufen: kein Rad, kein Rudergerät, kein Crosstrainer als Vorschlag.
 const coachText = await page.locator('.app-main').innerText();
-if (/\b(Radfahren|Rudern|Crosstrainer|Ergometer)\b/.test(coachText.replace(HARD_RULE, ''))) {
-  throw new Error('the coach must never propose another sport');
+if (OTHER_SPORTS.test(coachText.replace(HARD_RULE, ''))) {
+  throw new Error(`the coach must never propose another sport: ${coachText.match(OTHER_SPORTS)[0]}`);
 }
 console.log('✓ nur Laufen, Kraft, Gehen und Ruhe');
 
@@ -300,6 +308,63 @@ if (/Ruhetag/.test(todayHero) !== /Ruhetag/.test(headline)) {
   throw new Error(`Ruhetag nur auf einem der beiden Bildschirme: ${todayHero} / ${headline}`);
 }
 console.log(`✓ Heute deckt sich mit dem Coach-Tab: ${todayHero}`);
+
+/*
+ * Die eingeplante Einheit muss dieselbe Zahl tragen wie die Empfehlung.
+ *
+ * Genau das lief auseinander: oben stand „24 min", in der Liste darunter
+ * „40 min". Der Coach rechnet jeden Tag neu, die einmal gespeicherte Einheit
+ * nicht — und abgehakt worden wäre die 40. Hier wird eine veraltete Einheit
+ * direkt in die Datenbank gelegt und geprüft, dass die App sie nachzieht.
+ */
+await page.evaluate(async () => {
+  const d = new Date();
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const request = indexedDB.open('hybrid-athlete');
+  const db = await new Promise((resolve) => { request.onsuccess = () => resolve(request.result); });
+  const tx = db.transaction('sessions', 'readwrite');
+  tx.objectStore('sessions').put({
+    id: 'ses_veraltet',
+    date: iso,
+    sport: 'run',
+    title: 'Lockerer Lauf',
+    status: 'planned',
+    plannedDurationMin: 137,
+    plannedIntensity: 'easy',
+    muscleGroups: [],
+    source: 'coach',
+    createdAt: d.toISOString(),
+    updatedAt: d.toISOString(),
+  });
+  await new Promise((resolve) => { tx.oncomplete = resolve; });
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('.card-hero');
+await page.waitForTimeout(900);
+
+const heroLine = (await page.locator('.card-hero .t-small.secondary').first().innerText()).trim();
+const heroDuration = heroLine.split('·')[0].trim();
+const plannedList = await page.locator('.app-main').innerText();
+if (/137 min|2:17 h/.test(plannedList)) {
+  throw new Error('eine veraltete Einheit steht weiter unter der Empfehlung');
+}
+if (!plannedList.includes(heroDuration)) {
+  throw new Error(
+    `Empfehlung und eingeplante Einheit nennen verschiedene Dauern: ${heroDuration} fehlt in der Liste`,
+  );
+}
+console.log(`✓ die eingeplante Einheit folgt dem Coach: ${heroDuration}`);
+
+/*
+ * Und auf diesem Bildschirm gilt die harte Regel genauso. Der Hinweis unter der
+ * Empfehlung nannte einmal das Rad — die Prüfung unten hat ihn nicht gesehen,
+ * weil sie nur nach „Radfahren" suchte.
+ */
+const todayText = (await page.locator('.app-main').innerText()).replace(HARD_RULE, '');
+if (OTHER_SPORTS.test(todayText)) {
+  throw new Error(`der Tagesbildschirm nennt eine andere Sportart: ${todayText.match(OTHER_SPORTS)[0]}`);
+}
+console.log('✓ Heute nennt keine andere Sportart');
 
 /*
  * Die Frage-Antwort-Seite muss dasselbe sagen wie der Coach-Tab. Zwei Stellen,

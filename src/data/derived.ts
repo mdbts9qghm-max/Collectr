@@ -1,5 +1,6 @@
 import type {
   DailyCheckIn,
+  ISOTimestamp,
   Habit,
   HabitEntry,
   ISODate,
@@ -30,6 +31,7 @@ import type { SessionKind as CoachSessionKind } from '../domain/coach/catalogue.
 import type { PlannedSession } from '../domain/sleep/training.ts';
 import { CATALOGUE as COACH_CATALOGUE, isHardSession } from '../domain/coach/catalogue.ts';
 import { buildCoachPlan } from '../domain/coach/coach.ts';
+import { sessionFromDecision, sessionFromStrength } from '../domain/coach/toSession.ts';
 import { HORIZON_BACK, HORIZON_FORWARD } from '../domain/coach/horizon.ts';
 import { FIXED_ZONES } from '../domain/coach/zones.ts';
 
@@ -256,6 +258,86 @@ export function plannedSessionsFor(plan: CoachView, date: ISODate): PlannedSessi
       endMinutes: item.startMinutes + item.minutes,
       isHard: isHardSession(item.kind, item.minutes),
     });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Geplante Einheiten dem Coach nachführen
+ * ------------------------------------------------------------------ */
+
+/**
+ * Felder, die der Coach besitzt. Alles andere an einer Einheit gehört dem
+ * Athleten und wird hier nie angefasst.
+ */
+const COACH_OWNED = [
+  'sport',
+  'title',
+  'startTime',
+  'plannedDurationMin',
+  'plannedIntensity',
+  'goal',
+  'notes',
+  'muscleGroups',
+] as const;
+
+export interface CoachSessionDiff {
+  /** Einheiten, deren gespeicherte Werte nicht mehr zum Coach passen. */
+  update: TrainingSession[];
+  /** Ids von Einheiten, die der Coach heute nicht mehr vorsieht. */
+  remove: string[];
+}
+
+function coachFieldsEqual(a: TrainingSession, b: TrainingSession): boolean {
+  return COACH_OWNED.every((f) => JSON.stringify(a[f]) === JSON.stringify(b[f]));
+}
+
+/**
+ * Der Unterschied zwischen dem, was für heute gespeichert ist, und dem, was der
+ * Coach heute sagt.
+ *
+ * Der Coach rechnet jeden Tag neu, die gespeicherte Einheit nicht. Ohne diesen
+ * Abgleich steht unter einer Empfehlung von 24 Minuten eine eingeplante Einheit
+ * über 40 — zwei Zahlen für dieselbe Einheit, und der Haken würde die falsche
+ * ins Belastungsmodell schreiben.
+ *
+ * Angefasst wird nur, was der Coach selbst angelegt hat und was noch geplant
+ * ist: `source: 'coach'` und `status: 'planned'`. Wer die Einheit von Hand
+ * bearbeitet, macht sie zu seiner eigenen (`source: 'manual'`), und dann bleibt
+ * sie stehen. Abgehakte Einheiten sind Aufzeichnung und werden nie umgeschrieben.
+ */
+export function coachSessionDiff(
+  sessions: TrainingSession[],
+  plan: CoachView,
+  date: ISODate,
+  now: ISOTimestamp,
+): CoachSessionDiff {
+  const out: CoachSessionDiff = { update: [], remove: [] };
+  const decision = plan.today.date === date ? plan.today : null;
+
+  for (const stored of sessions) {
+    if (stored.date !== date) continue;
+    if (stored.source !== 'coach' || stored.status !== 'planned') continue;
+
+    const ids = { id: stored.id, createdAt: stored.createdAt, updatedAt: now };
+    const isStrength = stored.sport === 'strength' || stored.sport === 'mobility';
+    const fresh = !decision
+      ? null
+      : isStrength
+        ? decision.strength
+          ? sessionFromStrength(date, decision.strength, ids)
+          : null
+        : sessionFromDecision(decision, ids);
+
+    if (!fresh) {
+      out.remove.push(stored.id);
+      continue;
+    }
+    if (coachFieldsEqual(stored, fresh)) continue;
+
+    const patch: Partial<TrainingSession> = {};
+    for (const f of COACH_OWNED) Object.assign(patch, { [f]: fresh[f] });
+    out.update.push({ ...stored, ...patch, updatedAt: now });
   }
   return out;
 }

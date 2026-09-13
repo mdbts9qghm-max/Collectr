@@ -199,12 +199,12 @@ export const RECOVERY_BAND_META: Record<
   red: {
     label: 'wenig erholt',
     color: 'var(--bad)',
-    advice: 'Die Einheit wechselt den Modus oder wird abgestuft — gestrichen wird sie nicht.',
+    advice: 'Die Einheit wird kürzer oder leichter — bis hin zu Gehen oder Ruhe.',
   },
   amber: {
     label: 'teilweise erholt',
     color: 'var(--warn)',
-    advice: 'Reicht für die Einheit auf dem Rad, wenn der Lauf zu viel wäre.',
+    advice: 'Trägt eine kürzere Einheit. Weniger laufen, nicht anders trainieren.',
   },
   green: {
     label: 'gut erholt',

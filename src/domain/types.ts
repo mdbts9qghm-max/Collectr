@@ -19,6 +19,8 @@ export type ClockTime = string;
 
 export type DataSource =
   | 'manual'
+  /** Vom Coach angelegt — folgt ihm, solange sie geplant und unberührt ist. */
+  | 'coach'
   | 'derived'
   | 'garmin'
   | 'whoop'

@@ -313,8 +313,8 @@ export function defaultTrainingPlan(): TrainingPlan {
         focus: ['Erholen', 'Sehnen und Bänder entlasten', 'Lust am Sport zurückholen'],
         notes:
           '100 km kosten Wochen, nicht Tage. Die ersten beiden Wochen bewusst wenig, danach ' +
-          'langsam zurück — und wenig Laufen: das Rad und das Wasser tragen die Grundlage, ' +
-          'während der Aufprall aus den Beinen raus ist. Danach beginnt der nächste Block.',
+          'langsam zurück — kurze lockere Läufe und Gehen, bis der Aufprall wieder trägt. ' +
+          'Danach beginnt der nächste Block.',
       },
     ],
   };

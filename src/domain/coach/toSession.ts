@@ -87,7 +87,7 @@ export function sessionFromDecision(
     muscleGroups: shape.muscleGroups,
     goal: shape.goal,
     notes: decision.steps.join('\n'),
-    source: 'manual',
+    source: 'coach',
     createdAt: ids.createdAt,
     updatedAt: ids.updatedAt,
   };
@@ -115,7 +115,7 @@ export function sessionFromStrength(
       `RPE ${plan.rpe}, rund ${plan.percentOfMax} % — ${plan.repsInReserve} Wiederholungen in Reserve.`,
       ...plan.blocks.map((b) => `${b.name}: ${b.sets} × ${b.reps}`),
     ].join('\n'),
-    source: 'manual',
+    source: 'coach',
     createdAt: ids.createdAt,
     updatedAt: ids.updatedAt,
   };

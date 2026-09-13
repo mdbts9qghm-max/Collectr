@@ -14,7 +14,6 @@ import type { TodayDecision } from '../domain/coach/coach.ts';
 import { CATALOGUE } from '../domain/coach/catalogue.ts';
 import { formatClock } from '../domain/coach/windows.ts';
 import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
-import { RECOVERY_BAND_META } from '../domain/coach/recovery.ts';
 import { statusOn } from '../domain/habits.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
@@ -176,9 +175,17 @@ export function Today() {
               </div>
             )}
 
+            {/*
+              * Was hier steht, muss zu dieser Entscheidung passen, nicht zu
+              * einem Erholungsband. Geplant war X, daraus wurde Y — und die
+              * einzige Richtung nach unten ist weniger Laufen, nie eine andere
+              * Sportart.
+              */}
             {decision.stepsDown > 0 && (
               <div className="t-caption mt-3" style={{ color: 'var(--warn)' }}>
-                {RECOVERY_BAND_META.amber.advice}
+                {decision.stepsDown === 1 ? 'Eine Stufe zurück' : `${decision.stepsDown} Stufen zurück`}
+                {': geplant war '}
+                {CATALOGUE[decision.plannedKind].label}.
               </div>
             )}
 

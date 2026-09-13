@@ -75,7 +75,9 @@ export function SessionSheet({
 
   const handleSave = () => {
     const title = draft.title.trim() || defaultTitle(draft.sport, draft.plannedIntensity);
-    const records = saveSession({ ...draft, title });
+    // Von Hand bearbeitet heißt: gehört jetzt dem Athleten. Der Coach führt nur
+    // seine eigenen, unberührten Einheiten nach.
+    const records = saveSession({ ...draft, title, source: 'manual' });
     onClose();
     if (records.length > 0) {
       toast(`Neue Bestleistung: ${records.map((r) => r.label).join(', ')} 🏆`, 'good');

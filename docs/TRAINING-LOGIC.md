@@ -85,8 +85,10 @@ Sehnen, Bänder und Knochen.
 Nach dem Ziel steht keine Lücke, sondern eine eigene Phase. 100 km kosten Wochen, nicht
 Tage — und die Belastung, die am längsten nachwirkt, ist nicht die Ausdauer, sondern der
 Aufprall. Die Phase läuft deshalb sechs Wochen mit fünf Stunden Grundumfang, ohne
-Intensität, und mit dem niedrigsten Laufanteil aller Phasen: Rad und Wasser halten die
-Grundlage, während die Beine den Stoß nicht mehr abbekommen.
+Intensität, und mit dem niedrigsten Laufumfang aller Phasen: kurze lockere Läufe und
+Gehen halten die Grundlage, bis die Beine den Stoß wieder abbekommen können. Eine andere
+Sportart tritt auch hier nicht an die Stelle des Laufens — die harte Regel gilt in jeder
+Phase.
 
 In dieser Phase läuft die Welle **umgekehrt**: 55 %, 70 %, 85 %, 100 %. Es gibt keine
 Entlastungswoche, weil die ganze Phase eine ist. Nach einem Wettkampf aufzubauen wäre

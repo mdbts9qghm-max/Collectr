@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, TabBar } from './nav.tsx';
 import { useStore } from '../data/store.ts';
-import { useToday } from './hooks.ts';
+import { useCoachSync, useToday } from './hooks.ts';
 import { wasCheckInSeen } from './checkinGate.ts';
 
 export function Layout() {
@@ -12,6 +12,10 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const decided = useRef(false);
+
+  // Die eingeplante Einheit folgt dem Coach — im Rahmen, damit es auf jedem Tab
+  // greift und nicht nur auf dem, der zufällig offen ist.
+  useCoachSync(today);
 
   // First launch of the day goes straight to the check-in. It runs once per
   // session and only from the landing route, so a deep link is never hijacked.
