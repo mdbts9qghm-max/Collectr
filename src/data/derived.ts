@@ -12,7 +12,14 @@ import type {
 import type { AppData } from './store.ts';
 import type { DayContext } from '../domain/habits.ts';
 import type { MetricValue } from '../domain/metrics.ts';
-import { addDays, dateRange, lastNDays, startOfWeek, today as todayIso } from '../domain/date.ts';
+import {
+  addDays,
+  dateRange,
+  diffDays,
+  lastNDays,
+  startOfWeek,
+  today as todayIso,
+} from '../domain/date.ts';
 import { adjustedTrainingMinutes, buildShiftContext, rotationAssignments } from '../domain/shifts.ts';
 import { computeReadiness } from '../domain/readiness.ts';
 import { weekTarget } from '../domain/phases.ts';
@@ -33,6 +40,7 @@ import { CATALOGUE as COACH_CATALOGUE, isHardSession } from '../domain/coach/cat
 import { buildCoachPlan } from '../domain/coach/coach.ts';
 import { sessionFromDecision, sessionFromStrength } from '../domain/coach/toSession.ts';
 import { HORIZON_BACK, HORIZON_FORWARD } from '../domain/coach/horizon.ts';
+import { CYCLE_DAYS } from '../domain/coach/phases.ts';
 import { FIXED_ZONES } from '../domain/coach/zones.ts';
 
 /** Indexes built once per render pass and shared by every derived computation. */
@@ -412,6 +420,26 @@ function sleepSignalsFor(data: AppData, idx: Indexes, date: ISODate) {
  * davor und danach, und was er nicht sieht, kann er nicht begründen. Alles
  * jenseits davon fehlt nicht — es ist nachweislich ohne Einfluss.
  */
+/**
+ * Ab wann der Plan mit Woche 1 zählt.
+ *
+ * Eingestellt sticht alles andere. Ohne Einstellung fängt der Plan am ersten
+ * Tag an, an dem überhaupt eine Schicht bekannt ist — das ist der früheste
+ * Zeitpunkt, an dem ein Zyklus erkennbar wäre. Weiter als ein Jahr zurück wird
+ * nicht gesucht; was länger her ist, sagt über die heutige Form nichts mehr.
+ */
+export function planStartFor(data: AppData, idx: Indexes, anchor: ISODate): ISODate {
+  const configured = data.settings.trainingStart;
+  if (configured) return configured;
+  const earliest = addDays(anchor, -365);
+  let found: ISODate | null = null;
+  for (const date of idx.shiftAssignments.keys()) {
+    if (date < earliest || date > anchor) continue;
+    if (!found || date < found) found = date;
+  }
+  return found ?? anchor;
+}
+
 export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
   const wake = data.settings.planner.dayShiftWakeMinutes;
   const from = addDays(anchor, -HORIZON_BACK);
@@ -480,25 +508,60 @@ export function buildCoach(data: AppData, idx: Indexes, anchor: ISODate) {
     };
   });
 
-  // Zyklen seit Trainingsbeginn: jeder erkannte Tagschichttag beginnt einen.
-  const history = detectCycle(addDays(from, -365), addDays(from, -1), idx.shiftAssignments, idx.shiftTypes);
-  const cyclesBefore = history.filter((d) => d.cycleDay === 1).length;
-  const cyclesToAnchor = detected.filter((d) => d.cycleDay === 1 && d.date <= anchor).length;
+  const planStart = planStartFor(data, idx, anchor);
+  /*
+   * Zyklen seit Planbeginn — gezählt am Kalender, nicht an erkannten
+   * Zyklusanfängen.
+   *
+   * Vorher wurde jeder erkannte Tagschichttag des letzten Jahres gezählt. Das
+   * hatte zwei Fehler in einem: die Woche hing daran, wie viel Vergangenheit
+   * eingetragen war, und eine Lücke im Schichtplan fror den Plan ein. Ein
+   * Planbeginn vor zehn Wochen ergab Woche 2, wenn nur zwei Wochen Schichten
+   * erfasst waren.
+   *
+   * Zeit vergeht auch ohne Eintrag. Was ein Trainingsunterbruch tatsächlich
+   * kostet, steht ohnehin woanders: die Wachstumsgrenze hängt an den wirklich
+   * gelaufenen Minuten der zehn Tage davor und bricht nach einer Pause von
+   * selbst ein. Die Phase muss das nicht noch einmal abbilden.
+   *
+   * Innerhalb des Blickfelds wird weiter an den Zyklusanfängen entlanggezählt
+   * (`cycleIndexAt`) — dort geht es um die Ausrichtung des Makrozyklus auf die
+   * Rotation, nicht um das Alter des Plans.
+   */
+  const cyclesSinceStart = anchor < planStart
+    ? 0
+    : Math.floor(diffDays(anchor, planStart) / CYCLE_DAYS) + 1;
 
-  return buildCoachPlan({
-    anchor,
-    days,
-    dayShiftWakeMinutes: wake,
-    cycleIndex: cyclesBefore + Math.max(0, cyclesToAnchor - 1),
-    previousRunMinutes: runMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
-    previousStrengthMinutes: strengthMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
-    zones: data.settings.coachZones ?? FIXED_ZONES,
-    sleep: {
-      debtHours: sleep.debtHours,
-      downgradeNextHard: sleep.downgradeNextHard,
-      forceDeload: sleep.forceDeload,
-    },
-  });
+  return {
+    ...buildCoachPlan({
+      anchor,
+      days,
+      dayShiftWakeMinutes: wake,
+      cycleIndex: Math.max(0, cyclesSinceStart - 1),
+      previousRunMinutes: runMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
+      previousStrengthMinutes: strengthMinutesInWindow(data, addDays(anchor, -19), addDays(anchor, -10)),
+      zones: data.settings.coachZones ?? FIXED_ZONES,
+      sleep: {
+        debtHours: sleep.debtHours,
+        downgradeNextHard: sleep.downgradeNextHard,
+        forceDeload: sleep.forceDeload,
+      },
+    }),
+    /*
+     * Der Tag, ab dem gezählt wird, gehört zur Antwort dazu. Ohne ihn steht im
+     * Coach eine Wochenzahl, die niemand nachrechnen kann.
+     */
+    planStart,
+    /*
+     * Die Woche seit Planbeginn, am Kalender gezählt und ab 1.
+     *
+     * Nicht zu verwechseln mit `target.week`: das ist die Woche, mit der das
+     * Phasenmodell rechnet, und die springt in Zehn-Tage-Schritten, weil das
+     * Volumenziel je Makrozyklus feststeht. Für die Frage „in welcher Woche bin
+     * ich" ist der Kalender die Antwort; fürs Volumenziel der Makrozyklus.
+     */
+    planWeek: anchor < planStart ? 1 : Math.floor(diffDays(anchor, planStart) / 7) + 1,
+  };
 }
 
 /** Was an einem vergangenen Tag tatsächlich gelaufen und gehoben wurde. */

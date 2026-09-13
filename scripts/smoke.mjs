@@ -430,6 +430,58 @@ if (!/Ziel|von/i.test(afterEdit)) {
 console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the week target`);
 
 /*
+ * Ab wann der Plan mit Woche 1 zählt, ist eine Angabe und kein Nebeneffekt.
+ *
+ * Vorher zählte der Coach jeden erkannten Zyklus des letzten Jahres: wer
+ * Schichten nachtrug, sprang ungewollt Wochen nach vorn. Hier wird der Beginn
+ * gesetzt und geprüft, dass die Wochenzahl im Coach ihm folgt.
+ */
+await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.coach-facts');
+await page.waitForTimeout(400);
+
+// Auf die Karte eingrenzen: die Kennzahlenreihe gibt es auch in der Karte für
+// heute, und die zeigt keine Wochenzahl.
+const planKarte = page.locator('.card', { hasText: /wo der plan steht/i });
+const wocheJetzt = async () => {
+  const text = await planKarte.locator('.coach-facts').first().innerText();
+  const match = text.match(/(\d+)\s*\n\s*Woche/i);
+  if (!match) throw new Error(`der Coach zeigt keine Wochenzahl: ${text.replace(/\n/g, ' | ')}`);
+  return Number(match[1]);
+};
+
+const planStartFeld = planKarte.locator('input[type="date"]').first();
+if ((await planStartFeld.count()) === 0) {
+  throw new Error('der Coach lässt den Planbeginn nicht einstellen');
+}
+
+const isoVor = (tage) => {
+  const d = new Date();
+  d.setDate(d.getDate() - tage);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+await planStartFeld.fill(isoVor(70));
+await page.waitForTimeout(600);
+const wocheFrueh = await wocheJetzt();
+await planStartFeld.fill(isoVor(7));
+await page.waitForTimeout(600);
+const wocheSpaet = await wocheJetzt();
+
+if (!(wocheFrueh > wocheSpaet)) {
+  throw new Error(
+    `der Planbeginn bewegt die Wochenzahl nicht: 70 Tage → Woche ${wocheFrueh}, 7 Tage → Woche ${wocheSpaet}`,
+  );
+}
+if (wocheFrueh !== 11 || wocheSpaet !== 2) {
+  throw new Error(
+    `die Wochen stimmen nicht: 70 Tage müssten Woche 11 sein (${wocheFrueh}), 7 Tage Woche 2 (${wocheSpaet})`,
+  );
+}
+console.log(`✓ Planbeginn einstellbar: vor 70 Tagen → Woche ${wocheFrueh}, vor 7 Tagen → Woche ${wocheSpaet}`);
+await shot('16-planbeginn');
+
+/*
  * Der Schichtrhythmus schreibt sich fort.
  *
  * Vorher endete der Kalender am letzten von Hand eingetragenen Tag — hier sind

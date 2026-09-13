@@ -235,6 +235,31 @@ Verletzungsgefahr nur von der Häufigkeit auf die Länge.
 Genau so ist es gebaut: das Phasenziel ist eine Absicht, die 8-%-Wachstumsgrenze ist ein
 Gesetz. Wo beide sich widersprechen, gewinnt die Grenze.
 
+### Ab wann Woche 1 zählt
+
+Die Tabelle oben ist ohne Startpunkt wertlos. Der steht in den Einstellungen:
+`settings.trainingStart` — im Coach-Tab unter „Wo der Plan steht" als **Woche 1 beginnt
+am**. Ohne Angabe wird der erste Tag angenommen, an dem überhaupt eine Schicht bekannt
+ist, und das steht dann auch so da: eine Annahme, keine Angabe.
+
+Vorher war der Planbeginn kein Wert, sondern ein Nebeneffekt: gezählt wurde jeder
+erkannte Zyklusanfang des letzten Jahres. Das hatte zwei Fehler in einem. Die Woche hing
+daran, wie viel Vergangenheit eingetragen war — wer Schichten nachtrug, sprang Wochen
+nach vorn. Und eine Lücke im Schichtplan fror den Plan ein: ein Planbeginn vor zehn
+Wochen ergab Woche 2, wenn nur zwei Wochen Schichten erfasst waren.
+
+Gezählt wird jetzt am Kalender. Zeit vergeht auch ohne Eintrag, und was eine Pause
+tatsächlich kostet, steht ohnehin woanders: die 8-%-Wachstumsgrenze hängt an den wirklich
+gelaufenen Minuten der zehn Tage davor und bricht nach einer Pause von selbst ein. Die
+Phase muss das nicht ein zweites Mal abbilden.
+
+**Zwei Wochenzahlen, bewusst getrennt.** Der Coach zeigt die Kalenderwoche seit
+Planbeginn — das ist die Antwort auf „in welcher Woche bin ich". Das Phasenmodell rechnet
+mit einer eigenen, gröberen Woche, weil das Volumenziel je Makrozyklus feststeht, also je
+zehn Tage. Sie hinkt der Kalenderwoche um bis zu eine Woche hinterher und darf ihr nie
+vorauseilen; ein Test hält das fest. Hinter dem Knopf „Phase, Stufe, Deload" steht beides
+nebeneinander, damit die Differenz erklärt ist statt verborgen.
+
 ### Bahnstufen
 
 `8 × 100 m → 8 × 200 m → 6 × 400 m → 5 × 800 m → 4 × 4 Minuten`

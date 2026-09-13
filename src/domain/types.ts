@@ -528,6 +528,15 @@ export interface AppSettings {
   shiftRotation: string[];
   /** Ab wo sich das Muster selbst fortschreibt. Ohne Anker wird nichts erfunden. */
   shiftAnchor?: ShiftAnchor | null;
+  /**
+   * Der Tag, an dem der Plan mit Woche 1 anfängt.
+   *
+   * Davon hängt alles ab, was sich über die Zeit aufbaut: die Phase, das
+   * Laufminutenziel, die Bahnstufe, der Deload-Rhythmus. Ohne diese Angabe
+   * zählte der Coach jeden erkannten Zyklus des letzten Jahres mit — wer
+   * Schichten nachträgt, sprang damit ungewollt Wochen nach vorn.
+   */
+  trainingStart?: ISODate | null;
   updatedAt: ISOTimestamp;
 }
 

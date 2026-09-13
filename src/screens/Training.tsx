@@ -6,6 +6,7 @@ import type { SessionKind } from '../domain/coach/catalogue.ts';
 import { CATALOGUE, HARTE_REGEL_LAUFEN } from '../domain/coach/catalogue.ts';
 import { FIXED_ZONES, TEST_PROTOCOL, retestState, zoneRanges } from '../domain/coach/zones.ts';
 import { CYCLE_DAY_META, formatClock } from '../domain/coach/windows.ts';
+import { formatDateLong } from '../domain/format.ts';
 import {
   addDays,
   dateRange,
@@ -18,7 +19,7 @@ import {
 import { cyclesUntilDeload } from '../domain/coach/phases.ts';
 import { useCoach, useToday } from '../app/hooks.ts';
 import { useStore } from '../data/store.ts';
-import { Card, Disclosure, Pill, SectionTitle } from '../ui/primitives.tsx';
+import { Button, Card, Disclosure, Field, Pill, SectionTitle, TextInput } from '../ui/primitives.tsx';
 import { IconChevronLeft } from '../ui/icons.tsx';
 
 /**
@@ -578,6 +579,10 @@ function VolumeCard({ plan }: { plan: CoachView }) {
       <SectionTitle title="Wo der Plan steht" />
       <div className="coach-facts">
         <div>
+          <div className="t-num coach-fact-value">{plan.planWeek}</div>
+          <div className="t-caption muted">Woche</div>
+        </div>
+        <div>
           <div className="t-num coach-fact-value">{target.runMinutes}</div>
           <div className="t-caption muted">Laufminuten / 10 Tage</div>
         </div>
@@ -614,7 +619,12 @@ function VolumeCard({ plan }: { plan: CoachView }) {
 
       <div className="mt-3">
         <Disclosure summary={<span className="t-small" style={{ fontWeight: 600 }}>Phase, Stufe, Deload</span>}>
-          <div className="t-small secondary">{target.phase.focus}</div>
+          <div className="t-small secondary">
+            Das Volumenziel rechnet mit Woche {target.week + 1}. Es steht je Makrozyklus fest, also
+            je zehn Tage — deshalb hinkt diese Zahl der Kalenderwoche um bis zu eine Woche
+            hinterher, statt mitten im Zyklus zu springen.
+          </div>
+          <div className="t-small secondary mt-2">{target.phase.focus}</div>
           <div className="t-small secondary mt-2">{stage.reason}</div>
           <div className="t-small secondary mt-2">{stage.stage.instruction}</div>
           <div className="t-small secondary mt-2">{plan.strengthTarget.reason}</div>
@@ -626,7 +636,72 @@ function VolumeCard({ plan }: { plan: CoachView }) {
           </div>
         </Disclosure>
       </div>
+
+      <PlanStartRow plan={plan} />
     </Card>
+  );
+}
+
+/**
+ * Ab wann der Plan mit Woche 1 zählt.
+ *
+ * Die Einstellung steht bewusst hier und nicht im Profil: sie verschiebt die
+ * Wochenzahl, die zwei Zeilen weiter oben steht, und auf diesem Weg Phase,
+ * Volumenziel, Bahnstufe und Deload-Rhythmus. Eine Einstellung, deren Wirkung
+ * man sofort sieht, stellt man einmal richtig ein statt dreimal falsch.
+ */
+function PlanStartRow({ plan }: { plan: CoachView }) {
+  const configured = useStore((s) => s.settings.trainingStart);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const toast = useStore((s) => s.toast);
+  const today = useToday();
+
+  return (
+    <>
+      <div className="divider mt-3" />
+      <Field
+        label="Woche 1 beginnt am"
+        hint="Ab diesem Tag zählt der Plan. Er bestimmt Phase, Volumenziel, Bahnstufe und Deload."
+      >
+        <TextInput
+          type="date"
+          max={today}
+          value={configured ?? plan.planStart}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!value) return;
+            updateSettings({ trainingStart: value });
+            toast('Planbeginn gesetzt', 'good');
+          }}
+        />
+      </Field>
+      <div className="t-caption muted">
+        {configured ? (
+          <>
+            Seit {formatDateLong(configured)} — das ist Woche {plan.planWeek}, also{' '}
+            {plan.target.phase.id}.
+          </>
+        ) : (
+          <>
+            Noch nicht eingestellt. Gezählt wird ab {formatDateLong(plan.planStart)}, dem ersten Tag
+            mit bekannter Schicht — das ist eine Annahme, keine Angabe.
+          </>
+        )}
+      </div>
+      {configured && (
+        <Button
+          variant="ghost"
+          block
+          className="mt-2"
+          onClick={() => {
+            updateSettings({ trainingStart: null });
+            toast('Planbeginn zurückgenommen');
+          }}
+        >
+          Zurück auf die Annahme
+        </Button>
+      )}
+    </>
   );
 }
 
