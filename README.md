@@ -1,137 +1,41 @@
 # Hybrid Athlete OS
 
-Ein persönliches Trainings-, Habit- und Aufgabensystem für einen Hybrid Athleten im
-Schichtdienst. Die App dokumentiert nicht nur, sie beantwortet jeden Tag eine Frage:
+Eine private Trainings-App für den Wechselschichtdienst. Läuft als PWA auf dem iPhone,
+alle Daten bleiben auf dem Gerät.
 
-> Was ist heute die sinnvollste Entscheidung, um langfristig ein leistungsfähiger Hybrid
-> Athlete zu werden — ohne Regeneration und Alltagstauglichkeit zu zerstören?
+**Der Stand: leeres Projekt.** Vite, React, TypeScript, sonst nichts. Aufgebaut wird von
+hier aus Tab für Tab.
 
-## Schnellstart
+## Was es vorher gab
 
-```bash
-npm install
-npm run dev            # Entwicklungsserver
-npm run build          # Produktions-Build
-npm run preview        # Build lokal testen
-npm test               # Unit-Tests der Trainingslogik
-npm run verify:deploy  # Produktions-Build gegen die echten Vercel-Header prüfen
-npm run verify:update  # Update-Pfad im Browser durchspielen
+Zwei vollständige Fassungen liegen in der Historie und lassen sich jederzeit ansehen oder
+in Teilen zurückholen:
+
+- `coach-v1` — der erste Coach: Phasenmodell in festen Minuten, Zyklusvorlage, Blickfeld
+  über 27 Tage.
+- `coach-v2` — der zweite: 35-Tage-Schichtrhythmus, Volumen aus der Messung, rollendes
+  Blickfeld über sieben Tage.
+
+Beide wurden gelöscht, weil sie mehr entschieden haben, als sie erklären konnten.
+
+## Befehle
+
+```
+npm run dev         Entwicklungsserver
+npm run build       Typprüfung und Produktionsbau
+npm run typecheck   nur die Typen (tsc -b, nicht tsc -p)
+npm test            Tests
 ```
 
-## Deployment auf Vercel
+## Grundsätze, die bleiben
 
-Das Repo ist fertig konfiguriert (`vercel.json`) — Framework-Preset, Build-Befehl,
-Ausgabeverzeichnis, Cache- und Security-Header sind gesetzt. Es sind keine
-Umgebungsvariablen nötig, weil die App keinen Server und keine API-Schlüssel hat.
+Sie sind aus der Arbeit an den beiden Vorgängern entstanden, nicht vorher aufgeschrieben:
 
-**Einmalige Einrichtung:**
-
-1. Auf [vercel.com/new](https://vercel.com/new) das GitHub-Repo importieren.
-2. Alle Vorgaben bestätigen — Vercel erkennt Vite und liest `vercel.json`.
-3. **Deploy**.
-
-Danach ist nichts mehr manuell zu tun: Vercel beobachtet `main` und deployt bei
-**jedem Push automatisch** auf dieselbe Produktions-URL. Pushes auf andere Branches
-erzeugen Preview-Deployments mit wechselnden URLs — für die zum Home-Bildschirm
-hinzugefügte App zählt nur `main`.
-
-Alternativ per CLI:
-
-```bash
-npx vercel            # Vorschau-Deployment
-npx vercel --prod     # Produktion
-```
-
-### Updates auf dem Gerät
-
-Eine zum Home-Bildschirm hinzugefügte App merkt von einem neuen Deployment nichts, solange
-sie im Hintergrund liegt. Deshalb prüft die App selbst: stündlich, beim Zurückkehren in den
-Vordergrund und bei wiederhergestellter Verbindung. Findet sie eine neue Version, erscheint
-unten eine Leiste — *Neue Version verfügbar · Später · Neu laden*.
-
-Zwei Fälle werden unterschieden:
-
-* **Kaltstart** — die App wurde gerade geöffnet. Eine bereitstehende Version wird sofort
-  übernommen, ohne Rückfrage. Wer die App komplett schließt und neu öffnet, bekommt eine
-  aktuelle App.
-* **Während der Nutzung** — die Leiste fragt, weil ein stiller Reload mitten im Check-in
-  die Eingaben verwerfen würde. *Später* gilt für die laufende Sitzung.
-
-In den Einstellungen stehen zusätzlich **Jetzt nach Update suchen** und, falls eine
-Installation doch auf einer alten Version festhängt, **Aktualisierung erzwingen**. Letzteres
-verwirft Zwischenspeicher und Service Worker und lädt neu — die Datenbank mit Trainings,
-Habits und Check-ins bleibt unangetastet.
-
-Unter **Profil → App-Version** stehen Build-Zeitpunkt und Commit-Kürzel. Damit lässt sich
-vom Telefon aus feststellen, welche Version tatsächlich läuft.
-
-### Vor dem Deploy lokal prüfen
-
-```bash
-npm run verify:deploy   # Build gegen die echten Vercel-Header, inkl. Offline-Test
-npm run verify:update   # baut zwei Versionen und prüft den kompletten Update-Pfad
-npm run verify:iphone   # Layout gegen echte iPhone-Maße samt Safe-Area-Insets
-```
-
-`verify:deploy` prüft Start unter der strengen Content-Security-Policy, erreichbares
-Manifest mit korrektem Content-Type, alle Icons, aktiven Service Worker, Funktion im
-Flugmodus und Deep-Links im Offline-Zustand.
-
-`verify:update` baut zwei Versionen, tauscht die ausgelieferte Version hinter der laufenden
-App aus — genau das, was ein Deployment tut — und prüft, dass die Leiste erscheint, dass
-*Später* sie schließt, dass beim nächsten Start erneut gefragt wird und dass *Neu laden*
-tatsächlich die neue Version bringt.
-
-`verify:iphone` misst gegen iPhone SE, 15 Pro und 15 Pro Max — inklusive der Safe-Area-Insets,
-die es nur in der installierten App gibt. Drei Dinge brechen auf dem Telefon lautlos und fallen
-im Desktop-Browser nicht auf: Inhalt, der unter die Dynamic Island rutscht; iOS, das die Seite
-zoomt, sobald ein Eingabefeld kleiner als 16 px den Fokus bekommt; und Tap-Ziele, die zu klein
-zum blinden Treffen sind. Braucht einen laufenden `npm run preview`.
-
-Alle drei brauchen einmalig einen Browser: `npx playwright install chromium`.
-
-### Wer kann darauf zugreifen?
-
-Ein Vercel-Deployment ist standardmäßig öffentlich erreichbar. Das ist hier weniger
-heikel als es klingt: Die App hat keinen Server und keine Datenbank — wer die URL
-aufruft, sieht eine leere App mit einer eigenen, lokalen Datenbank im eigenen Browser.
-Deine Trainingsdaten liegen ausschließlich auf deinem Gerät und werden nie übertragen.
-
-Wenn die URL trotzdem nicht auffindbar sein soll, aktiviere in den Vercel-Projekt­einstellungen
-unter *Deployment Protection* den Passwortschutz oder Vercel Authentication.
-
-## Auf dem iPhone installieren
-
-Die App ist eine installierbare PWA und läuft danach vollständig offline.
-
-1. Build deployen (jeder statische Host genügt — Netlify, Vercel, GitHub Pages).
-2. Die URL in Safari öffnen.
-3. Teilen → **Zum Home-Bildschirm**.
-
-Danach startet sie im Vollbild ohne Browserleiste, funktioniert ohne Verbindung und
-speichert alles lokal auf dem Gerät.
-
-## Wo liegen meine Daten?
-
-Ausschließlich auf dem Gerät, in IndexedDB. Es gibt keinen Server, keinen Account und
-keine Übertragung an Dritte. Deshalb ist Export ein erstklassiges Feature:
-
-* **Profil → Daten → Vollständiges Backup (JSON)** sichert alles und lässt sich auf
-  einem anderen Gerät wieder einspielen.
-* CSV-Export für Trainings, Habits, Check-ins und Aufgaben zur Auswertung in
-  Tabellenkalkulationen.
-
-Ein Backup vor jedem Gerätewechsel oder Browser-Reset ist Pflicht — Safari räumt
-Website-Daten unter Speicherdruck auf.
-
-## Dokumentation
-
-* [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Tech-Stack-Entscheidungen, Modulaufbau,
-  Datenmodell, Navigation.
-* [`docs/TRAINING-LOGIC.md`](docs/TRAINING-LOGIC.md) — Belastungsmodell, Readiness,
-  Empfehlungs-Engine, Hybrid Score, Habit- und Schichtlogik samt Quellen der Faustregeln.
-
-## Wichtiger Hinweis
-
-Die App gibt Trainingshinweise auf Basis der eingetragenen Daten. Sie stellt keine
-medizinischen Diagnosen und ersetzt keine ärztliche Beratung.
+1. **Eine Stelle entscheidet.** Zwei Bildschirme, die verschiedene Sachen sagen, machen
+   den ganzen Plan wertlos — das ist dreimal passiert und war jedes Mal derselbe Fehler.
+2. **Eine Prüfung, die nichts misst, ist schlimmer als keine.** Nach jedem Test einmal den
+   Draht durchschneiden und sehen, ob er rot wird.
+3. **Messen statt behaupten.** Zahlen, die eine App über den Athleten annimmt, sind
+   entweder gemessen oder erfragt — nie geraten.
+4. **Widersprüche hinschreiben.** Wo zwei Vorgaben sich widersprechen, sagt die App es,
+   statt eine davon still fallen zu lassen.
