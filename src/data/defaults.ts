@@ -195,7 +195,15 @@ export function defaultSettings(): AppSettings {
     weekStartsOn: 1,
     locale: 'de',
     units: 'metric',
-    shiftRotation: ['shift_day', 'shift_day', 'shift_night', 'shift_sleep_day', 'shift_off', 'shift_off'],
+    /*
+     * Der Fünftagerhythmus: T1 Tagschicht, T2 Nachtschicht, T3 Schlaftag,
+     * T4 und T5 frei. Der Coach plant in genau diesem Zyklus — ein Muster mit
+     * anderer Länge hätte hier zwei Rechnungen gegeneinander laufen lassen.
+     */
+    shiftRotation: ['shift_day', 'shift_night', 'shift_sleep_day', 'shift_off', 'shift_off'],
+    // Ohne Anker wird nichts erfunden: der Rhythmus schreibt sich erst fort,
+    // wenn eingestellt ist, welcher Tag welcher ist.
+    shiftAnchor: null,
     planner: { ...DEFAULT_PLANNER_SETTINGS },
     modeOverrides: {},
     sleepCoaching: {

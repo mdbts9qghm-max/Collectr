@@ -111,6 +111,28 @@ export interface ShiftAssignment {
   shiftTypeId: string;
   source: DataSource;
   note?: string;
+  /**
+   * Bewusst ohne Schicht.
+   *
+   * Seit sich der Rhythmus selbst fortschreibt, reicht Löschen nicht mehr: der
+   * nächste Blick auf den Kalender würde den Tag wieder füllen. Dieser Eintrag
+   * hält die Fortschreibung an genau diesem Tag an.
+   */
+  cleared?: boolean;
+}
+
+/**
+ * Ab wann sich das Rotationsmuster von selbst fortschreibt.
+ *
+ * Ohne Anker endet der Kalender am letzten von Hand eingetragenen Tag — und
+ * dahinter plant der Coach ins Leere. Mit Anker steht jeder künftige Tag fest,
+ * ohne dass ein einziger davon eingetippt werden müsste.
+ */
+export interface ShiftAnchor {
+  /** Der Tag, an dem das Muster anliegt. */
+  date: ISODate;
+  /** Welche Stelle des Musters auf diesen Tag fällt (0-basiert). */
+  index: number;
 }
 
 /* ------------------------------------------------------------------ *
@@ -502,8 +524,10 @@ export interface AppSettings {
   weekStartsOn: 0 | 1;
   locale: 'de' | 'en';
   units: 'metric' | 'imperial';
-  /** Rotation used by the shift planner's "fill pattern" tool. */
+  /** Das Schichtmuster in seiner Reihenfolge, als Ids der Schichtarten. */
   shiftRotation: string[];
+  /** Ab wo sich das Muster selbst fortschreibt. Ohne Anker wird nichts erfunden. */
+  shiftAnchor?: ShiftAnchor | null;
   updatedAt: ISOTimestamp;
 }
 

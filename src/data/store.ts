@@ -63,7 +63,6 @@ interface AppStore extends AppData {
   saveShiftType: (type: ShiftType) => void;
   deleteShiftType: (id: string) => void;
   setShift: (date: ISODate, shiftTypeId: string | null) => void;
-  setShifts: (assignments: ShiftAssignment[]) => void;
 
   saveSession: (session: TrainingSession) => PersonalRecord[];
   deleteSession: (id: string) => void;
@@ -253,6 +252,20 @@ export const useStore = create<AppStore>()((set, get) => {
 
     setShift(date, shiftTypeId) {
       if (!shiftTypeId) {
+        // Schreibt sich der Rhythmus fort, reicht Löschen nicht: der nächste
+        // Blick auf den Kalender würde den Tag sofort wieder füllen. Dann wird
+        // der Tag ausdrücklich als leer vermerkt.
+        if (get().settings.shiftAnchor) {
+          const cleared: ShiftAssignment = {
+            date,
+            shiftTypeId: '',
+            source: 'manual',
+            cleared: true,
+          };
+          set((s) => ({ shifts: { ...s.shifts, [date]: cleared } }));
+          write(db.put(db.STORES.shifts, cleared));
+          return;
+        }
         set((s) => {
           const next = { ...s.shifts };
           delete next[date];
@@ -264,15 +277,6 @@ export const useStore = create<AppStore>()((set, get) => {
       const assignment: ShiftAssignment = { date, shiftTypeId, source: 'manual' };
       set((s) => ({ shifts: { ...s.shifts, [date]: assignment } }));
       write(db.put(db.STORES.shifts, assignment));
-    },
-
-    setShifts(assignments) {
-      set((s) => {
-        const next = { ...s.shifts };
-        for (const a of assignments) next[a.date] = a;
-        return { shifts: next };
-      });
-      write(db.bulkPut(db.STORES.shifts, assignments));
     },
 
     saveSession(session) {

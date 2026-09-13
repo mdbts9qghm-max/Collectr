@@ -13,7 +13,7 @@ import type { AppData } from './store.ts';
 import type { DayContext } from '../domain/habits.ts';
 import type { MetricValue } from '../domain/metrics.ts';
 import { addDays, dateRange, lastNDays, startOfWeek, today as todayIso } from '../domain/date.ts';
-import { adjustedTrainingMinutes, buildShiftContext } from '../domain/shifts.ts';
+import { adjustedTrainingMinutes, buildShiftContext, rotationAssignments } from '../domain/shifts.ts';
 import { computeReadiness } from '../domain/readiness.ts';
 import { weekTarget } from '../domain/phases.ts';
 import { currentMetrics } from '../domain/metrics.ts';
@@ -63,12 +63,50 @@ export function buildIndexes(data: AppData): Indexes {
   }
 
   return {
-    shiftAssignments: new Map(Object.entries(data.shifts)),
+    shiftAssignments: shiftAssignmentsFor(data),
     shiftTypes: new Map(data.shiftTypes.map((t) => [t.id, t])),
     checkIns: new Map(Object.entries(data.checkIns)),
     entriesByHabit,
     sessionsByDate,
   };
+}
+
+/**
+ * Wie viel Kalender die App überhaupt anschaut.
+ *
+ * Das Blickfeld des Coaches reicht 27 Tage in jede Richtung, die Auswertungen
+ * blicken ein Jahr zurück, und der Kalender lässt sich ein paar Monate vorwärts
+ * blättern. Ein Jahr in jede Richtung deckt alles davon ab — und begrenzt, was
+ * die Fortschreibung erzeugen muss.
+ */
+const ROTATION_SPAN_DAYS = 400;
+
+/**
+ * Der Schichtplan, wie ihn der Rest der App sieht.
+ *
+ * Zwei Quellen, eine klare Rangfolge: das Rotationsmuster schreibt sich ab dem
+ * Anker von selbst fort, und jeder von Hand gesetzte Tag sticht die
+ * Fortschreibung. So endet der Kalender nicht mehr am letzten eingetippten Tag,
+ * und eine V-Schicht, Urlaub oder ein Tauschtag bleiben trotzdem möglich.
+ */
+function shiftAssignmentsFor(data: AppData): Map<ISODate, ShiftAssignment> {
+  const out = new Map<ISODate, ShiftAssignment>();
+  const anchor = todayIso();
+  for (const a of rotationAssignments(
+    data.settings.shiftAnchor,
+    data.settings.shiftRotation,
+    addDays(anchor, -ROTATION_SPAN_DAYS),
+    addDays(anchor, ROTATION_SPAN_DAYS),
+  )) {
+    out.set(a.date, a);
+  }
+  for (const [date, a] of Object.entries(data.shifts)) {
+    // Ein bewusst geleerter Tag hält die Fortschreibung an, statt von ihr
+    // wieder gefüllt zu werden.
+    if (a.cleared) out.delete(date);
+    else out.set(date, a);
+  }
+  return out;
 }
 
 export function shiftTypeOn(idx: Indexes, date: ISODate): ShiftType | null {

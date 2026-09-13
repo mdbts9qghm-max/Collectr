@@ -124,6 +124,28 @@ pro Tag, `Habit` + `HabitEntry`, `Task`, `Goal` + `GoalMilestone`, `PersonalReco
 Das ist bewusst so: eine gespeicherte Kennzahl wäre nach einer nachgetragenen Einheit
 falsch, und ein Bugfix in der Formel würde die Historie nicht korrigieren.
 
+### Der Schichtplan entsteht aus zwei Quellen
+
+`ShiftAssignment` pro Tag ist nicht die ganze Wahrheit. Der Kalender, den der Rest der
+App sieht, wird in `shiftAssignmentsFor` (`src/data/derived.ts`) aus zwei Quellen
+zusammengesetzt, mit klarer Rangfolge:
+
+1. **Das Rotationsmuster schreibt sich fort.** `settings.shiftRotation` ist die
+   Reihenfolge der Schichten, `settings.shiftAnchor` der eine Tag, an dem das Muster
+   anliegt. Daraus folgt jeder kommende Tag — erzeugt wird nur ab dem Anker vorwärts,
+   die Vergangenheit bleibt wie eingetragen. Diese Tage tragen `source: 'derived'`.
+2. **Von Hand gesetzte Tage stechen.** Eine V-Schicht, ein Tauschtag, Urlaub: was im
+   Kalender eingetragen wird, sticht die Fortschreibung an genau diesem Tag und
+   verschiebt das Muster nicht.
+
+Ohne Anker wird nichts erfunden — dann endet der Kalender am letzten eingetragenen Tag,
+so wie vorher. Ein Tag, der ausdrücklich keine Schicht hat, wird als
+`{ cleared: true }` gespeichert: Löschen allein würde ihn beim nächsten Blick wieder
+füllen.
+
+Der Grund für das Ganze: hinter dem letzten eingetippten Tag sah der Coach keine Schicht,
+also auch keine Schichtlast, und plante ins Leere.
+
 ### Vorbereitung auf externe Integrationen
 
 Jeder importierbare Datensatz trägt `source: DataSource` und optional `externalId`.

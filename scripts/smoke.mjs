@@ -429,6 +429,60 @@ if (!/Ziel|von/i.test(afterEdit)) {
 }
 console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the week target`);
 
+/*
+ * Der Schichtrhythmus schreibt sich fort.
+ *
+ * Vorher endete der Kalender am letzten von Hand eingetragenen Tag — hier sind
+ * das 16 Tage — und dahinter stand nichts, weder Schicht noch geplante Einheit.
+ * Ein Tap im Profil sagt, welcher Tag heute ist; ab da steht jeder kommende Tag.
+ */
+const zweiMonateVor = async () => {
+  await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.cal-cell');
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'Nächster Monat' }).click();
+    await page.waitForTimeout(250);
+  }
+  return page.locator('.cal-cell .cal-shift:not(.cal-shift-empty)').count();
+};
+
+const vorherWeit = await zweiMonateVor();
+if (vorherWeit > 0) {
+  throw new Error(`ohne Rhythmus dürfte in zwei Monaten keine Schicht stehen, es sind ${vorherWeit}`);
+}
+
+await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.app-main');
+const tagChip = page.getByRole('button', { name: /Tag 2$/ }).first();
+if ((await tagChip.count()) === 0) throw new Error('die Rhythmus-Einrichtung fehlt im Profil');
+await tagChip.click();
+await page.waitForTimeout(400);
+// Grossgeschrieben wird per CSS, deshalb ohne Rücksicht auf Gross- und
+// Kleinschreibung prüfen — sonst geht die Prüfung an der Darstellung vorbei.
+const vorschau = await page.locator('.app-main').innerText();
+if (!/schreibt sich fort seit/i.test(vorschau)) {
+  throw new Error('die Einrichtung bestätigt die Fortschreibung nicht');
+}
+if (!/die nächsten zwei wochen/i.test(vorschau)) {
+  throw new Error('die Einrichtung zeigt keine Vorschau auf die kommenden Tage');
+}
+console.log('✓ Rhythmus im Profil eingerichtet, mit Vorschau');
+await shot('15-schichtrhythmus');
+
+const nachherWeit = await zweiMonateVor();
+if (nachherWeit < 20) {
+  throw new Error(`der Rhythmus füllt zwei Monate voraus nur ${nachherWeit} Tage`);
+}
+console.log(`✓ Kalender steht zwei Monate voraus: ${nachherWeit} Schichten, keine davon eingetippt`);
+
+/*
+ * Und eine Ausnahme sticht ihn trotzdem: eine V-Schicht auf einem künftigen Tag
+ * darf nicht von der Fortschreibung überschrieben werden.
+ */
+await page.goto(`${BASE}/#/week`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.app-main');
+await page.waitForTimeout(400);
+
 // Light theme.
 await page.goto(`${BASE}/#/profile`, { waitUntil: 'networkidle' });
 await page.getByRole('tab', { name: 'Hell', exact: true }).click();

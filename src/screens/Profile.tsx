@@ -36,6 +36,7 @@ import {
 import { IconDownload, IconPlus, IconUpload } from '../ui/icons.tsx';
 import { PhaseSheet, PlanSheet, newPhase } from '../ui/PhaseSheet.tsx';
 import { WhoopCard } from '../ui/WhoopCard.tsx';
+import { RotationCard } from '../ui/RotationCard.tsx';
 
 export function Profile() {
   const data = useData();
@@ -459,25 +460,7 @@ export function Profile() {
         </div>
       </Card>
 
-      <Card tight>
-        <Field
-          label="Rotationsmuster"
-          hint="Kürzel in Reihenfolge, z. B. T,T,N,S,F,F. Wird beim Ausfüllen des Kalenders verwendet."
-        >
-          <TextInput
-            value={settings.shiftRotation
-              .map((id) => data.shiftTypes.find((t) => t.id === id)?.short ?? '?')
-              .join(',')}
-            onChange={(e) => {
-              const shorts = e.target.value.split(',').map((s) => s.trim().toUpperCase());
-              const ids = shorts
-                .map((s) => data.shiftTypes.find((t) => t.short.toUpperCase() === s)?.id)
-                .filter((id): id is string => !!id);
-              if (ids.length > 0) set({ shiftRotation: ids });
-            }}
-          />
-        </Field>
-      </Card>
+      <RotationCard />
 
       {/* ---------- Training plan ---------- */}
       {activePlan && (

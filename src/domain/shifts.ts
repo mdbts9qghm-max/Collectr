@@ -1,10 +1,19 @@
 import type {
   ClockTime,
   ISODate,
+  ShiftAnchor,
   ShiftAssignment,
   ShiftType,
 } from './types.ts';
-import { addDays, clockToMinutes, minutesToClock, windowDurationMinutes } from './date.ts';
+import {
+  addDays,
+  clockToMinutes,
+  dateRange,
+  diffDays,
+  isBefore,
+  minutesToClock,
+  windowDurationMinutes,
+} from './date.ts';
 
 export interface ShiftContext {
   date: ISODate;
@@ -97,25 +106,41 @@ function roundTo5(minutes: number): number {
 }
 
 /**
- * Fills a date range with a repeating rotation. Used by the shift planner so
- * the user does not have to tap 30 days one by one.
+ * Welche Stelle des Musters auf einen Tag fällt.
+ *
+ * Das Muster wiederholt sich ohne Ende, also ist die Stelle reine Modulorechnung
+ * — und sie gilt in beide Richtungen, damit auch ein Tag vor dem Anker eine
+ * Antwort hat, wenn jemand danach fragt.
  */
-export function applyRotation(
-  from: ISODate,
-  days: number,
+export function rotationIndexOn(date: ISODate, anchor: ShiftAnchor, length: number): number {
+  if (length <= 0) return 0;
+  const offset = diffDays(date, anchor.date) + anchor.index;
+  return ((offset % length) + length) % length;
+}
+
+/**
+ * Der Schichtplan, wie er sich aus dem Anker ergibt.
+ *
+ * Erst mit dieser Funktion hört der Kalender auf, am letzten eingetippten Tag
+ * zu enden. Erzeugt wird nur ab dem Anker vorwärts: was davor liegt, ist
+ * Vergangenheit und steht so, wie es eingetragen wurde — erfunden wird sie nicht.
+ */
+export function rotationAssignments(
+  anchor: ShiftAnchor | null | undefined,
   rotation: string[],
-  startOffset = 0,
+  from: ISODate,
+  to: ISODate,
 ): ShiftAssignment[] {
-  if (rotation.length === 0) return [];
-  const out: ShiftAssignment[] = [];
-  for (let i = 0; i < days; i++) {
-    out.push({
-      date: addDays(from, i),
-      shiftTypeId: rotation[(i + startOffset) % rotation.length],
-      source: 'manual',
-    });
-  }
-  return out;
+  if (!anchor || rotation.length === 0) return [];
+  const start = isBefore(from, anchor.date) ? anchor.date : from;
+  if (isBefore(to, start)) return [];
+  return dateRange(start, to).map((date) => ({
+    date,
+    shiftTypeId: rotation[rotationIndexOn(date, anchor, rotation.length)],
+    // 'derived' heißt: fortgeschrieben, nicht von Hand gesetzt. Die Oberfläche
+    // unterscheidet daran, was sie als Ausnahme zeigen darf.
+    source: 'derived' as const,
+  }));
 }
 
 /** Counts each shift type across a range — feeds the weekly planning view. */
