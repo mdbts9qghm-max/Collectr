@@ -146,6 +146,19 @@ füllen.
 Der Grund für das Ganze: hinter dem letzten eingetippten Tag sah der Coach keine Schicht,
 also auch keine Schichtlast, und plante ins Leere.
 
+Eingetragen wird an zwei Stellen, beide auf demselben Weg (`setShift`): im Morgen-Check-in
+für heute und die nächsten fünf Tage, und im Coach-Kalender direkt an dem Tag, den man
+antippt. Beide zeigen die **wirksame** Schicht — Rhythmus plus Ausnahmen —, nicht den rohen
+Speicher; ein Tap überschreibt, ein zweiter nimmt zurück. Weil jede Ableitung aus derselben
+Karte liest, rechnet sich der Plan mit dem Eintrag neu, ohne dass irgendwo etwas angestoßen
+werden muss.
+
+Zyklustage sind dabei Positionen, keine Etiketten: die beiden freien Tage unterscheiden
+sich nur darin, welcher nach dem Schlaftag der erste ist. Wer einen Tag mitten in der Reihe
+ändert, ändert damit auch die Rollen der Tage danach. Das ist richtig — die Rotation hat
+sich dann wirklich verschoben —, steht aber im Kalender ausdrücklich da, damit es niemand
+für einen Fehler hält.
+
 ### Vorbereitung auf externe Integrationen
 
 Jeder importierbare Datensatz trägt `source: DataSource` und optional `externalId`.

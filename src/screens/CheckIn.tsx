@@ -11,7 +11,8 @@ import { formatClock, windowsFor } from '../domain/coach/windows.ts';
 import { sessionFromDecision, sessionFromStrength, shapeOf } from '../domain/coach/toSession.ts';
 import { makeId } from '../domain/ids.ts';
 import { useStore } from '../data/store.ts';
-import { useCoach, useDayView, useToday } from '../app/hooks.ts';
+import { shiftTypeOn } from '../data/derived.ts';
+import { useCoach, useDayView, useIndexes, useToday } from '../app/hooks.ts';
 import { Button, Card, Pill, ReasonList, TextInput } from '../ui/primitives.tsx';
 import { Ring } from '../ui/charts.tsx';
 import { IconChevronLeft, IconCheck, IconPlus } from '../ui/icons.tsx';
@@ -35,7 +36,6 @@ export function CheckIn() {
   const navigate = useNavigate();
   const existing = useStore((s) => s.checkIns[today]);
   const shiftTypes = useStore((s) => s.shiftTypes);
-  const shifts = useStore((s) => s.shifts);
   const saveCheckIn = useStore((s) => s.saveCheckIn);
   const setShift = useStore((s) => s.setShift);
   const saveSession = useStore((s) => s.saveSession);
@@ -47,7 +47,13 @@ export function CheckIn() {
   );
 
   const view = useDayView(today);
-  const todayShiftId = shifts[today]?.shiftTypeId;
+  /*
+   * Die Schicht des Tages, wie der Rest der App sie sieht — nicht der rohe
+   * Speicher. Seit sich der Rhythmus fortschreibt, ist ein Tag längst bekannt,
+   * ohne dass er eingetippt wurde; `shifts[today]` stünde dann leer und der
+   * Check-in fragte nach etwas, das er schon weiß.
+   */
+  const todayShiftId = view.shift.type?.id ?? null;
   const coachToday = useCoach(today);
   const cycleDayToday = coachToday.timeline.days.find((d) => d.date === today)?.cycleDay ?? null;
   const hasNap = cycleDayToday != null && !!windowsFor(cycleDayToday, 5 * 60 + 30).nap;
@@ -425,28 +431,38 @@ function NumberField({
   );
 }
 
-/** Lets the athlete fill the next few days' shifts while they are already here. */
+/**
+ * Die kommenden Tage, eintragbar solange man ohnehin hier ist.
+ *
+ * Gezeigt wird eine volle Rotation, nicht drei Tage: der Coach entscheidet über
+ * das Blickfeld, und ob heute die letzte Gelegenheit im Zyklus ist, hängt am
+ * ganzen Zyklus. Was der fortgeschriebene Rhythmus schon sagt, steht blass da
+ * und muss nicht bestätigt werden — ein Tap korrigiert es, mehr nicht.
+ */
 function UpcomingShifts({ today }: { today: ISODate }) {
   const shiftTypes = useStore((s) => s.shiftTypes);
-  const shifts = useStore((s) => s.shifts);
+  const stored = useStore((s) => s.shifts);
   const setShift = useStore((s) => s.setShift);
+  const idx = useIndexes();
   const [openDate, setOpenDate] = useState<ISODate | null>(null);
 
-  const days = useMemo(() => [1, 2, 3].map((i) => addDays(today, i)), [today]);
-  const missing = days.filter((d) => !shifts[d]).length;
-  if (missing === 0) return null;
+  const days = useMemo(() => [1, 2, 3, 4, 5].map((i) => addDays(today, i)), [today]);
+  const offen = days.filter((d) => !shiftTypeOn(idx, d)).length;
 
   return (
     <Card tight>
-      <div className="t-label mb-3">Nächste Tage ({missing} offen)</div>
+      <div className="t-label mb-3">
+        Nächste Tage{offen > 0 ? ` (${offen} offen)` : ''}
+      </div>
       <p className="t-caption muted mb-3">
-        Solange diese Tage leer sind, kann die App nicht erkennen, ob heute die letzte Gelegenheit
-        der Woche ist.
+        {offen > 0
+          ? 'Solange diese Tage leer sind, kann die App nicht erkennen, ob heute die letzte Gelegenheit im Zyklus ist.'
+          : 'Aus dem Rhythmus. Ein Tap ändert einen Tag, der anders läuft — der Plan rechnet sich dann neu.'}
       </p>
       <div className="col gap-2">
         {days.map((date) => {
-          const assigned = shifts[date]?.shiftTypeId;
-          const type = shiftTypes.find((t) => t.id === assigned);
+          const type = shiftTypeOn(idx, date);
+          const vonHand = !!stored[date] && !stored[date].cleared;
           return (
             <div key={date}>
               <button
@@ -458,7 +474,10 @@ function UpcomingShifts({ today }: { today: ISODate }) {
                 <span className="t-small muted" style={{ width: 58, textAlign: 'left' }}>
                   {weekdayShort(date)}, {date.slice(8)}.{date.slice(5, 7)}.
                 </span>
-                <span className="grow left t-small">
+                <span
+                  className="grow left t-small"
+                  style={type && !vonHand ? { color: 'var(--text-secondary)' } : undefined}
+                >
                   {type ? `${type.icon} ${type.label}` : 'antippen zum Setzen'}
                 </span>
                 {!type && <Pill tone="warn">offen</Pill>}
@@ -469,9 +488,9 @@ function UpcomingShifts({ today }: { today: ISODate }) {
                     <button
                       key={t.id}
                       type="button"
-                      className={`chip ${assigned === t.id ? 'active' : ''}`}
+                      className={`chip ${type?.id === t.id ? 'active' : ''}`}
                       onClick={() => {
-                        setShift(date, t.id);
+                        setShift(date, type?.id === t.id ? null : t.id);
                         setOpenDate(null);
                       }}
                     >

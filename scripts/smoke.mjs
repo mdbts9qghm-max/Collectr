@@ -74,8 +74,9 @@ await page.evaluate(async () => {
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(900);
 
-// Step 1: today's shift.
-await page.getByText('Freischicht').click();
+// Step 1: today's shift. Auf die Kachel eingrenzen — die Liste der kommenden
+// Tage darunter nennt dieselben Schichten noch einmal.
+await page.locator('.pick', { hasText: 'Freischicht' }).first().click();
 await page.getByRole('button', { name: 'Weiter' }).click();
 await page.waitForTimeout(250);
 
@@ -428,6 +429,47 @@ if (!/Ziel|von/i.test(afterEdit)) {
   throw new Error('phase edit did not reach the week screen');
 }
 console.log(`✓ phase edited (${beforeHours} → +0,5 h) and applied to the week target`);
+
+/*
+ * Eine Schicht im Kalender eintragen, und der Plan fügt sich ein.
+ *
+ * Die Schicht bestimmt Zyklustag, Zeitfenster und Schichtlast — und damit, was
+ * an dem Tag überhaupt geht. Deshalb wird sie dort eingetragen, wo der Plan
+ * steht, und der Tag muss sich sofort mitbewegen.
+ */
+await page.goto(`${BASE}/#/training`, { waitUntil: 'networkidle' });
+await page.waitForSelector('.cal-cell');
+await page.waitForTimeout(400);
+
+// Einen künftigen Tag mit geplanter Einheit nehmen: da ist etwas zu verlieren.
+const lauftag = page
+  .locator('.cal-cell:not(.is-past):not(.is-today)')
+  .filter({ has: page.locator('.cal-bar') })
+  .first();
+if ((await lauftag.count()) === 0) throw new Error('kein künftiger Tag mit Einheit im Kalender');
+await lauftag.click();
+await page.waitForSelector('.cal-detail');
+const detailVorher = await page.locator('.cal-detail').innerText();
+if (!/min/.test(detailVorher)) throw new Error('der gewählte Tag trägt keine Einheit');
+
+const schichtChips = page.locator('.cal-detail .chip-row .chip');
+if ((await schichtChips.count()) === 0) {
+  throw new Error('im Kalender lässt sich keine Schicht eintragen');
+}
+// Die Tagschicht: zwölf Stunden Dienst, kein Trainingsfenster.
+await schichtChips.first().click();
+await page.waitForTimeout(600);
+const detailNachher = await page.locator('.cal-detail').innerText();
+if (detailNachher === detailVorher) {
+  throw new Error('der Plan reagiert nicht auf die eingetragene Schicht');
+}
+if (!/kein Trainingsfenster|Keine Einheit geplant/i.test(detailNachher)) {
+  throw new Error(
+    `nach der Tagschicht müsste der Tag ohne Einheit dastehen: ${detailNachher.replace(/\n/g, ' | ')}`,
+  );
+}
+console.log('✓ Schicht eingetragen, der Plan fügt sich ein');
+await shot('17-schicht-eintragen');
 
 /*
  * Ab wann der Plan mit Woche 1 zählt, ist eine Angabe und kein Nebeneffekt.

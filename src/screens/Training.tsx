@@ -13,9 +13,11 @@ import {
   diffDays,
   endOfMonth,
   endOfWeek,
+  isBefore,
   startOfMonth,
   startOfWeek,
 } from '../domain/date.ts';
+import { rotationIndexOn } from '../domain/shifts.ts';
 import { cyclesUntilDeload } from '../domain/coach/phases.ts';
 import { useCoach, useToday } from '../app/hooks.ts';
 import { useStore } from '../data/store.ts';
@@ -533,6 +535,8 @@ function CoachCalendar({
             <div className="t-caption muted mt-2">{day.secondUnit.reason}</div>
           )}
 
+          {day.date >= today && <ShiftPicker date={day.date} />}
+
           {/*
             Das Einflussfenster, an der Stelle, wo man ohnehin hinschaut: welche
             Regeln diesen Tag noch mit heute verbinden.
@@ -563,6 +567,62 @@ function CoachCalendar({
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * Die Schicht eines Tages, eingetragen da, wo der Plan steht.
+ *
+ * Der Plan hängt an der Schicht: sie bestimmt den Zyklustag, das Zeitfenster
+ * und die Schichtlast, und daraus folgt, was an dem Tag überhaupt geht. Deshalb
+ * wird sie hier eingetragen und nicht zwei Bildschirme weiter — eine Zeile
+ * höher steht sofort, was daraus geworden ist.
+ *
+ * Der fortgeschriebene Rhythmus bleibt der Grundplan. Was hier gesetzt wird,
+ * sticht ihn für genau diesen Tag; weicht es ab, steht das auch da.
+ */
+function ShiftPicker({ date }: { date: ISODate }) {
+  const shiftTypes = useStore((s) => s.shiftTypes);
+  const stored = useStore((s) => s.shifts[date]);
+  const setShift = useStore((s) => s.setShift);
+  const rotation = useStore((s) => s.settings.shiftRotation);
+  const anchor = useStore((s) => s.settings.shiftAnchor);
+
+  const vomRhythmus =
+    anchor && rotation.length > 0 && !isBefore(date, anchor.date)
+      ? rotation[rotationIndexOn(date, anchor, rotation.length)]
+      : null;
+  const aktuell = stored ? (stored.cleared ? null : stored.shiftTypeId) : vomRhythmus;
+  const weichtAb = !!stored && !stored.cleared && !!vomRhythmus && stored.shiftTypeId !== vomRhythmus;
+
+  return (
+    <div className="mt-3">
+      <div className="t-caption muted">Schicht eintragen</div>
+      <div className="chip-row mt-2">
+        {shiftTypes.map((type) => (
+          <button
+            key={type.id}
+            type="button"
+            className={`chip ${aktuell === type.id ? 'active' : ''}`}
+            onClick={() => setShift(date, aktuell === type.id ? null : type.id)}
+            aria-pressed={aktuell === type.id}
+          >
+            {type.icon} {type.short}
+          </button>
+        ))}
+      </div>
+      <div className="t-caption muted mt-2">
+        {weichtAb
+          ? 'Von Hand gesetzt — weicht vom Rhythmus ab. Die Rollen der Tage danach rücken mit.'
+          : stored?.cleared
+            ? 'Bewusst ohne Schicht. Der Rhythmus füllt diesen Tag nicht wieder.'
+            : stored
+              ? 'Von Hand gesetzt.'
+              : vomRhythmus
+                ? 'Aus dem Rhythmus. Ein Tap überschreibt ihn für diesen Tag.'
+                : 'Noch nichts eingetragen. Ohne Schicht plant der Coach diesen Tag nicht.'}
+      </div>
+    </div>
   );
 }
 
