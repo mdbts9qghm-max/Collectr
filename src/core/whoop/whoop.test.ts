@@ -95,14 +95,14 @@ describe('Workouts → Einheiten', () => {
     expect(sportCategory('Golf')).toBeUndefined()
   })
 
-  it('Lauf und Kraft am Tag 2 werden der passenden Einheit zugeordnet, Korrektur geht vor', () => {
-    const date = '2026-10-03'
+  it('Lauf und Kraft an Tag 5 werden der passenden Einheit zugeordnet, Korrektur geht vor', () => {
+    const date = '2026-10-06'
     const day = plan.days.find((d) => d.date === date)!
     const run = day.sessions.find((s) => s.category === 'run')!
     const legs = day.sessions.find((s) => s.category === 'strength')!
     const workouts = [
-      { id: 'w1', start: iso(date, h(8, 35)), end: iso(date, h(9, 25)), sportName: 'Running', distanceM: 7250, strain: 9.1 },
-      { id: 'w2', start: iso(date, h(9, 45)), end: iso(date, h(10, 35)), sportName: 'Weightlifting' },
+      { id: 'w1', start: iso(date, run.startMin! + 5), end: iso(date, run.startMin! + 55), sportName: 'Running', distanceM: 7250, strain: 9.1 },
+      { id: 'w2', start: iso(date, legs.startMin! + 5), end: iso(date, legs.startMin! + 55), sportName: 'Weightlifting' },
     ]
     const m = matchWorkouts(workouts, plan.days)
     expect(m).toEqual([

@@ -38,6 +38,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
 | Phase 6 | Push-Erinnerungen erst in Phase 7; gelernte Muster anzeigen, Nutzung per Schalter (Standard aus) |
 | Phase 7 | Push 30 min vor Zubettgehen/Nap; .ics mit Einheiten, Schichten, Schlaf/Nap; Dienstplan-Import mit Vorschau und Bestätigung |
+| Tag 2 (vor der Nacht) | Nur **eine** Einheit (die Krafteinheit). Lauf an Tag 3 nach dem Tagschlaf (locker, ab 15:00), Qualität an Tag 5, im Taper bleibt Tag 3 frei. Höhenmeter über hügeligere lange Läufe (Obergrenze Aufbau 700, Rennspezifisch 1.200 hm). Freie Tage dürfen 2 Einheiten haben |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)

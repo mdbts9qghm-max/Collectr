@@ -112,9 +112,10 @@ describe('Tagesansicht', () => {
     const base = data({}, {})
     const cal = buildCalendar(base.settings, [])
     const plan = buildPlan(base, cal, [])
-    const run = plan.days.find((d) => d.date === '2026-10-03')!.sessions.find((s) => s.category === 'run')!
+    // Der Lauf liegt an Tag 3 (04.10.) nach dem Tagschlaf
+    const run = plan.days.find((d) => d.date === '2026-10-04')!.sessions.find((s) => s.category === 'run')!
     const workouts = [
-      { id: 'w-run', start: iso('2026-10-03', 8 * 60 + 35), end: iso('2026-10-03', 9 * 60 + 25), sportName: 'running', distanceM: 7200, strain: 9 },
+      { id: 'w-run', start: iso('2026-10-04', run.startMin! + 5), end: iso('2026-10-04', run.startMin! + 55), sportName: 'running', distanceM: 7200, strain: 9 },
       { id: 'w-golf', start: iso('2026-10-05', 10 * 60), end: iso('2026-10-05', 11 * 60), sportName: 'golf' },
     ]
     const d = data({ whoop: { ...EMPTY_WHOOP, status: { connected: true }, workouts } })
@@ -124,7 +125,7 @@ describe('Tagesansicht', () => {
     expect(a.suggestions.map((s) => s.workout.id)).toEqual(['w-golf'])
     expect(a.suggestions[0]!.candidates.length).toBeGreaterThan(0)
     // Eigener Eintrag vorhanden → nicht überschreiben
-    const own = data({ whoop: d.whoop, logs: [{ sessionId: run.id, date: '2026-10-03', status: 'done', feeling: 4 }] })
+    const own = data({ whoop: d.whoop, logs: [{ sessionId: run.id, date: '2026-10-04', status: 'done', feeling: 4 }] })
     expect(workoutActions(own, plan, '2026-10-06').autoLogs).toEqual([])
     // Bereits übernommen → nichts mehr zu tun
     const done = data({ whoop: d.whoop, logs: [a.autoLogs[0]!] })
