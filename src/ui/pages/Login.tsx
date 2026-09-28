@@ -1,12 +1,8 @@
 import { useState } from 'react'
 import { Button, Card, Disclaimer, Field, Input } from '../components/common'
 
-/**
- * Anmeldung. Mit `fixedEmail` (VITE_LOGIN_EMAIL) zeigt die Seite nur ein Passwort-Feld,
- * die E-Mail ist fest hinterlegt. Die Sicherheit bleibt gleich (Supabase-Login, RLS).
- */
-export function Login({ onLogin, fixedEmail }: { onLogin: (email: string, password: string) => Promise<string | null>; fixedEmail?: string }) {
-  const [email, setEmail] = useState(fixedEmail ?? '')
+export function Login({ onLogin }: { onLogin: (email: string, password: string) => Promise<string | null> }) {
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -24,17 +20,12 @@ export function Login({ onLogin, fixedEmail }: { onLogin: (email: string, passwo
             setBusy(true)
             const err = await onLogin(email.trim(), password)
             setBusy(false)
-            setError(err ? (/invalid/i.test(err) ? (fixedEmail ? 'Passwort falsch.' : 'E-Mail oder Passwort falsch.') : `Anmeldung fehlgeschlagen: ${err}`) : null)
+            setError(err ? (/invalid/i.test(err) ? 'E-Mail oder Passwort falsch.' : `Anmeldung fehlgeschlagen: ${err}`) : null)
           }}
         >
-          {fixedEmail ? (
-            // Unsichtbar, damit Passwort-Manager das Konto zuordnen können
-            <input type="email" autoComplete="username" value={email} readOnly hidden />
-          ) : (
-            <Field label="E-Mail">
-              <Input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </Field>
-          )}
+          <Field label="E-Mail">
+            <Input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </Field>
           <Field label="Passwort">
             <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Field>
