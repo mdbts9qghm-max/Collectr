@@ -11,7 +11,6 @@ import {
   mobility,
   mountainDay,
   raceSession,
-  recoveryRun,
   strengthSession,
   threshold,
   treadmillHills,
@@ -128,84 +127,83 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
   }
   const addEasyFixed = (day: CycleDay, km: number, strides = false) =>
     fixed.push({ day, km, scalable: false, hmCapable: false, make: (ctx, k) => easyRun(ctx, { km: k, strides }) })
-  const optionalD3 = (withRun: boolean, skill: boolean) => {
-    if (withRun) optionals.push({ day: 3, make: (ctx) => recoveryRun(ctx, V.optionalRecoveryRunMin, true) })
-    optionals.push({ day: 3, make: skill ? strength('skill_light', true) : (ctx) => mobility(ctx, 20, true) })
-  }
+  // Tag 3 (Schlaftag): der reguläre Lauf ist flexibel (siehe unten), optional bleibt Skill/Mobility.
+  const optionalD3 = (skill: boolean) => optionals.push({ day: 3, make: skill ? strength('skill_light', true) : (ctx) => mobility(ctx, 20, true) })
+  const S = V.flexShares
 
+  // Tag 2 (vor der Nachtschicht) hat genau eine Einheit: die Krafteinheit. Der Lauf liegt an Tag 3
+  // nach dem Tagschlaf, Qualitätseinheiten an Tag 5.
   switch (micro.template) {
     case 'base':
       addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 2, kind: 'easy_abc', share: V.flexShares.base.day2 }, { day: 5, kind: 'hills', share: V.flexShares.base.day5 })
+      flex.push({ day: 3, kind: 'easy', share: S.base.day3 }, { day: 5, kind: 'hills', share: S.base.day5 })
       extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_main') })
-      optionalD3(true, true)
+      optionalD3(true)
       break
     case 'build_a':
     case 'build_b':
-      addQuality(2, micro.template === 'build_a' ? 'intervals_uphill' : 'threshold')
       addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 5, kind: 'hills', share: 1 })
+      addQuality(5, micro.template === 'build_a' ? 'intervals_uphill' : 'threshold')
+      flex.push({ day: 3, kind: 'easy', share: 1 })
       extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_main') })
-      optionalD3(true, true)
+      optionalD3(true)
       break
     case 'deload':
       addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 2, kind: 'hills', share: V.flexShares.deload.day2 }, { day: 5, kind: 'easy', share: V.flexShares.deload.day5 })
+      flex.push({ day: 3, kind: 'easy', share: S.deload.day3 }, { day: 5, kind: 'hills', share: S.deload.day5 })
       extras.push({ day: 2, make: strength(micro.hasStrengthTest ? 'strength_test' : 'calisthenics_maintenance') })
       extras.push({ day: 5, make: (ctx) => mobility(ctx, 20, false) })
-      optionalD3(false, false)
+      optionalD3(false)
       break
     case 'specific_b2b': {
       const [a, b] = specific.b2b ?? [20, 12]
       addLong(4, 'b2b_1', a)
       addLong(5, 'b2b_2', b)
-      flex.push({ day: 2, kind: 'hills', share: 1 })
+      flex.push({ day: 3, kind: 'easy', share: 1 })
       extras.push({ day: 2, make: strength('calisthenics_maintenance') })
-      optionalD3(true, false)
+      optionalD3(false)
       break
     }
     case 'specific_night':
-      addQuality(2, 'intervals_uphill')
+      // Keine Qualitätseinheit: Tag 2 hat nur Kraft, Tag 5 folgt direkt auf den Nachtlauf.
       addLong(4, 'night_run', specific.night ?? 24)
-      flex.push({ day: 5, kind: 'easy_afternoon', share: 1 })
+      flex.push({ day: 3, kind: 'easy', share: S.night.day3 }, { day: 5, kind: 'easy_afternoon', share: S.night.day5 })
       extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_maintenance') })
-      optionalD3(true, false)
+      optionalD3(false)
       break
     case 'specific_long':
       addLong(4, 'long_run', specific.long ?? 35)
-      flex.push({ day: 2, kind: 'hills', share: 1 })
+      flex.push({ day: 3, kind: 'easy', share: 1 })
       extras.push({ day: 2, make: strength('calisthenics_maintenance') }, { day: 5, make: (ctx) => mobility(ctx, 25, false) })
-      optionalD3(true, false)
+      optionalD3(false)
       break
     case 'specific_mountain': {
       const [a, b] = specific.mountain ?? [25, 15]
       const [ha, hb] = V.mountainElevation[micro.index] ?? [1500, 800]
       fixed.push({ day: 4, km: a, scalable: false, hmCapable: false, fixedHm: ha, make: (ctx, k) => mountainDay(ctx, { km: k, elevationM: ha, day: 1 }) })
       fixed.push({ day: 5, km: b, scalable: false, hmCapable: false, fixedHm: hb, make: (ctx, k) => mountainDay(ctx, { km: k, elevationM: hb, day: 2 }) })
-      flex.push({ day: 2, kind: 'easy', share: 1 })
+      flex.push({ day: 3, kind: 'easy', share: 1 })
       extras.push({ day: 2, make: strength('calisthenics_maintenance') })
-      optionalD3(false, false)
+      optionalD3(false)
       break
     }
     case 'specific_final':
       addLong(4, 'long_run', specific.long ?? 22)
-      flex.push({ day: 2, kind: 'easy', share: V.flexShares.final.day2 }, { day: 5, kind: 'hills', share: V.flexShares.final.day5 })
+      flex.push({ day: 3, kind: 'easy', share: S.final.day3 }, { day: 5, kind: 'hills', share: S.final.day5 })
       extras.push({ day: 2, make: strength('strength_test') }, { day: 5, make: strength('calisthenics_maintenance') })
-      optionalD3(true, false)
+      optionalD3(false)
       break
     case 'taper1': {
       const s = V.taperShares.taper1
-      addQuality(2, 'threshold', 'short')
       addLong(4, 'long_run', target * s.day4)
-      addEasyFixed(5, target * s.day5, true)
+      addQuality(5, 'threshold', 'short')
       extras.push({ day: 2, make: strength('strength_short') })
       break
     }
     case 'taper2': {
       const s = V.taperShares.taper2
-      addQuality(2, 'intervals_uphill', 'short')
       addEasyFixed(4, target * s.day4)
-      addEasyFixed(5, target * s.day5, true)
+      addQuality(5, 'intervals_uphill', 'short')
       extras.push({ day: 2, make: strength('strength_short') })
       break
     }

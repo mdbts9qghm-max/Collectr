@@ -50,6 +50,11 @@ export function placeDay(cal: ShiftCalendar, date: LocalDate, microIndex: number
   list = list.map((s) =>
     s.type === 'night_run' && !w.nightRunAllowed ? toLongRun(s, phase, s.distanceKm ?? 0, 'Nachtlauf nicht möglich (Folgetag Dienst): tagsüber laufen.') : s,
   )
+  // Vor der Nachtschicht nur eine Einheit: die wichtigste bleibt (Entscheidung nach Phase 7).
+  if (shift.dayKind === 'pre_night') {
+    const required = list.filter((s) => !s.optional).sort((a, b) => priorityOf(b) - priorityOf(a))
+    for (const s of required.slice(CONFIG.plan.maxSessionsPreNight)) drop(s, 'cancelled', 'Vor der Nachtschicht nur eine Einheit.')
+  }
   // Fenster: zuerst optionale, dann nicht-Schlüssel, dann Schlüsseleinheiten niedrigster Priorität streichen.
   while (!fitsWindow(w, list) && list.length > 0) {
     const victim = [...list].sort((a, b) => Number(b.optional) - Number(a.optional) || Number(a.isKey) - Number(b.isKey) || priorityOf(a) - priorityOf(b))[0]!

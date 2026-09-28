@@ -8,8 +8,15 @@ async function noHorizontalScroll(page: Page) {
   expect(overflow).toBeLessThanOrEqual(0)
 }
 
+/** Aufklappbare Gruppe (z. B. in den Einstellungen) öffnen, falls sie zu ist. */
+async function openGroup(page: Page, title: string) {
+  const d = page.locator('details', { has: page.locator(`summary:has-text("${title}")`) }).first()
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').first().click()
+}
+
 async function simulateDate(page: Page, date: string) {
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'Erweitert')
   await page.getByLabel('Simuliertes Datum').fill(date)
   await page.getByRole('button', { name: 'Setzen', exact: true }).click()
   await page.getByRole('link', { name: 'Heute' }).click()
@@ -46,6 +53,7 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await page.getByRole('group', { name: /Gefühl heute/ }).getByRole('button', { name: '2' }).click()
   await page.getByRole('button', { name: 'Speichern', exact: true }).click()
   await expect(page.getByTestId('traffic')).toBeVisible()
+  await expect(page.getByTestId('training-ring')).toContainText('Training')
   const adj = page.getByTestId('adjustment').first()
   await expect(adj).toBeVisible()
   await expect(adj.getByTestId('reason')).toContainText(/Bereitschaft \d+ %/)
@@ -58,10 +66,14 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(page.getByTestId('today-item').first()).toContainText('Erledigt')
 
   // --- Zyklus: V-Schicht auf Tag 5 eintragen ---
-  await page.getByRole('link', { name: 'Zyklus' }).click()
+  await page.getByRole('link', { name: 'Plan', exact: true }).click()
+  await expect(page).toHaveURL(/\/zyklus$/)
   const d5 = page.getByTestId('day-2026-12-15')
   await expect(d5).toContainText('Frei')
-  await expect(d5).toContainText('Höhenmeter-Einheit')
+  await expect(d5).toContainText('Bergauf-Intervalle')
+  // Tag 2 (vor der Nacht): nur eine Einheit
+  await expect(page.getByTestId('day-2026-12-12')).toContainText('Schweres Beintraining')
+  await expect(page.getByTestId('day-2026-12-12')).not.toContainText('Lauf')
   await d5.click()
   await page.getByRole('dialog').getByRole('button', { name: 'V-Schicht' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Speichern', exact: true }).click()
@@ -72,9 +84,10 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await shot(page, '04-zyklus-v-schicht')
 
   // --- Gesamtplan ---
-  await page.getByRole('link', { name: 'Plan' }).click()
+  await page.getByRole('link', { name: 'Gesamtplan' }).click()
   await expect(page.getByTestId('chart')).toHaveCount(3)
   await expect(page.getByTestId('mesocycles')).toContainText('Rennspezifisch')
+  await openGroup(page, 'Checkliste Rennwoche')
   const firstItem = page.getByTestId('checklist').getByRole('checkbox').first()
   await firstItem.check()
   await noHorizontalScroll(page)
@@ -83,7 +96,8 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(page.getByTestId('chart')).toHaveCount(3)
 
   // --- Kraft ---
-  await page.getByRole('link', { name: 'Kraft' }).click()
+  await page.getByRole('link', { name: 'Training', exact: true }).click()
+  await expect(page).toHaveURL(/\/kraft$/)
   await expect(page.getByTestId('ladders')).toContainText('Strikte Klimmzüge (Aufbau)')
   await expect(page.getByTestId('test-chart')).toBeVisible()
   await noHorizontalScroll(page)
@@ -105,6 +119,7 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
 
   // --- Einstellungen, Demo-Modus, Mai im rennspezifischen Block ---
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'WHOOP & Erinnerungen')
   await page.getByLabel('Demo-Modus').check()
   await noHorizontalScroll(page)
   await shot(page, '08-einstellungen')
@@ -128,6 +143,7 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
 
   // Schalter „Gelernte Muster nutzen“
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'Erweitert')
   await page.getByLabel('Gelernte Muster nutzen').check()
   await page.getByRole('link', { name: 'Erholung' }).click()
   await expect(page.getByTestId('patterns')).toContainText('In der Vorausschau: genutzt')

@@ -338,15 +338,15 @@ describe('Mikrozyklus-Reduktion (SPEC 6.3, 11)', () => {
 describe('Nachhol-Vorschlag (SPEC 6.3)', () => {
   it('nur bei sehr guter Recovery und nur als Vorschlag, wenn die Regeln erfüllt sind', () => {
     const plan = generatePlan()
-    // Künstlich: Schwellenlauf an Tag 2 (16.12.) ist ausgefallen und wurde nicht verschoben.
-    const d2 = plan.days.find((d) => d.date === '2026-12-17')!
-    const thr = d2.sessions.find((s) => s.type === 'threshold')!
-    d2.sessions = d2.sessions.filter((s) => s !== thr)
-    d2.removed.push({ session: thr, reason: 'no_window', note: 'Krank.' })
-    const date = '2026-12-20' // Tag 5 mit Höhenmeter-Einheit
+    // Künstlich: langer Lauf an Tag 4 (05.10.) ist ausgefallen und wurde nicht verschoben.
+    const d4 = plan.days.find((d) => d.date === '2026-10-05')!
+    const long = d4.sessions.find((s) => s.type === 'long_run')!
+    d4.sessions = d4.sessions.filter((s) => s !== long)
+    d4.removed.push({ session: long, reason: 'no_window', note: 'Krank.' })
+    const date = '2026-10-06' // Tag 5 mit Höhenmeter-Einheit
     const great = assessReadiness({ date, today: whoopDay(date, 90) })
     const s = suggestCatchUp(plan, date, great)
-    expect(s?.session.type).toBe('threshold')
+    expect(s?.session.type).toBe('long_run')
     expect(s?.replaces.map((x) => x.type)).toEqual(['treadmill_hills'])
     expect(s?.text).toContain('Freiwillig')
     expect(suggestCatchUp(plan, date, assessReadiness({ date, today: whoopDay(date, 70) }))).toBeNull()

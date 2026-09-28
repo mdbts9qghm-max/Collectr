@@ -12,8 +12,15 @@ async function onboard(page: Page) {
   await expect(page.getByTestId('countdown')).toBeVisible()
 }
 
+/** Aufklappbare Gruppe (z. B. in den Einstellungen) öffnen, falls sie zu ist. */
+async function openGroup(page: Page, title: string) {
+  const d = page.locator('details', { has: page.locator(`summary:has-text("${title}")`) }).first()
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').first().click()
+}
+
 async function simulateDate(page: Page, date: string) {
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'Erweitert')
   await page.getByLabel('Simuliertes Datum').fill(date)
   await page.getByRole('button', { name: 'Setzen', exact: true }).click()
 }
@@ -48,16 +55,17 @@ test('Heute ist offline lesbar (neu laden ohne Netz)', async ({ page, context })
   await expect(page.getByTestId('countdown')).toBeVisible()
   await expect(page.getByTestId('today-item').first()).toBeVisible()
   await page.screenshot({ path: 'docs/screenshots/16-offline.png' })
-  await page.getByRole('link', { name: 'Zyklus' }).click()
+  await page.getByRole('link', { name: 'Plan', exact: true }).click()
   await expect(page.getByTestId('day-2026-10-02')).toBeVisible()
   await page.goto('/plan')
-  await expect(page.getByRole('link', { name: 'Plan' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Gesamtplan' })).toBeVisible()
   await context.setOffline(false)
 })
 
 test('Kalender-Export (.ics) enthält Einheiten, Schichten und Schlaf', async ({ page }) => {
   await onboard(page)
   await simulateDate(page, '2026-10-02')
+  await openGroup(page, 'Kalender & Backup')
   const card = page.getByTestId('calendar-export')
   await expect(card).toContainText('02.10.2026 bis 29.10.2026')
   const [download] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: 'Kalenderdatei herunterladen' }).click()])
@@ -98,6 +106,7 @@ test('Dienstplan-Import: Vorschau, Auswahl, Übernahme als V-Schicht', async ({ 
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\r\n')
+  await openGroup(page, 'Schichten & Dienstplan')
   const card = page.getByTestId('roster-import')
   await card.getByTestId('roster-file').setInputFiles({ name: 'dienstplan.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
   const preview = page.getByTestId('roster-preview')
@@ -110,6 +119,6 @@ test('Dienstplan-Import: Vorschau, Auswahl, Übernahme als V-Schicht', async ({ 
   await preview.getByText('12.10.2026: Tagschicht → Urlaub').click()
   await preview.getByRole('button', { name: 'Übernehmen (1)' }).click()
   await expect(card).toContainText('1 Änderung übernommen')
-  await page.getByRole('link', { name: 'Zyklus' }).click()
+  await page.getByRole('link', { name: 'Plan', exact: true }).click()
   await expect(page.getByTestId('day-2026-10-06')).toContainText('V-Schicht')
 })

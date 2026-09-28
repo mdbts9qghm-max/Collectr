@@ -8,7 +8,7 @@ import { CONFIG } from '../../core/config'
 import { buildIcs } from '../../core/export'
 import { buildImportPreview, type ImportPreview } from '../../core/shift'
 import { addDays, formatDateDE, formatTime, instantToBerlin } from '../../core/time'
-import { Button, Card, H2 } from '../components/common'
+import { Button, Sub } from '../components/common'
 
 function downloadFile(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }))
@@ -22,8 +22,8 @@ function downloadFile(name: string, content: string, type: string) {
 export function InstallCard() {
   if (isStandalone()) return null
   return (
-    <Card data-testid="install-hint">
-      <H2>Als App installieren</H2>
+    <section data-testid="install-hint" className="space-y-2">
+      <Sub>Als App installieren</Sub>
       {isIos() ? (
         <ol className="list-decimal space-y-1 pl-5 text-sm">
           <li>In Safari unten auf „Teilen“ tippen (Quadrat mit Pfeil).</li>
@@ -33,7 +33,7 @@ export function InstallCard() {
       ) : (
         <p className="text-sm">Im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen. Danach startet Collectr wie eine App und ist auch offline lesbar.</p>
       )}
-    </Card>
+    </section>
   )
 }
 
@@ -75,8 +75,8 @@ export function RemindersCard() {
   }
 
   return (
-    <Card data-testid="reminders">
-      <H2>Erinnerungen</H2>
+    <section data-testid="reminders" className="space-y-2">
+      <Sub>Erinnerungen</Sub>
       <p className="mb-2 text-sm text-muted">Push-Nachricht {lead} min vor dem empfohlenen Zubettgehen und vor dem Nap (z. B. vor der Nachtschicht).</p>
       {hint ? (
         <p className="text-sm text-yellow">{hint}</p>
@@ -111,7 +111,7 @@ export function RemindersCard() {
           })}
         </ul>
       )}
-    </Card>
+    </section>
   )
 }
 
@@ -131,8 +131,8 @@ export function CalendarExportCard() {
   const LABEL = { sessions: 'Trainingseinheiten', shifts: 'Schichten', sleep: 'Schlaf und Nap' } as const
 
   return (
-    <Card data-testid="calendar-export">
-      <H2>Kalender-Export (.ics)</H2>
+    <section data-testid="calendar-export" className="space-y-2">
+      <Sub>Kalender-Export (.ics)</Sub>
       <div className="mb-2 flex gap-2" role="group" aria-label="Zeitraum Export">
         {(
           [
@@ -157,7 +157,7 @@ export function CalendarExportCard() {
       <p className="mt-2 text-xs text-muted">
         {formatDateDE(from)} bis {formatDateDE(to)}. Enthält den geplanten Stand. Anpassungen an deine Erholung passieren tagesaktuell in der App.
       </p>
-    </Card>
+    </section>
   )
 }
 
@@ -184,8 +184,8 @@ export function RosterImportCard() {
   }
 
   return (
-    <Card data-testid="roster-import">
-      <H2>Dienstplan importieren (.ics)</H2>
+    <section data-testid="roster-import" className="space-y-2">
+      <Sub>Dienstplan importieren (.ics)</Sub>
       <p className="mb-2 text-sm text-muted">Kalenderdatei aus dem Dienstplan wählen. Du siehst vorher, was sich gegenüber dem berechneten Rhythmus ändert, und bestätigst jede Änderung.</p>
       <Button className="w-full" onClick={() => fileRef.current?.click()}>
         Datei wählen
@@ -249,6 +249,6 @@ export function RosterImportCard() {
           </div>
         </div>
       )}
-    </Card>
+    </section>
   )
 }

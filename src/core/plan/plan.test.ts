@@ -203,13 +203,32 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
     }
   })
 
-  it('Tag 3 (Schlaftag) hat nur lockere, optionale Einheiten', () => {
+  it('Tag 3 (Schlaftag) hat nur lockere Einheiten: ein regulärer lockerer Lauf, Rest optional', () => {
     for (const d of plan.days.filter((x) => x.shift.dayKind === 'sleep_day')) {
       for (const s of d.sessions) {
         expect(['recovery_run', 'easy_run', 'skill_light', 'mobility']).toContain(s.type)
-        expect(s.optional).toBe(true)
+        if (!s.optional) expect(s.type).toBe('easy_run')
+        expect(s.startMin!).toBeGreaterThanOrEqual(15 * 60)
       }
+      expect(d.sessions.filter((s) => !s.optional).length).toBeLessThanOrEqual(1)
     }
+    // Grundlage und Aufbau: der Lauf von Tag 2 liegt jetzt an Tag 3
+    for (const m of plan.microcycles.filter((x) => x.phase === 'base' || x.phase === 'build')) {
+      const d3 = plan.days.find((d) => d.microIndex === m.index && d.shift.cycleDay === 3 && d.shift.dayKind === 'sleep_day')
+      if (d3) expect(d3.sessions.some((s) => s.type === 'easy_run' && !s.optional)).toBe(true)
+    }
+  })
+
+  it('Tag vor der Nachtschicht (Tag 2): höchstens eine Einheit (Entscheidung nach Phase 7)', () => {
+    for (const d of plan.days.filter((x) => x.shift.dayKind === 'pre_night')) {
+      expect(d.sessions.filter((s) => !s.optional).length).toBeLessThanOrEqual(CONFIG.plan.maxSessionsPreNight)
+    }
+    // In Grundlage und Aufbau ist das die Krafteinheit, Qualitätseinheiten liegen an Tag 5
+    const build = plan.days.filter((d) => d.shift.dayKind === 'pre_night' && plan.microcycles[d.microIndex - 1]?.phase === 'build')
+    expect(build.length).toBeGreaterThan(0)
+    for (const d of build) expect(d.sessions.every((s) => s.category === 'strength')).toBe(true)
+    const quality = plan.days.flatMap((d) => d.sessions.filter((s) => s.type === 'threshold' || s.type === 'intervals_uphill').map(() => d.shift.cycleDay))
+    expect(new Set(quality)).toEqual(new Set([5]))
   })
 
   it('Tag 2: jeder Einheitentyp ist erlaubt, der ins Fenster passt (lange Läufe laut 5.3 nur Tag 4/5)', () => {

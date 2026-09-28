@@ -3,7 +3,7 @@ import { useApp } from '../../app/AppState'
 import { LADDERS } from '../../core/strength'
 import { addDays, formatDateDE, formatTime, instantToBerlin, weekdayShortDE } from '../../core/time'
 import type { Ladder, PlannedSession, SessionLog, StrengthResult } from '../../core/types'
-import { Button, Card, Chip, Field, H2, Input, NumberInput, Rating } from '../components/common'
+import { Button, Card, Chip, Disclosure, Field, H2, Input, NumberInput, Rating, SegmentedLinks } from '../components/common'
 import { sessionMeta } from '../components/SessionCard'
 
 const LOOKBACK_DAYS = 7
@@ -31,16 +31,17 @@ export function Tracking() {
     )
   }
 
+  const open = days.flatMap((d) => d.sessions).filter((s) => !app.data.logs.some((l) => l.sessionId === s.id)).length
   return (
     <div className="space-y-4">
+      <SegmentedLinks label="Training" items={[{ to: '/kraft', label: 'Kraft' }, { to: '/tracking', label: 'Tracking' }]} />
       {message && (
         <div role="status" className="rounded-2xl border border-accent/40 bg-accent/10 p-3 text-sm" data-testid="tracking-message">
           {message}
         </div>
       )}
       {app.workoutSuggestions.length > 0 && <WorkoutSuggestions />}
-      <Card>
-        <H2>Einheiten abhaken</H2>
+      <Disclosure card defaultOpen title="Einheiten abhaken" summary={`${open} offen · letzte ${LOOKBACK_DAYS} Tage`}>
         {days.every((d) => d.sessions.length === 0) && <p className="text-sm text-muted">In den letzten Tagen waren keine Einheiten geplant.</p>}
         <ul className="space-y-2">
           {days.flatMap((d) =>
@@ -49,7 +50,7 @@ export function Tracking() {
               return (
                 <li key={s.id}>
                   <button
-                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-panel-2 p-3 text-left"
+                    className="flex w-full items-center justify-between gap-2 rounded-xl bg-panel-2 p-3 text-left"
                     onClick={() => setSelected(s)}
                     data-testid="track-session"
                   >
@@ -66,9 +67,8 @@ export function Tracking() {
             }),
           )}
         </ul>
-      </Card>
-      <Card>
-        <H2>Verlauf</H2>
+      </Disclosure>
+      <Disclosure card title="Verlauf" summary={`${logs.length} Einträge`}>
         {logs.length === 0 ? (
           <p className="text-sm text-muted">Noch keine Einträge.</p>
         ) : (
@@ -92,7 +92,7 @@ export function Tracking() {
             ))}
           </ul>
         )}
-      </Card>
+      </Disclosure>
     </div>
   )
 }
@@ -109,7 +109,7 @@ function WorkoutSuggestions() {
           const minutes = Math.round((Date.parse(w.end) - Date.parse(w.start)) / 60000)
           const suggested = match.sessionId
           return (
-            <li key={w.id} className="rounded-xl border border-line bg-panel-2 p-3 text-sm">
+            <li key={w.id} className="rounded-xl bg-panel-2 p-3 text-sm">
               <div className="font-medium">
                 {w.sportName} · {weekdayShortDE(start.date)} {formatDateDE(start.date)} {formatTime(start.minutes)}
               </div>

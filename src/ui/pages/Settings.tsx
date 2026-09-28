@@ -2,9 +2,9 @@ import { useRef, useState } from 'react'
 import { useApp } from '../../app/AppState'
 import { useCloud } from '../../app/cloud'
 import { CONFIG, resolveConfig, type RecoveryWeights } from '../../core/config'
-import { isValidDate } from '../../core/time'
+import { formatDateDE, isValidDate } from '../../core/time'
 import type { Profile } from '../../core/types'
-import { Button, Card, Field, H2, Input, NumberInput } from '../components/common'
+import { Button, Disclosure, Field, Input, NumberInput, Sub } from '../components/common'
 import { CalendarExportCard, InstallCard, RemindersCard, RosterImportCard } from './SettingsPhase7'
 
 const WEIGHT_LABEL: Record<keyof RecoveryWeights, string> = {
@@ -94,31 +94,22 @@ function WhoopSection() {
   )
 }
 
-function AccountCard() {
+function AccountSection() {
   const cloud = useCloud()
-  if (!cloud) {
-    return (
-      <Card>
-        <H2>Konto</H2>
-        <p className="text-sm text-muted">Nur lokal auf diesem Gerät gespeichert (Supabase ist nicht konfiguriert).</p>
-      </Card>
-    )
-  }
+  if (!cloud) return <p className="text-sm text-muted">Nur lokal auf diesem Gerät gespeichert (Supabase ist nicht konfiguriert).</p>
   const { status } = cloud
   return (
-    <Card>
-      <H2>Konto</H2>
-      <p className="text-sm">Angemeldet als {cloud.email}</p>
-      <p className="mt-1 text-xs text-muted">
+    <div className="space-y-3">
+      <p className="text-xs text-muted">
         {status.state === 'error' ? `Fehler: ${status.error}` : status.state === 'offline' ? 'Offline, Änderungen werden später hochgeladen.' : 'Daten werden mit Supabase synchronisiert.'}
         {status.pending > 0 && ` ${status.pending} Änderung(en) ausstehend.`}
         {status.lastSync && ` Zuletzt: ${new Date(status.lastSync).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}`}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button onClick={() => void cloud.syncNow()}>Jetzt synchronisieren</Button>
         <Button onClick={() => void cloud.signOut()}>Abmelden</Button>
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -143,16 +134,22 @@ export function Settings() {
     URL.revokeObjectURL(url)
   }
 
+  const cloud = useCloud()
+  const whoopReturn = new URLSearchParams(window.location.search).has('whoop')
+  const whoop = app.data.whoop.status
+
   return (
-    <div className="space-y-4">
-      <AccountCard />
+    <div className="space-y-3">
       {msg && (
         <div role="status" className="rounded-2xl border border-accent/40 bg-accent/10 p-3 text-sm">
           {msg}
         </div>
       )}
-      <Card>
-        <H2>Profil</H2>
+      <Disclosure card title="Konto" summary={cloud ? `Angemeldet als ${cloud.email}` : 'nur lokal'}>
+        <AccountSection />
+      </Disclosure>
+
+      <Disclosure card title="Profil" summary={`${s.profile.weeklyKmStart} km/Woche · Arbeitsweg ${s.profile.commuteMin} min`}>
         <ProfileFields profile={profile} onChange={setProfile} />
         <Button
           variant="primary"
@@ -164,130 +161,141 @@ export function Settings() {
         >
           Profil speichern
         </Button>
-      </Card>
+      </Disclosure>
 
-      <InstallCard />
-      <RemindersCard />
+      <Disclosure card title="Schichten & Dienstplan" summary={`Anker ${formatDateDE(s.anchorDate)}`}>
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <Sub>Schichtmodell</Sub>
+            <p className="mb-2 text-sm text-muted">
+              5-Tage-Rhythmus: Tag → Nacht → Schlaftag → Frei → Frei (oder V-Schicht). Dienstbeginn 15 min früher, Losfahren = Arbeitsbeginn − Arbeitsweg.
+            </p>
+            <Field label="Ankerdatum (Zyklustag 1, Tagschicht)">
+              <Input type="date" value={anchor} onChange={(e) => setAnchor(e.target.value)} />
+            </Field>
+            <Button className="mt-3 w-full" disabled={!isValidDate(anchor)} onClick={() => app.updateSettings({ anchorDate: anchor })}>
+              Ankerdatum speichern
+            </Button>
+          </section>
+          <RosterImportCard />
+        </div>
+      </Disclosure>
 
-      <Card>
-        <H2>Schichtmodell</H2>
-        <p className="mb-2 text-sm text-muted">
-          5-Tage-Rhythmus: Tag → Nacht → Schlaftag → Frei → Frei (oder V-Schicht). Dienstbeginn 15 min früher, Losfahren = Arbeitsbeginn − Arbeitsweg.
-        </p>
-        <Field label="Ankerdatum (Zyklustag 1, Tagschicht)">
-          <Input type="date" value={anchor} onChange={(e) => setAnchor(e.target.value)} />
-        </Field>
-        <Button className="mt-3 w-full" disabled={!isValidDate(anchor)} onClick={() => app.updateSettings({ anchorDate: anchor })}>
-          Ankerdatum speichern
-        </Button>
-      </Card>
+      <Disclosure card title="WHOOP & Erinnerungen" summary={whoop?.connected ? 'WHOOP verbunden' : s.demoMode ? 'Demo-Modus' : 'nicht verbunden'} defaultOpen={whoopReturn}>
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <Sub>WHOOP</Sub>
+            <WhoopSection />
+            <label className="mt-3 flex min-h-11 items-center justify-between">
+              <span>Demo-Modus (Beispieldaten)</span>
+              <input type="checkbox" className="h-6 w-6 accent-[#34d399]" checked={s.demoMode} onChange={(e) => app.updateSettings({ demoMode: e.target.checked })} aria-label="Demo-Modus" />
+            </label>
+          </section>
+          <RemindersCard />
+          <InstallCard />
+        </div>
+      </Disclosure>
 
-      <RosterImportCard />
+      <Disclosure card title="Kalender & Backup">
+        <div className="space-y-6">
+          <CalendarExportCard />
+          <section className="space-y-2">
+            <Sub>Backup</Sub>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={download}>Export (JSON)</Button>
+              <Button onClick={() => fileRef.current?.click()}>Import</Button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                const err = await app.importBackup(await f.text())
+                setMsg(err ?? 'Backup importiert.')
+              }}
+            />
+            <Button
+              variant="danger"
+              className="mt-3 w-full"
+              onClick={async () => {
+                if (window.confirm('Alle Daten löschen (auf diesem Gerät und, wenn angemeldet, auch in der Cloud)? Das kann nicht rückgängig gemacht werden.')) await app.resetAll()
+              }}
+            >
+              Alle Daten zurücksetzen
+            </Button>
+          </section>
+        </div>
+      </Disclosure>
 
-      <Card>
-        <H2>Gewichtung der Erholungsfaktoren</H2>
-        <p className="mb-3 text-xs text-muted">Die Werte werden automatisch auf 100 % normiert.</p>
-        <div className="space-y-3">
-          {(Object.keys(WEIGHT_LABEL) as (keyof RecoveryWeights)[]).map((k) => (
-            <label key={k} className="block">
-              <div className="flex justify-between text-sm">
-                <span>{WEIGHT_LABEL[k]}</span>
-                <span className="text-muted">{Math.round(weights[k] * 100)} %</span>
-              </div>
+      <Disclosure card title="Erweitert" summary={s.simulatedDate ? `Datum simuliert: ${formatDateDE(s.simulatedDate)}` : 'Gewichtung, Muster, Testdatum'}>
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <Sub>Gewichtung der Erholungsfaktoren</Sub>
+            <p className="mb-3 text-xs text-muted">Die Werte werden automatisch auf 100 % normiert.</p>
+            <div className="space-y-3">
+              {(Object.keys(WEIGHT_LABEL) as (keyof RecoveryWeights)[]).map((k) => (
+                <label key={k} className="block">
+                  <div className="flex justify-between text-sm">
+                    <span>{WEIGHT_LABEL[k]}</span>
+                    <span className="text-muted">{Math.round(weights[k] * 100)} %</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={raw[k]}
+                    className="w-full accent-[#34d399]"
+                    onChange={(e) => app.updateSettings({ recoveryWeights: { ...s.recoveryWeights, [k]: Number(e.target.value) } })}
+                  />
+                </label>
+              ))}
+            </div>
+            <Button variant="ghost" className="mt-2 px-0" onClick={() => app.updateSettings({ recoveryWeights: {} })}>
+              Auf Standard zurücksetzen
+            </Button>
+          </section>
+          <section className="space-y-2">
+            <Sub>Gelernte Muster</Sub>
+            <label className="flex min-h-11 items-center justify-between gap-3">
+              <span className="text-sm">In der Vorausschau nutzen (z. B. typischer Recovery-Abfall nach Nachtschichten)</span>
               <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={raw[k]}
-                className="w-full accent-[#34d399]"
-                onChange={(e) => app.updateSettings({ recoveryWeights: { ...s.recoveryWeights, [k]: Number(e.target.value) } })}
+                type="checkbox"
+                className="h-6 w-6 shrink-0 accent-[#34d399]"
+                checked={s.usePatterns ?? false}
+                onChange={(e) => app.updateSettings({ usePatterns: e.target.checked })}
+                aria-label="Gelernte Muster nutzen"
               />
             </label>
-          ))}
+            <p className="text-xs text-muted">
+              {app.patterns.enoughData ? 'Genügend Daten vorhanden.' : `Wirkt erst ab ca. 6 Wochen Daten (bisher ${app.patterns.daysWithData} Tage).`} Auswertungen siehst du unter „Erholung“.
+            </p>
+          </section>
+          <section className="space-y-2">
+            <Sub>Datum simulieren</Sub>
+            <p className="mb-2 text-xs text-muted">Nur zum Ausprobieren. Leer lassen für das echte Datum.</p>
+            <div className="flex gap-2">
+              <Input type="date" value={sim} onChange={(e) => setSim(e.target.value)} aria-label="Simuliertes Datum" />
+              <Button onClick={() => app.updateSettings({ simulatedDate: sim && isValidDate(sim) ? sim : null })}>Setzen</Button>
+            </div>
+            {s.simulatedDate && (
+              <Button
+                variant="ghost"
+                className="mt-2 px-0"
+                onClick={() => {
+                  setSim('')
+                  void app.updateSettings({ simulatedDate: null })
+                }}
+              >
+                Echtes Datum verwenden
+              </Button>
+            )}
+          </section>
         </div>
-        <Button variant="ghost" className="mt-2 px-0" onClick={() => app.updateSettings({ recoveryWeights: {} })}>
-          Auf Standard zurücksetzen
-        </Button>
-      </Card>
-
-      <Card>
-        <H2>WHOOP</H2>
-        <WhoopSection />
-        <label className="mt-3 flex min-h-11 items-center justify-between">
-          <span>Demo-Modus (Beispieldaten)</span>
-          <input type="checkbox" className="h-6 w-6 accent-[#34d399]" checked={s.demoMode} onChange={(e) => app.updateSettings({ demoMode: e.target.checked })} aria-label="Demo-Modus" />
-        </label>
-      </Card>
-
-      <Card>
-        <H2>Gelernte Muster</H2>
-        <label className="flex min-h-11 items-center justify-between gap-3">
-          <span className="text-sm">In der Vorausschau nutzen (z. B. typischer Recovery-Abfall nach Nachtschichten)</span>
-          <input
-            type="checkbox"
-            className="h-6 w-6 shrink-0 accent-[#34d399]"
-            checked={s.usePatterns ?? false}
-            onChange={(e) => app.updateSettings({ usePatterns: e.target.checked })}
-            aria-label="Gelernte Muster nutzen"
-          />
-        </label>
-        <p className="text-xs text-muted">
-          {app.patterns.enoughData ? 'Genügend Daten vorhanden.' : `Wirkt erst ab ca. 6 Wochen Daten (bisher ${app.patterns.daysWithData} Tage).`} Auswertungen siehst du unter „Erholung“.
-        </p>
-      </Card>
-
-      <Card>
-        <H2>Datum simulieren</H2>
-        <p className="mb-2 text-xs text-muted">Nur zum Ausprobieren. Leer lassen für das echte Datum.</p>
-        <div className="flex gap-2">
-          <Input type="date" value={sim} onChange={(e) => setSim(e.target.value)} aria-label="Simuliertes Datum" />
-          <Button onClick={() => app.updateSettings({ simulatedDate: sim && isValidDate(sim) ? sim : null })}>Setzen</Button>
-        </div>
-        {s.simulatedDate && (
-          <Button
-            variant="ghost"
-            className="mt-2 px-0"
-            onClick={() => {
-              setSim('')
-              void app.updateSettings({ simulatedDate: null })
-            }}
-          >
-            Echtes Datum verwenden
-          </Button>
-        )}
-      </Card>
-
-      <CalendarExportCard />
-
-      <Card>
-        <H2>Backup</H2>
-        <div className="grid grid-cols-2 gap-2">
-          <Button onClick={download}>Export (JSON)</Button>
-          <Button onClick={() => fileRef.current?.click()}>Import</Button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={async (e) => {
-            const f = e.target.files?.[0]
-            if (!f) return
-            const err = await app.importBackup(await f.text())
-            setMsg(err ?? 'Backup importiert.')
-          }}
-        />
-        <Button
-          variant="danger"
-          className="mt-3 w-full"
-          onClick={async () => {
-            if (window.confirm('Alle Daten löschen (auf diesem Gerät und, wenn angemeldet, auch in der Cloud)? Das kann nicht rückgängig gemacht werden.')) await app.resetAll()
-          }}
-        >
-          Alle Daten zurücksetzen
-        </Button>
-      </Card>
+      </Disclosure>
     </div>
   )
 }

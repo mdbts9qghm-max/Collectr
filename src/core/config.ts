@@ -42,6 +42,8 @@ export const CONFIG = {
     endDate: '2027-06-18' as LocalDate,
     microLengthDays: 5,
     microsPerMeso: 7,
+    /** Am Tag vor der Nachtschicht höchstens so viele (nicht-optionale) Einheiten (Entscheidung nach Phase 7). */
+    maxSessionsPreNight: 1,
     totalMicros: 52,
     /** Phase je Mesozyklus 1–8 (Entscheidung Phase 1: 2/3/2 + Taper). */
     phaseByMeso: ['base', 'base', 'build', 'build', 'build', 'specific', 'specific', 'taper'] as Phase[],
@@ -279,11 +281,17 @@ export const CONFIG = {
     maxKm: { easy_run: 16, recovery_run: 8, treadmill_hills: 14 } as Partial<Record<SessionType, number>>,
     /** Nach einem Nachtlauf ist der Lauf am Folgetag höchstens so lang. */
     maxKmAfterNightRun: 10,
-    /** Anteil der Rest-Kilometer je Tag für die flexiblen Einheiten der Vorlagen. */
+    /**
+     * Anteil der Rest-Kilometer je Tag für die flexiblen Einheiten der Vorlagen.
+     * Tag 2 (vor der Nachtschicht) hat nur eine Krafteinheit, der Lauf liegt an Tag 3 nach dem Tagschlaf
+     * (Entscheidung nach Phase 7: „am Tag vor der Nacht schaffe ich nur eine Einheit“).
+     */
     flexShares: {
-      base: { day2: 0.62, day5: 0.38 },
-      deload: { day2: 0.6, day5: 0.4 },
-      final: { day2: 0.6, day5: 0.4 },
+      base: { day3: 0.62, day5: 0.38 },
+      deload: { day3: 0.6, day5: 0.4 },
+      final: { day3: 0.6, day5: 0.4 },
+      /** Nachtlauf-Zyklus: lockerer Lauf an Tag 3 und am Nachmittag nach dem Nachtlauf. */
+      night: { day3: 0.5, day5: 0.5 },
     },
     /** Eine verschobene Einheit wird höchstens auf diesen Anteil gekürzt, sonst gestrichen (kein Nachholen). */
     minMovedShare: 0.6,
@@ -293,10 +301,13 @@ export const CONFIG = {
     optionalRecoveryRunMin: 30,
     /** Langer Lauf im Entlastungs-Mikrozyklus relativ zum letzten langen Lauf. */
     deloadLongRunFactor: 0.65,
-    /** Taper: Anteil am Soll-Umfang je Tag (Tag 2 Qualität in kleiner Dosis, Tag 4 längster Lauf). */
+    /**
+     * Taper: Anteil am Soll-Umfang je Tag. Die kurze Qualitätseinheit liegt an Tag 5 (feste km),
+     * Tag 2 hat nur das kurze Krafttraining, Tag 3 bleibt im Taper frei (jede Nachtschicht kostet Erholung).
+     */
     taperShares: {
-      taper1: { day2: 0.3, day4: 0.5, day5: 0.2 },
-      taper2: { day2: 0.3, day4: 0.45, day5: 0.25 },
+      taper1: { day4: 0.5 },
+      taper2: { day4: 0.45 },
       race_week: { day2: 0.6, day4: 0.4 },
     },
   },
@@ -334,7 +345,9 @@ export const CONFIG = {
      * Höhenmeter-Block in langen Läufen (Treppen, Parkhaus, Brücken, Deiche oder
      * Laufband am Ende), höchstens so viele hm je Einheit und Phase.
      */
-    longRunHmCap: { base: 0, build: 300, specific: 700, taper: 150 } as Record<Phase, number>,
+    // Aufbau/Rennspezifisch höher, seit Tag 2 keinen Lauf mehr hat: der lange Lauf wird hügeliger
+    // (Entscheidung nach Phase 7).
+    longRunHmCap: { base: 0, build: 700, specific: 1200, taper: 150 } as Record<Phase, number>,
     /** Lauf-ABC und Steigerungen nach lockeren Läufen (Grundlage/Aufbau). */
     abcMin: 10,
     /** Ein- und Auslaufen bei Qualitätseinheiten. */
