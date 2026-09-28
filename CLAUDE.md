@@ -45,15 +45,10 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 ## Fortschritt
 
 - [x] **Phase 1 – Planung:** offene Fragen geklärt, Architektur, Datenmodell, Ordnerstruktur und Algorithmen in `docs/PLANUNG.md`, CLAUDE.md und Git eingerichtet
-- [ ] **Phase 2 – Kernlogik:** Schicht, Plan, Kraft, Erholung, Anpassung, Schlaf als reine Module mit allen Tests aus SPEC 11
-  - Freigegebener Plan: `docs/PHASE2_PLAN.md` und Abschnitt „Phase 2 – Plan“ unten
-  - [x] Projekt-Setup (Vite 8, React 19, TS 6 strict, Vitest 5, date-fns + @date-fns/tz)
-  - [x] `config.ts`, `types.ts`, `time/`, `shift/` (mit Tests)
-  - [x] `strength/` (Leitern, Einstufung, Aufstieg, Session-Bau, mit Tests)
-  - [x] `plan/` (Periodisierung, Umfang, Vorlagen, Scheduler, Verschieben, generatePlan, mit Tests; `npm run plan:print` mit `PRINT_PLAN=1`)
-  - [ ] `recovery/`: `readiness.ts` und `lookahead.ts` geschrieben, aber **noch ohne Tests**. Es fehlen `rules.ts` (adjustSession-Pipeline), `microcycle.ts` (Reduktion nächster Mikrozyklus), `load.ts` (Trainingslast), Nachhol-Vorschlag, Tests
-  - [ ] `sleep/recommend.ts` (+ `sleepAdherence`), `whoop/assign.ts`, `race/`, `fixtures/` mit Tests (`sleep/baseline.ts` existiert bereits)
-  - [ ] Abschluss: `npm test`, `npm run build`, Coverage, Commit + Push
+- [x] **Phase 2 – Kernlogik:** reine Module in `src/core/` mit 160 Vitest-Tests (Zeilenabdeckung ca. 96 %), Build und Lint grün
+  - Plan: `docs/PHASE2_PLAN.md`. Module: config, types, time, shift, plan, strength, recovery, sleep, whoop, race, fixtures
+  - Gesamtplan prüfen: `PRINT_PLAN=1 npx vitest run src/core/plan/printPlan.test.ts --silent=false`
+  - WHOOP-Zuordnung: Hauptschlaf, der vor dem Trainingsfenster begann und höchstens 12 h vorher endete (sonst manuelle Eingabe)
 - [ ] **Phase 3 – Oberfläche:** Onboarding, Heute, Zyklus, Gesamtplan, Kraft, Tracking, Playwright im Handy-Format
 - [ ] **Phase 4 – Supabase:** Auth, Schema, RLS, Umzug der Daten, Anleitung für das Dashboard
 - [ ] **Phase 5 – WHOOP:** OAuth, Abruf, Token-Refresh, Zuordnung zu Einheiten, Redirect-URI und Scopes

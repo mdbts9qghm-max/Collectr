@@ -136,7 +136,7 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
   switch (micro.template) {
     case 'base':
       addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 2, kind: 'easy_abc', share: 0.62 }, { day: 5, kind: 'hills', share: 0.38 })
+      flex.push({ day: 2, kind: 'easy_abc', share: V.flexShares.base.day2 }, { day: 5, kind: 'hills', share: V.flexShares.base.day5 })
       extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_main') })
       optionalD3(true, true)
       break
@@ -150,7 +150,7 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
       break
     case 'deload':
       addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 2, kind: 'hills', share: 0.6 }, { day: 5, kind: 'easy', share: 0.4 })
+      flex.push({ day: 2, kind: 'hills', share: V.flexShares.deload.day2 }, { day: 5, kind: 'easy', share: V.flexShares.deload.day5 })
       extras.push({ day: 2, make: strength(micro.hasStrengthTest ? 'strength_test' : 'calisthenics_maintenance') })
       extras.push({ day: 5, make: (ctx) => mobility(ctx, 20, false) })
       optionalD3(false, false)
@@ -189,7 +189,7 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
     }
     case 'specific_final':
       addLong(4, 'long_run', specific.long ?? 22)
-      flex.push({ day: 2, kind: 'easy', share: 0.6 }, { day: 5, kind: 'hills', share: 0.4 })
+      flex.push({ day: 2, kind: 'easy', share: V.flexShares.final.day2 }, { day: 5, kind: 'hills', share: V.flexShares.final.day5 })
       extras.push({ day: 2, make: strength('strength_test') }, { day: 5, make: strength('calisthenics_maintenance') })
       optionalD3(true, false)
       break

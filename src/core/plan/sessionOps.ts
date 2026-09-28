@@ -63,7 +63,8 @@ export function toEasyRun(s: PlannedSession, phase: Phase, minutes: number): Pla
     ...e,
     id: s.id,
     microIndex: s.microIndex,
-    durationMin: Math.min(e.durationMin, s.durationMin),
+    // Die Dauer ist vorgegeben; die km sind nur ein auf 0,5 gerundeter Richtwert.
+    durationMin: Math.min(Math.round(mins), s.durationMin),
     ...(s.startMin !== undefined ? { startMin: s.startMin } : {}),
     origin: { ...(s.origin ?? {}), convertedFrom: s.type },
   }

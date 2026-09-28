@@ -135,7 +135,7 @@ export function tryMoveKeySession(ctx: MoveContext, lost: PlannedSession, fromDa
       const km = candidate.distanceKm ?? 0
       if (km > allowed) {
         const f = allowed / km
-        if (f < 0.6) continue
+        if (f < CONFIG.volume.minMovedShare) continue
         candidate = scaleSession(candidate, f)
       }
     }

@@ -252,6 +252,14 @@ export const CONFIG = {
     maxKm: { easy_run: 16, recovery_run: 8, treadmill_hills: 14 } as Partial<Record<SessionType, number>>,
     /** Nach einem Nachtlauf ist der Lauf am Folgetag höchstens so lang. */
     maxKmAfterNightRun: 10,
+    /** Anteil der Rest-Kilometer je Tag für die flexiblen Einheiten der Vorlagen. */
+    flexShares: {
+      base: { day2: 0.62, day5: 0.38 },
+      deload: { day2: 0.6, day5: 0.4 },
+      final: { day2: 0.6, day5: 0.4 },
+    },
+    /** Eine verschobene Einheit wird höchstens auf diesen Anteil gekürzt, sonst gestrichen (kein Nachholen). */
+    minMovedShare: 0.6,
     /** Lange Läufe dürfen zur Einhaltung der Obergrenze höchstens auf diesen Anteil gekürzt werden. */
     minLongRunShareOfPlan: 0.7,
     /** Optionaler Regenerationslauf an Tag 3 (zählt nicht zum Soll). */
@@ -371,6 +379,8 @@ export const CONFIG = {
     } as Partial<Record<SessionType, number>>,
     /** Belastungsfaktor je Intensitätsstufe für die Trainingslast (Dauer × Faktor). */
     loadPerMinute: [0, 1, 2, 3, 4, 5],
+    /** WHOOP-Strain (0–21) in dieselbe Skala: Strain 14 ≈ 90 min Zone 2–3 (≈ 280 Punkte). */
+    strainToLoad: 20,
   },
 
   // ---------------------------------------------------------------------------
@@ -404,6 +414,10 @@ export const CONFIG = {
       strength_test: 45,
       mobility: 20,
     } as Partial<Record<SessionType, number>>,
+    /** Technik-Sätze Calisthenics: Wiederholungen/Haltezeit auf diesen Anteil. */
+    techniqueIntensity: 0.8,
+    /** Nebenübungen entfallen, wenn der Volumenfaktor einer Leiter darunter liegt. */
+    minVolumeForAccessories: 0.6,
     /** Taper: kein schweres Beintraining in den letzten n Tagen vor dem Rennen. */
     noHeavyLegsDaysBeforeRace: 10,
   },
@@ -464,6 +478,10 @@ export const CONFIG = {
     sleepDayMinSleepMin: 300,
     /** Warnsignal: Ruhepuls ≥ +5 bpm UND HRV ≤ −15 % gegen das 30-Tage-Mittel an 3 Tagen in Folge. */
     warning: { rhrDeltaBpm: 5, hrvDropPct: 0.15, days: 3 },
+    /** Schlaf wird in der Begründung erwähnt, wenn er unter diesem Anteil des Bedarfs liegt. */
+    sleepMentionBelowNeedShare: 0.85,
+    /** Calisthenics-Hauptsession bei unter 5 h Schlaf: Technik-Sätze mit diesem Umfang. */
+    lowSleepTechniqueFactor: 0.8,
     /** Sehr gute Recovery für den Nachhol-Vorschlag. */
     catchUpMinScore: 80,
     catchUpLookbackDays: 5,
@@ -503,8 +521,16 @@ export const CONFIG = {
   // WHOOP-Zuordnung (SPEC 8)
   // ---------------------------------------------------------------------------
   whoop: {
-    /** Ein Hauptschlaf gilt für ein Trainingsfenster nur, wenn er höchstens so lange vorher endete. */
-    maxSleepAgeHours: 20,
+    /**
+     * Ein Hauptschlaf gilt für einen Trainingstag, wenn er vor dem Fensterbeginn begann und höchstens
+     * so viele Stunden vor dem Fensterbeginn endete (sonst ist er veraltet → manuelle Eingabe).
+     */
+    maxSleepAgeHours: 12,
+    /** Hauptschlaf, der in diesem Zeitraum beginnt, gilt als Tagschlaf (nach der Nachtschicht). */
+    daySleepStartFrom: h(5),
+    daySleepStartTo: h(13),
+    /** Workouts vor dieser Uhrzeit gehören zum Nachtlauf des Vortags. */
+    nightRunCarryoverUntil: h(4),
     /** Bezugszeit, wenn der Tag kein Trainingsfenster hat. */
     fallbackReferenceMin: h(12),
     /** Sportarten-Zuordnung (WHOOP sport_name, klein geschrieben, Teilstring). */

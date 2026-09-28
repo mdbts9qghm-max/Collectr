@@ -198,6 +198,7 @@ interface LadderUse {
   levelOffset?: number
 }
 
+/** Session-Rezepte: welche Leitern mit welchem Satz-/Intensitätsanteil in einer Einheit trainiert werden. */
 function laddersFor(type: SessionType, phase: Phase): LadderUse[] {
   const v = C.phaseVolume[phase]
   switch (type) {
@@ -261,10 +262,10 @@ export function buildStrengthSession(type: SessionType, state: StrengthState, ph
     const def = levelDef(use.ladder, level)
     def.exercises.forEach((ex, i) => {
       // Nebenübungen bei reduziertem Volumen weglassen.
-      if (i > 0 && use.volume < 0.6 && use.ladder !== 'legs') return
+      if (i > 0 && use.volume < C.minVolumeForAccessories && use.ladder !== 'legs') return
       let sets = Math.max(1, Math.round(ex.sets * use.volume))
       if (opts.technique) sets = Math.max(2, sets - 1)
-      const intensity = (use.intensity ?? 1) * (opts.technique && use.ladder !== 'legs' ? 0.8 : 1)
+      const intensity = (use.intensity ?? 1) * (opts.technique && use.ladder !== 'legs' ? C.techniqueIntensity : 1)
       exercises.push({
         ladder: use.ladder,
         level,
