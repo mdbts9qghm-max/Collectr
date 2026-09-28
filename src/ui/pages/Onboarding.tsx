@@ -121,7 +121,7 @@ export function Onboarding() {
           )}
           <div className="mt-3 rounded-xl border border-line p-3 text-sm">
             <p className="font-medium">WHOOP verbinden</p>
-            <p className="text-muted">Folgt in einer späteren Version. Bis dahin trägst du Schlaf und Gefühl kurz selbst ein.</p>
+            <p className="text-muted">Nach dem Start unter Einstellungen → WHOOP. Ohne WHOOP trägst du Schlaf und Gefühl in „Heute“ kurz selbst ein.</p>
           </div>
           <div className="mt-3">
             <Disclaimer />
