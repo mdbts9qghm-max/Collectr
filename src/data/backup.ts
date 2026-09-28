@@ -78,6 +78,7 @@ export const backupSchema = z.object({
     .nullable(),
   checklist: z.record(z.string(), z.boolean()),
   decisions: z.array(z.object({ sessionId: z.string(), date, rejected: z.boolean(), decidedAt: z.string() })),
+  assignments: z.array(z.object({ workoutId: z.string(), sessionId: z.string().nullable(), decidedAt: z.string() })).optional(),
 })
 
 export function parseBackup(json: string): { ok: true; data: BackupData } | { ok: false; error: string } {

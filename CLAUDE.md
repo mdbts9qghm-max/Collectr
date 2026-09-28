@@ -35,6 +35,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (längster Lauf, B2B-Spitze, Berg, erste Läufe > 30 km) bis +12 % darüber |
 | Phase 3 | Manuelle Eingabe + Demo-Modus, Datum simulieren in den Einstellungen, einfache Einstellungen, IndexedDB |
 | Phase 4 | Login E-Mail + Passwort; offline lesen und eintragen, später synchronisieren; Zurücksetzen löscht auch in der Cloud |
+| Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -44,6 +45,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 - `npm run build` – Typecheck und Produktions-Build
 - `npm run e2e` – Playwright im Handy-Format (lokal + Cloud mit nachgebildetem Supabase)
 - `npm run test:db` – Migration + RLS gegen temporären lokalen Postgres
+- `npm run check:functions` – Typprüfung der Edge Functions mit Deno
 
 ## Fortschritt
 
@@ -61,7 +63,13 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Sync: `src/data/sync.ts` (Outbox, erst abrufen, dann hochladen, neuerer Stand gewinnt, Tombstones), `simulatedDate` bleibt lokal
   - Ohne `VITE_SUPABASE_URL` läuft die App nur lokal. Cloud-E2E gegen nachgebildetes Supabase: `e2e/cloud.spec.ts`
   - Anleitung für das Dashboard: `docs/SUPABASE.md` (Nutzer wartet ggf. noch auf die Einrichtung)
-- [ ] **Phase 5 – WHOOP:** OAuth, Abruf, Token-Refresh, Zuordnung zu Einheiten, Redirect-URI und Scopes
+- [x] **Phase 5 – WHOOP:** OAuth, Abruf, Token-Refresh, Zuordnung zu Einheiten (Plan: `docs/PHASE5_PLAN.md`, Anleitung: `docs/WHOOP.md`)
+  - Migration `20261002000000_whoop.sql`: Tokens/States nur Service Role, WHOOP-Daten für den Nutzer nur lesbar
+  - Edge Functions `whoop-oauth-start`, `whoop-oauth-callback` (ohne JWT, State-geschützt), `whoop-sync`, `whoop-disconnect`
+  - Logik testbar in `supabase/functions/_shared/` (Vitest), Typprüfung `npm run check:functions` (Deno über npm)
+  - API v2 ungeprüft gegen echte WHOOP-Antworten (Netzwerk gesperrt), alle URLs/Felder in `_shared/whoopApi.ts`
+  - App: WHOOP-Daten nur lesend synchronisiert, Erholung aus WHOOP (manuelle Eingabe hat Vorrang), eindeutige Workouts automatisch erledigt, Rest als Vorschlag im Tracking
+  - Datenschutzseite `/datenschutz` (öffentlich, für das WHOOP-Dashboard)
 - [ ] **Phase 6 – Automatik:** Webhooks, tägliche Anpassung, Erholungs-Ansicht, Auswertungen
 - [ ] **Phase 7 – Livegang:** PWA, Vercel, .ics-Export, README
 

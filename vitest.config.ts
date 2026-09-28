@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
     environment: 'node',
     // Die Kernlogik rechnet mit Europe/Berlin. Die Tests laufen bewusst in einer anderen
     // Prozess-Zeitzone, damit versehentliche Abhängigkeiten von der Systemzeitzone auffallen.

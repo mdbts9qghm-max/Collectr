@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../../app/AppState'
-import { nextTrainingDay, type DayItem, type Warning } from '../../app/compute'
+import { nextTrainingDay, whoopActive, type DayItem, type Warning } from '../../app/compute'
 import { PHASE_LABEL } from '../../core/plan'
 import { raceCountdown } from '../../core/race'
 import { shiftLabel } from '../../core/shift'
@@ -61,7 +61,11 @@ export function Today() {
           <H2>Erholung</H2>
           {v.readiness.needsManualInput || editReadiness ? (
             <>
-              <p className="mb-3 text-sm text-muted">Keine WHOOP-Daten für heute. Bitte kurz eintragen:</p>
+              <p className="mb-3 text-sm text-muted">
+                {whoopActive(data) && v.day?.shift.dayKind === 'sleep_day'
+                  ? 'Dein Tagschlaf ist noch nicht in WHOOP. Bitte kurz eintragen (oder später erneut öffnen):'
+                  : 'Keine WHOOP-Daten für heute. Bitte kurz eintragen:'}
+              </p>
               <ManualReadinessForm
                 date={today}
                 {...(data.manual.find((m) => m.date === today) ? { initial: data.manual.find((m) => m.date === today)! } : {})}
@@ -79,7 +83,7 @@ export function Today() {
                   {TRAFFIC_LABEL[v.readiness.traffic!]} · {v.readiness.score} %
                 </div>
                 <div className="text-xs text-muted">
-                  {v.readiness.source === 'manual' ? 'manuelle Eingabe' : 'WHOOP (Beispieldaten)'}
+                  {v.readiness.source === 'manual' ? 'manuelle Eingabe' : whoopActive(data) ? 'WHOOP' : 'WHOOP (Beispieldaten)'}
                   {v.readiness.sleepMin !== undefined && ` · ${(v.readiness.sleepMin / 60).toFixed(1).replace('.', ',')} h Schlaf`}
                 </div>
               </div>

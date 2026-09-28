@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSettings } from '../data/defaults'
 import { berlinToInstant } from '../core/time'
-import { buildCalendar, buildDayView, buildPlan, currentDate, effectiveStrengthState, nextTrainingDay, recoveryHistory, type AppData } from './compute'
+import { buildCalendar, buildDayView, buildPlan, currentDate, effectiveStrengthState, EMPTY_WHOOP, nextTrainingDay, recoveryHistory, workoutActions, type AppData } from './compute'
 
 function data(over: Partial<AppData> = {}, settings: Partial<AppData['settings']> = {}): AppData {
   return {
@@ -13,6 +13,8 @@ function data(over: Partial<AppData> = {}, settings: Partial<AppData['settings']
     strengthState: null,
     checklist: {},
     decisions: [],
+    whoop: EMPTY_WHOOP,
+    assignments: [],
     ...over,
   }
 }
@@ -86,5 +88,52 @@ describe('Tagesansicht', () => {
     const { v } = view(data({ overrides: [{ date: '2026-10-06', kind: 'V' }] }), '2026-10-06')
     expect(v.items).toEqual([])
     expect(v.day!.removed.length).toBeGreaterThan(0)
+  })
+
+  it('WHOOP-Daten ersetzen Demo und liefern die Recovery des Schlaftags', () => {
+    const iso = (d: string, m: number) => new Date(berlinToInstant(d, m)).toISOString()
+    const whoop = {
+      ...EMPTY_WHOOP,
+      status: { connected: true },
+      sleeps: [{ id: 's2', start: iso('2026-10-04', 8 * 60), end: iso('2026-10-04', 14 * 60), nap: false, asleepMin: 330 }],
+      recoveries: [{ cycleId: 2, sleepId: 's2', score: 41, hrvMs: 50, restingHr: 57 }],
+    }
+    const { v } = view(data({ whoop }, { demoMode: true }), '2026-10-04')
+    expect(v.readiness.source).toBe('whoop')
+    expect(v.readiness.score).toBe(41)
+    expect(v.readiness.mainSleepMin).toBe(330)
+    // Tag ohne WHOOP-Schlaf → manuelle Eingabe (nicht Demo)
+    const { v: v2 } = view(data({ whoop }, { demoMode: true }), '2026-10-05')
+    expect(v2.readiness.needsManualInput).toBe(true)
+  })
+
+  it('Workouts: eindeutige automatisch, mehrdeutige als Vorschlag, eigene Einträge bleiben', () => {
+    const iso = (d: string, m: number) => new Date(berlinToInstant(d, m)).toISOString()
+    const base = data({}, {})
+    const cal = buildCalendar(base.settings, [])
+    const plan = buildPlan(base, cal, [])
+    const run = plan.days.find((d) => d.date === '2026-10-03')!.sessions.find((s) => s.category === 'run')!
+    const workouts = [
+      { id: 'w-run', start: iso('2026-10-03', 8 * 60 + 35), end: iso('2026-10-03', 9 * 60 + 25), sportName: 'running', distanceM: 7200, strain: 9 },
+      { id: 'w-golf', start: iso('2026-10-05', 10 * 60), end: iso('2026-10-05', 11 * 60), sportName: 'golf' },
+    ]
+    const d = data({ whoop: { ...EMPTY_WHOOP, status: { connected: true }, workouts } })
+    const a = workoutActions(d, plan, '2026-10-06')
+    expect(a.autoLogs).toHaveLength(1)
+    expect(a.autoLogs[0]).toMatchObject({ sessionId: run.id, status: 'done', distanceKm: 7.2, whoopWorkoutId: 'w-run' })
+    expect(a.suggestions.map((s) => s.workout.id)).toEqual(['w-golf'])
+    expect(a.suggestions[0]!.candidates.length).toBeGreaterThan(0)
+    // Eigener Eintrag vorhanden → nicht überschreiben
+    const own = data({ whoop: d.whoop, logs: [{ sessionId: run.id, date: '2026-10-03', status: 'done', feeling: 4 }] })
+    expect(workoutActions(own, plan, '2026-10-06').autoLogs).toEqual([])
+    // Bereits übernommen → nichts mehr zu tun
+    const done = data({ whoop: d.whoop, logs: [a.autoLogs[0]!] })
+    expect(workoutActions(done, plan, '2026-10-06').autoLogs).toEqual([])
+    // Korrektur: ignorieren bzw. andere Einheit
+    const ignored = data({ whoop: d.whoop, assignments: [{ workoutId: 'w-golf', sessionId: null, decidedAt: 'x' }] })
+    expect(workoutActions(ignored, plan, '2026-10-06').suggestions).toEqual([])
+    const long = plan.days.find((x) => x.date === '2026-10-05')!.sessions[0]!
+    const assigned = data({ whoop: d.whoop, assignments: [{ workoutId: 'w-golf', sessionId: long.id, decidedAt: 'x' }] })
+    expect(workoutActions(assigned, plan, '2026-10-06').autoLogs.map((l) => l.sessionId)).toContain(long.id)
   })
 })

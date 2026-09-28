@@ -21,6 +21,7 @@ PSQL=(psql -h "$DIR" -p "$PORT" -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X
 "${PSQL[@]}" <<'SQL'
 create role anon nologin;
 create role authenticated nologin;
+create role service_role nologin bypassrls;
 create schema auth;
 create table auth.users (id uuid primary key);
 create function auth.uid() returns uuid language sql stable as $$
@@ -31,7 +32,7 @@ grant execute on function auth.uid() to anon, authenticated;
 grant usage on schema public to anon, authenticated;
 insert into auth.users values ('00000000-0000-0000-0000-00000000000a'), ('00000000-0000-0000-0000-00000000000b');
 SQL
-"${PSQL[@]}" -f supabase/migrations/20261001000000_init.sql
+for f in supabase/migrations/*.sql; do "${PSQL[@]}" -f "$f"; done
 
 "${PSQL[@]}" <<'SQL'
 -- Nutzer A schreibt
@@ -97,14 +98,46 @@ begin
                   has_table_privilege('anon', c.oid, 'select') as anon_select
            from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
            where ns.nspname = 'public' and c.relkind = 'r'
+             and c.relname in ('settings','shift_overrides','session_logs','manual_readiness','strength_tests','strength_state','checklist','adjustment_decisions','workout_assignments')
   loop
     if not t.relrowsecurity or not t.relforcerowsecurity then raise exception 'RLS fehlt auf %', t.relname; end if;
     if t.n <> 4 then raise exception '% hat % statt 4 Policies', t.relname, t.n; end if;
     if t.anon_select then raise exception 'anon darf % lesen', t.relname; end if;
   end loop;
-  if (select count(*) from pg_class c join pg_namespace ns on ns.oid = c.relnamespace where ns.nspname = 'public' and c.relkind = 'r') <> 8 then
-    raise exception 'erwartet 8 Tabellen';
+  if (select count(*) from pg_class c join pg_namespace ns on ns.oid = c.relnamespace where ns.nspname = 'public' and c.relkind = 'r') <> 17 then
+    raise exception 'erwartet 17 Tabellen';
   end if;
 end $$;
 SQL
-echo "RLS-Tests: alle bestanden (8 Tabellen, Isolation A/B, anon gesperrt, updated_at)."
+# WHOOP (Phase 5): Tokens/States nur Service Role, Daten für den Eigentümer nur lesbar
+"${PSQL[@]}" <<'SQL'
+grant all on all tables in schema public to service_role;
+set role service_role;
+insert into public.whoop_tokens (user_id, access_token, refresh_token, expires_at) values ('00000000-0000-0000-0000-00000000000a', 'geheim', 'refresh', now());
+insert into public.whoop_oauth_states (state, user_id, expires_at) values ('abcdefgh', '00000000-0000-0000-0000-00000000000a', now());
+insert into public.whoop_recoveries (user_id, id, data) values ('00000000-0000-0000-0000-00000000000a', 'r1', '{"score":70}');
+insert into public.whoop_status (user_id, data) values ('00000000-0000-0000-0000-00000000000a', '{"connected":true}');
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin
+  begin perform * from public.whoop_tokens; raise exception 'Tokens lesbar'; exception when insufficient_privilege then null; end;
+  begin perform * from public.whoop_oauth_states; raise exception 'States lesbar'; exception when insufficient_privilege then null; end;
+  if (select count(*) from public.whoop_recoveries) <> 1 then raise exception 'Eigentümer sieht Recovery nicht'; end if;
+  if (select count(*) from public.whoop_status) <> 1 then raise exception 'Eigentümer sieht Status nicht'; end if;
+  begin insert into public.whoop_recoveries (user_id, id, data) values ('00000000-0000-0000-0000-00000000000a', 'x', '{}'); raise exception 'Nutzer kann WHOOP-Daten schreiben'; exception when insufficient_privilege then null; end;
+  begin update public.whoop_status set data = '{}'; raise exception 'Nutzer kann Status ändern'; exception when insufficient_privilege then null; end;
+  insert into public.workout_assignments (workout_id, data) values ('w1', '{"sessionId":"x"}');
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+do $$ begin
+  if (select count(*) from public.whoop_recoveries) <> 0 then raise exception 'B sieht Recovery von A'; end if;
+  if (select count(*) from public.workout_assignments) <> 0 then raise exception 'B sieht Zuordnung von A'; end if;
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  begin perform * from public.whoop_recoveries; raise exception 'anon liest WHOOP'; exception when insufficient_privilege then null; end;
+end $$;
+SQL
+echo "RLS-Tests: alle bestanden (17 Tabellen, Isolation A/B, anon gesperrt, updated_at, WHOOP-Tokens nur serverseitig)."

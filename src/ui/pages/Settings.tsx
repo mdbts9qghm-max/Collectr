@@ -52,6 +52,47 @@ export function ProfileFields({ profile, onChange }: { profile: Profile; onChang
   )
 }
 
+function WhoopSection() {
+  const app = useApp()
+  const cloud = useCloud()
+  const status = app.data.whoop.status
+  const params = new URLSearchParams(window.location.search)
+  const result = params.get('whoop')
+  const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'short', timeStyle: 'short' }) : '–')
+  if (!cloud) return <p className="text-sm text-muted">Für WHOOP ist die Anmeldung mit Supabase nötig. Bis dahin: manuelle Eingabe oder Demo-Modus.</p>
+  return (
+    <div className="space-y-2 text-sm" data-testid="whoop-section">
+      {result === 'verbunden' && <p className="text-accent">WHOOP wurde verbunden. Die Daten werden geladen …</p>}
+      {result === 'fehler' && <p className="text-red">Verbindung fehlgeschlagen: {params.get('grund') ?? 'unbekannt'}</p>}
+      {status?.connected ? (
+        <>
+          <p>
+            Verbunden seit {fmt(status.connectedAt)}. Letzter Abruf: {fmt(status.lastSyncAt)}
+            {status.counts && ` (${status.counts.recoveries ?? 0} Recoveries, ${status.counts.sleeps ?? 0} Schlafphasen, ${status.counts.workouts ?? 0} Workouts)`}
+          </p>
+          {status.lastError && <p className="text-red">Letzter Fehler: {status.lastError}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => void cloud.whoop.fetchNow(true)} disabled={cloud.whoop.busy}>
+              {cloud.whoop.busy ? 'Lade …' : 'Jetzt abrufen'}
+            </Button>
+            <Button variant="danger" onClick={() => void cloud.whoop.disconnect()} disabled={cloud.whoop.busy}>
+              Trennen
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-muted">Verbinde WHOOP, damit Recovery, HRV, Ruhepuls, Schlaf, Strain und Workouts automatisch in den Plan einfließen.</p>
+          <Button variant="primary" className="w-full" onClick={() => void cloud.whoop.connect()}>
+            Mit WHOOP verbinden
+          </Button>
+        </>
+      )}
+      {cloud.whoop.error && <p className="text-red">{cloud.whoop.error}</p>}
+    </div>
+  )
+}
+
 function AccountCard() {
   const cloud = useCloud()
   if (!cloud) {
@@ -166,7 +207,7 @@ export function Settings() {
 
       <Card>
         <H2>WHOOP</H2>
-        <p className="text-sm text-muted">Die Verbindung zu WHOOP folgt in Phase 5. Bis dahin: manuelle Eingabe oder Demo-Modus.</p>
+        <WhoopSection />
         <label className="mt-3 flex min-h-11 items-center justify-between">
           <span>Demo-Modus (Beispieldaten)</span>
           <input type="checkbox" className="h-6 w-6 accent-[#34d399]" checked={s.demoMode} onChange={(e) => app.updateSettings({ demoMode: e.target.checked })} aria-label="Demo-Modus" />

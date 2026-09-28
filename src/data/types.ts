@@ -1,6 +1,7 @@
 // Datenmodell der gespeicherten Eingaben (bis Phase 4 lokal in IndexedDB, danach Supabase).
 
 import type { RecoveryWeights } from '../core/config'
+import type { WhoopCycle, WhoopRecovery, WhoopSleep, WhoopWorkout } from '../core/whoop'
 import type { LocalDate, ManualReadiness, Profile, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
 
 export interface AppSettings {
@@ -24,6 +25,30 @@ export interface AdjustmentDecision {
   decidedAt: string
 }
 
+/** Manuelle Zuordnung eines WHOOP-Workouts (sessionId null = ignorieren). */
+export interface WorkoutAssignment {
+  workoutId: string
+  sessionId: string | null
+  decidedAt: string
+}
+
+export interface WhoopStatusData {
+  connected: boolean
+  connectedAt?: string
+  whoopUserId?: number
+  lastSyncAt?: string
+  lastError?: string | null
+  counts?: Record<string, number>
+}
+
+export interface WhoopLocal {
+  status: WhoopStatusData | null
+  cycles: WhoopCycle[]
+  recoveries: WhoopRecovery[]
+  sleeps: WhoopSleep[]
+  workouts: WhoopWorkout[]
+}
+
 export interface BackupData {
   version: 1
   exportedAt: string
@@ -35,6 +60,7 @@ export interface BackupData {
   strengthState: StrengthState | null
   checklist: Record<string, boolean>
   decisions: AdjustmentDecision[]
+  assignments?: WorkoutAssignment[]
 }
 
 export interface Repository {
@@ -56,6 +82,10 @@ export interface Repository {
   saveChecklist(c: Record<string, boolean>): Promise<void>
   listDecisions(): Promise<AdjustmentDecision[]>
   putDecision(d: AdjustmentDecision): Promise<void>
+  listAssignments(): Promise<WorkoutAssignment[]>
+  putAssignment(a: WorkoutAssignment): Promise<void>
+  /** WHOOP-Daten (nur lesend, aus der Cloud synchronisiert). */
+  listWhoop(): Promise<WhoopLocal>
   exportAll(now: Date): Promise<BackupData>
   importAll(b: BackupData): Promise<void>
   clearAll(): Promise<void>

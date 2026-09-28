@@ -118,4 +118,22 @@ describe('Synchronisation mit Supabase (lokal zuerst)', () => {
     expect(remote.rows.get('session_logs/x')!.value).toBeNull()
     expect(await repo.listLogs()).toEqual([])
   })
+
+  it('WHOOP-Daten werden nur gelesen, Workout-Zuordnungen synchronisiert', async () => {
+    const { repo, engine, remote } = setup()
+    remote.external({ collection: 'whoop_recoveries', key: '93845', value: { cycleId: 93845, score: 61 }, clientUpdatedAt: '2026-10-04T12:00:00Z' })
+    remote.external({ collection: 'whoop_status', key: 'whoop', value: { connected: true }, clientUpdatedAt: '2026-10-04T12:00:00Z' })
+    await engine.sync()
+    const w = await repo.listWhoop()
+    expect(w.recoveries).toEqual([{ cycleId: 93845, score: 61 }])
+    expect(w.status).toEqual({ connected: true })
+    await repo.putAssignment({ workoutId: 'w1', sessionId: 's1', decidedAt: 'x' })
+    await engine.sync()
+    expect(remote.rows.get('workout_assignments/w1')!.value).toMatchObject({ sessionId: 's1' })
+    // Zurücksetzen löscht WHOOP-Daten nicht in der Cloud
+    await repo.clearAll()
+    await engine.sync()
+    expect(remote.rows.get('whoop_recoveries/93845')!.value).not.toBeNull()
+    expect((await repo.listWhoop()).recoveries).toHaveLength(1) // neu abgerufen
+  })
 })

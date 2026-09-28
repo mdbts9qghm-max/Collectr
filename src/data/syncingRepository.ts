@@ -2,10 +2,10 @@
 // Outbox vor und stößt die Synchronisation mit Supabase an.
 
 import type { ManualReadiness, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
-import { COLLECTIONS } from './collections'
+import { COLLECTIONS, READONLY } from './collections'
 import type { IndexedDbRepository } from './indexedDb'
 import type { SyncEngine } from './sync'
-import type { AdjustmentDecision, AppSettings, BackupData, Repository } from './types'
+import type { AdjustmentDecision, AppSettings, BackupData, Repository, WorkoutAssignment } from './types'
 
 /** Verzögerung, um mehrere schnelle Änderungen gemeinsam hochzuladen. */
 const SYNC_DEBOUNCE_MS = 800
@@ -120,6 +120,18 @@ export class SyncingRepository implements Repository {
       () => this.engine.record('adjustment_decisions', d.sessionId, d),
     )
   }
+  listAssignments() {
+    return this.local.listAssignments()
+  }
+  putAssignment(a: WorkoutAssignment) {
+    return this.changed(
+      () => this.local.putAssignment(a),
+      () => this.engine.record('workout_assignments', a.workoutId, a),
+    )
+  }
+  listWhoop() {
+    return this.local.listWhoop()
+  }
   exportAll(now: Date) {
     return this.local.exportAll(now)
   }
@@ -127,16 +139,23 @@ export class SyncingRepository implements Repository {
   async importAll(b: BackupData) {
     await this.tombstoneAll()
     await this.local.importAll(b)
-    for (const c of COLLECTIONS) for (const [key, value] of await this.local.entries(c)) await this.engine.record(c, key, value)
+    for (const c of COLLECTIONS) {
+      if (READONLY.has(c)) continue
+      for (const [key, value] of await this.local.entries(c)) await this.engine.record(c, key, value)
+    }
     this.schedule()
   }
   /** Löscht alle Daten lokal und in der Cloud. */
   async clearAll() {
     await this.tombstoneAll()
     await this.local.clearAll()
+    await this.engine.resetCursor() // WHOOP-Daten neu holen
     this.schedule()
   }
   private async tombstoneAll() {
-    for (const c of COLLECTIONS) for (const [key] of await this.local.entries(c)) await this.engine.record(c, key, null)
+    for (const c of COLLECTIONS) {
+      if (READONLY.has(c)) continue
+      for (const [key] of await this.local.entries(c)) await this.engine.record(c, key, null)
+    }
   }
 }

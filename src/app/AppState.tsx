@@ -6,7 +6,7 @@ import type { LocalDate, ManualReadiness, SessionLog, ShiftOverride, StrengthRes
 import { parseBackup } from '../data/backup'
 import { IndexedDbRepository } from '../data/indexedDb'
 import type { AppSettings, Repository } from '../data/types'
-import { buildCalendar, buildDayView, buildPlan, currentDate, effectiveStrengthState, recoveryHistory, type AppData, type DayView } from './compute'
+import { buildCalendar, buildDayView, buildPlan, currentDate, effectiveStrengthState, recoveryHistory, whoopActive, workoutActions, type AppData, type DayView, type WorkoutSuggestion } from './compute'
 
 interface AppContextValue {
   data: AppData
@@ -16,6 +16,10 @@ interface AppContextValue {
   cal: ReturnType<typeof buildCalendar>
   plan: ReturnType<typeof buildPlan>
   dayView: (date: LocalDate) => DayView
+  /** WHOOP-Workouts, die bestätigt oder korrigiert werden sollen. */
+  workoutSuggestions: WorkoutSuggestion[]
+  /** Workout einer Einheit zuordnen (null = ignorieren). */
+  assignWorkout: (workoutId: string, sessionId: string | null) => Promise<void>
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>
   setOverride: (o: ShiftOverride) => Promise<void>
   removeOverride: (date: LocalDate) => Promise<void>
@@ -34,7 +38,7 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null)
 
 async function loadAll(repo: Repository): Promise<AppData> {
-  const [settings, overrides, logs, manual, strengthTests, strengthState, checklist, decisions] = await Promise.all([
+  const [settings, overrides, logs, manual, strengthTests, strengthState, checklist, decisions, assignments, whoop] = await Promise.all([
     repo.getSettings(),
     repo.listOverrides(),
     repo.listLogs(),
@@ -43,8 +47,10 @@ async function loadAll(repo: Repository): Promise<AppData> {
     repo.getStrengthState(),
     repo.getChecklist(),
     repo.listDecisions(),
+    repo.listAssignments(),
+    repo.listWhoop(),
   ])
-  return { settings, overrides, logs, manual, strengthTests, strengthState, checklist, decisions }
+  return { settings, overrides, logs, manual, strengthTests, strengthState, checklist, decisions, assignments, whoop }
 }
 
 export function AppProvider({
@@ -88,6 +94,7 @@ export function AppProvider({
       await fn()
       await reload()
     }
+    const actions = whoopActive(data) ? workoutActions(data, plan, today) : { autoLogs: [], suggestions: [] }
     return {
       data,
       today,
@@ -95,6 +102,8 @@ export function AppProvider({
       cal,
       plan,
       dayView,
+      workoutSuggestions: actions.suggestions,
+      assignWorkout: (workoutId, sessionId) => run(() => repo.putAssignment({ workoutId, sessionId, decidedAt: new Date().toISOString() })),
       // Optimistisch: Schalter und Eingaben reagieren sofort, gespeichert wird im Hintergrund.
       updateSettings: (patch) => {
         const settings = { ...data.settings, ...patch }
@@ -133,6 +142,19 @@ export function AppProvider({
       resetAll: () => run(() => repo.clearAll()),
     }
   }, [data, now, repo, reload])
+
+  // WHOOP: eindeutige Workouts automatisch als erledigt eintragen; Demo-Modus aus, sobald WHOOP liefert.
+  useEffect(() => {
+    if (!value || !data) return
+    const { autoLogs } = whoopActive(data) ? workoutActions(data, value.plan, value.today) : { autoLogs: [] }
+    const turnOffDemo = whoopActive(data) && data.settings.demoMode
+    if (autoLogs.length === 0 && !turnOffDemo) return
+    void (async () => {
+      for (const l of autoLogs) await repo.putLog(l)
+      if (turnOffDemo) await repo.saveSettings({ ...data.settings, demoMode: false })
+      await reload()
+    })()
+  }, [value, data, repo, reload])
 
   if (!value) return <div className="p-6 text-muted">Lade …</div>
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

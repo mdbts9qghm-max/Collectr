@@ -1,7 +1,7 @@
 // Entfernter Speicher (Supabase). Das Interface erlaubt Tests mit einem In-Memory-Remote.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { COLLECTIONS, KEY_COLUMN, type Collection, type RemoteRow, type SyncRecord } from './collections'
+import { COLLECTIONS, KEY_COLUMN, READONLY, type Collection, type RemoteRow, type SyncRecord } from './collections'
 
 export interface RemoteStore {
   /** Datensätze hochladen (Upsert, Löschung als Tombstone). */
@@ -25,7 +25,10 @@ export class SupabaseRemote implements RemoteStore {
 
   async push(records: SyncRecord[]): Promise<void> {
     const byCollection = new Map<Collection, SyncRecord[]>()
-    for (const r of records) byCollection.set(r.collection, [...(byCollection.get(r.collection) ?? []), r])
+    for (const r of records) {
+      if (READONLY.has(r.collection)) continue // schreiben nur die Edge Functions
+      byCollection.set(r.collection, [...(byCollection.get(r.collection) ?? []), r])
+    }
     for (const [c, rs] of byCollection) {
       const keyCol = KEY_COLUMN[c]
       const rows = rs.map((r) => ({
@@ -47,6 +50,11 @@ export class SupabaseRemote implements RemoteStore {
       const { data, error } = await q
       if (error) throw new Error(`Abruf (${c}) fehlgeschlagen: ${error.message}`)
       for (const row of (data ?? []) as unknown as DbRow[]) {
+        if (READONLY.has(c)) {
+          // Von den Edge Functions geschrieben: data ist direkt der Wert
+          out.push({ collection: c, key: String(row[keyCol]), value: row.deleted ? null : row.data, clientUpdatedAt: row.updated_at, serverUpdatedAt: row.updated_at })
+          continue
+        }
         out.push({
           collection: c,
           key: String(row[keyCol]),

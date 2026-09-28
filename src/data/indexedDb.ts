@@ -4,11 +4,12 @@ import { openDB, type IDBPDatabase } from 'idb'
 import { LOCAL, type Collection, type SyncRecord } from './collections'
 import type { ManualReadiness, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
 import { defaultSettings } from './defaults'
-import type { AdjustmentDecision, AppSettings, BackupData, Repository } from './types'
+import type { WhoopCycle, WhoopRecovery, WhoopSleep, WhoopWorkout } from '../core/whoop'
+import type { AdjustmentDecision, AppSettings, BackupData, Repository, WhoopLocal, WhoopStatusData, WorkoutAssignment } from './types'
 
 const DB_NAME = 'collectr'
-const DB_VERSION = 2
-const STORES = ['kv', 'overrides', 'logs', 'manual', 'tests', 'decisions'] as const
+const DB_VERSION = 3
+const STORES = ['kv', 'overrides', 'logs', 'manual', 'tests', 'decisions', 'assignments', 'whoop_cycles', 'whoop_recoveries', 'whoop_sleeps', 'whoop_workouts'] as const
 /** Sync-Verwaltung (Phase 4): ausstehende Änderungen und Metadaten (Cursor, Zeitstempel). */
 const SYNC_STORES = ['outbox', 'meta'] as const
 
@@ -29,6 +30,10 @@ export class IndexedDbRepository implements Repository {
         if (oldVersion < 2) {
           db.createObjectStore('outbox', { keyPath: 'id' })
           db.createObjectStore('meta')
+        }
+        if (oldVersion < 3) {
+          db.createObjectStore('assignments', { keyPath: 'workoutId' })
+          for (const s of ['whoop_cycles', 'whoop_recoveries', 'whoop_sleeps', 'whoop_workouts']) db.createObjectStore(s, { keyPath: 'key' })
         }
       },
     })
@@ -128,6 +133,7 @@ export class IndexedDbRepository implements Repository {
     const db = await this.dbp
     if (value === null || value === undefined) await db.delete(loc.store, loc.kvKey ?? key)
     else if (loc.kvKey) await db.put('kv', value, loc.kvKey)
+    else if (loc.keyPath === 'key') await db.put(loc.store, { key, value })
     else await db.put(loc.store, value)
   }
 
@@ -146,11 +152,39 @@ export class IndexedDbRepository implements Repository {
   async putMeta(key: string, value: unknown): Promise<void> {
     await (await this.dbp).put('meta', value, key)
   }
+  /** Zeitstempel aller Datensätze löschen (erzwingt vollständiges Übernehmen beim nächsten Abruf). */
+  async clearStamps(): Promise<void> {
+    const db = await this.dbp
+    const keys = (await db.getAllKeys('meta')).filter((k) => String(k).startsWith('stamp/'))
+    const tx = db.transaction('meta', 'readwrite')
+    await Promise.all(keys.map((k) => tx.store.delete(k)))
+    await tx.done
+  }
   async clearSyncState(): Promise<void> {
     const db = await this.dbp
     const tx = db.transaction([...SYNC_STORES], 'readwrite')
     await Promise.all(SYNC_STORES.map((s) => tx.objectStore(s).clear()))
     await tx.done
+  }
+
+  // --- WHOOP (nur lesend, aus der Cloud) --------------------------------------------------
+
+  async listWhoop(): Promise<WhoopLocal> {
+    const db = await this.dbp
+    const vals = async <T>(s: string) => ((await db.getAll(s)) as { key: string; value: T }[]).map((r) => r.value)
+    return {
+      status: ((await db.get('kv', 'whoopStatus')) as WhoopStatusData | undefined) ?? null,
+      cycles: await vals<WhoopCycle>('whoop_cycles'),
+      recoveries: await vals<WhoopRecovery>('whoop_recoveries'),
+      sleeps: await vals<WhoopSleep>('whoop_sleeps'),
+      workouts: await vals<WhoopWorkout>('whoop_workouts'),
+    }
+  }
+  listAssignments() {
+    return this.all<WorkoutAssignment>('assignments')
+  }
+  putAssignment(a: WorkoutAssignment) {
+    return this.put('assignments', a)
   }
 
   async exportAll(now: Date): Promise<BackupData> {
@@ -165,6 +199,7 @@ export class IndexedDbRepository implements Repository {
       strengthState: await this.getStrengthState(),
       checklist: await this.getChecklist(),
       decisions: await this.listDecisions(),
+      assignments: await this.listAssignments(),
     }
   }
 
@@ -180,6 +215,7 @@ export class IndexedDbRepository implements Repository {
     for (const m of b.manual) await tx.objectStore('manual').put(m)
     for (const t of b.strengthTests) await tx.objectStore('tests').put(t)
     for (const d of b.decisions) await tx.objectStore('decisions').put(d)
+    for (const a of b.assignments ?? []) await tx.objectStore('assignments').put(a)
     await tx.done
   }
 

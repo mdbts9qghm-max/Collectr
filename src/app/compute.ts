@@ -17,7 +17,7 @@ import { raceConflict, taperShiftNotes, vacationReminderDue } from '../core/race
 import { recommendSleep } from '../core/sleep'
 import { createShiftCalendar, DEFAULT_SHIFT_SETTINGS, shiftContext, type ShiftCalendar } from '../core/shift'
 import { applyStrengthTest, initialStrengthState } from '../core/strength'
-import { addDays, berlinToday, compareDates, daysBetween, formatDateDE } from '../core/time'
+import { addDays, berlinToday, compareDates, daysBetween, formatDateDE, instantToBerlin } from '../core/time'
 import { sampleRecoveryDays } from '../core/fixtures/sampleData'
 import type {
   LocalDate,
@@ -34,7 +34,8 @@ import type {
   StrengthState,
   StrengthTest,
 } from '../core/types'
-import type { AdjustmentDecision, AppSettings } from '../data/types'
+import type { AdjustmentDecision, AppSettings, WhoopLocal, WorkoutAssignment } from '../data/types'
+import { assignRecoveryDay, matchWorkouts, workoutToLog, type WorkoutMatch, type WhoopWorkout } from '../core/whoop'
 
 export interface AppData {
   settings: AppSettings
@@ -45,6 +46,16 @@ export interface AppData {
   strengthState: StrengthState | null
   checklist: Record<string, boolean>
   decisions: AdjustmentDecision[]
+  /** WHOOP-Daten (Phase 5), leer ohne Verbindung. */
+  whoop: WhoopLocal
+  assignments: WorkoutAssignment[]
+}
+
+export const EMPTY_WHOOP: WhoopLocal = { status: null, cycles: [], recoveries: [], sleeps: [], workouts: [] }
+
+/** WHOOP liefert Daten (verbunden oder bereits Daten vorhanden). */
+export function whoopActive(data: Pick<AppData, 'whoop'>): boolean {
+  return data.whoop.status?.connected === true || data.whoop.sleeps.length > 0
 }
 
 /** Heutiges Datum: simuliert oder echt (Europe/Berlin). */
@@ -66,10 +77,17 @@ export function effectiveStrengthState(data: Pick<AppData, 'strengthState' | 'st
 /** Tage mit Beispieldaten im Demo-Modus (bis einschließlich `date`). */
 const DEMO_DAYS = 45
 
-/** Erholungsverlauf: Demo-Daten und/oder manuelle Eingaben (manuell hat Vorrang). */
+/** Erholungsverlauf: WHOOP, sonst Demo-Daten; manuelle Eingaben haben für ihren Tag Vorrang. */
 export function recoveryHistory(data: AppData, cal: ShiftCalendar, date: LocalDate): RecoveryDay[] {
   const byDate = new Map<LocalDate, RecoveryDay>()
-  if (data.settings.demoMode) {
+  if (whoopActive(data)) {
+    const w = { sleeps: data.whoop.sleeps, recoveries: data.whoop.recoveries, cycles: data.whoop.cycles }
+    for (let i = DEMO_DAYS - 1; i >= 0; i--) {
+      const d = addDays(date, -i)
+      const r = assignRecoveryDay(cal, d, w)
+      if (r) byDate.set(d, r)
+    }
+  } else if (data.settings.demoMode) {
     for (const d of sampleRecoveryDays(cal, { start: addDays(date, -(DEMO_DAYS - 1)), days: DEMO_DAYS, redDays: [DEMO_DAYS - 12, DEMO_DAYS - 11] })) byDate.set(d.date, d)
   }
   for (const m of data.manual) byDate.set(m.date, { date: m.date, source: 'manual', manual: m })
@@ -198,6 +216,59 @@ export function buildWarnings(data: AppData, cal: ShiftCalendar, plan: Plan, dat
     out.push({ id: 'micro-reduced', level: 'info', text: `Dieser Mikrozyklus ist wegen schlechter Erholung um ${Math.round((1 - micro.modifier) * 100)} % reduziert.` })
   }
   return out
+}
+
+/** Wie weit zurück WHOOP-Workouts den Einheiten zugeordnet werden (Tage). */
+const WORKOUT_LOOKBACK_DAYS = 14
+
+export interface WorkoutSuggestion {
+  workout: WhoopWorkout
+  match: WorkoutMatch
+  /** Einheiten desselben Tages, die in Frage kommen. */
+  candidates: PlannedSession[]
+}
+
+export interface WorkoutActions {
+  /** Eindeutig zugeordnet → automatisch als erledigt eintragen. */
+  autoLogs: SessionLog[]
+  /** Mehrdeutig oder ohne Treffer → im Tracking bestätigen/korrigieren. */
+  suggestions: WorkoutSuggestion[]
+}
+
+/**
+ * Ordnet WHOOP-Workouts der letzten Tage den Einheiten zu (SPEC 8). Eigene Einträge werden nie
+ * überschrieben, manuelle Korrekturen haben Vorrang, bereits übernommene Workouts werden übersprungen.
+ */
+export function workoutActions(data: AppData, plan: Plan, today: LocalDate): WorkoutActions {
+  const from = addDays(today, -WORKOUT_LOOKBACK_DAYS)
+  const workouts = data.whoop.workouts.filter((w) => {
+    const d = w.start.slice(0, 10)
+    return d >= addDays(from, -1) && d <= addDays(today, 1)
+  })
+  const corrections: Record<string, string | null> = {}
+  for (const a of data.assignments) corrections[a.workoutId] = a.sessionId
+  const loggedWorkouts = new Set(data.logs.map((l) => l.whoopWorkoutId).filter(Boolean))
+  const logBySession = new Map(data.logs.map((l) => [l.sessionId, l]))
+  const days = plan.days.filter((d) => d.date >= from && d.date <= today)
+  const sessionsById = new Map(days.flatMap((d) => d.sessions).map((s) => [s.id, s]))
+  const autoLogs: SessionLog[] = []
+  const suggestions: WorkoutSuggestion[] = []
+  for (const m of matchWorkouts(workouts, days, corrections)) {
+    const w = workouts.find((x) => x.id === m.workoutId)!
+    if (loggedWorkouts.has(w.id)) continue
+    if (m.confidence === 'manual' && m.sessionId === null) continue // ignoriert
+    const session = m.sessionId ? sessionsById.get(m.sessionId) : undefined
+    if ((m.confidence === 'auto' || m.confidence === 'manual') && session) {
+      const existing = logBySession.get(session.id)
+      if (existing && !existing.whoopWorkoutId) continue // selbst eingetragen → nicht überschreiben
+      autoLogs.push({ ...workoutToLog(w, session.id, session.date), ...(existing?.feeling ? { feeling: existing.feeling } : {}) })
+      continue
+    }
+    const localDate = session?.date ?? instantToBerlin(w.start).date
+    const candidates = days.filter((d) => Math.abs(daysBetween(d.date, localDate)) <= 1).flatMap((d) => d.sessions).filter((s) => !logBySession.has(s.id))
+    suggestions.push({ workout: w, match: m, candidates })
+  }
+  return { autoLogs, suggestions }
 }
 
 /** Erste Einheit ab einem Datum (für die Ansicht vor Planbeginn). */

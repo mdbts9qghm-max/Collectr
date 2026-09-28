@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../../app/AppState'
 import { LADDERS } from '../../core/strength'
-import { addDays, formatDateDE, weekdayShortDE } from '../../core/time'
+import { addDays, formatDateDE, formatTime, instantToBerlin, weekdayShortDE } from '../../core/time'
 import type { Ladder, PlannedSession, SessionLog, StrengthResult } from '../../core/types'
 import { Button, Card, Chip, Field, H2, Input, NumberInput, Rating } from '../components/common'
 import { sessionMeta } from '../components/SessionCard'
@@ -38,6 +38,7 @@ export function Tracking() {
           {message}
         </div>
       )}
+      {app.workoutSuggestions.length > 0 && <WorkoutSuggestions />}
       <Card>
         <H2>Einheiten abhaken</H2>
         {days.every((d) => d.sessions.length === 0) && <p className="text-sm text-muted">In den letzten Tagen waren keine Einheiten geplant.</p>}
@@ -93,6 +94,44 @@ export function Tracking() {
         )}
       </Card>
     </div>
+  )
+}
+
+function WorkoutSuggestions() {
+  const app = useApp()
+  return (
+    <Card data-testid="workout-suggestions">
+      <H2>WHOOP-Workouts zuordnen</H2>
+      <p className="mb-2 text-xs text-muted">Nicht eindeutig zuordenbar. Wähle die passende Einheit oder ignoriere das Workout.</p>
+      <ul className="space-y-3">
+        {app.workoutSuggestions.map(({ workout: w, match, candidates }) => {
+          const start = instantToBerlin(w.start)
+          const minutes = Math.round((Date.parse(w.end) - Date.parse(w.start)) / 60000)
+          const suggested = match.sessionId
+          return (
+            <li key={w.id} className="rounded-xl border border-line bg-panel-2 p-3 text-sm">
+              <div className="font-medium">
+                {w.sportName} · {weekdayShortDE(start.date)} {formatDateDE(start.date)} {formatTime(start.minutes)}
+              </div>
+              <div className="text-xs text-muted">
+                {minutes} min{w.distanceM !== undefined && ` · ${(w.distanceM / 1000).toFixed(1).replace('.', ',')} km`}
+                {w.strain !== undefined && ` · Strain ${w.strain.toFixed(1).replace('.', ',')}`}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {candidates.map((c) => (
+                  <Button key={c.id} variant={c.id === suggested ? 'primary' : 'secondary'} onClick={() => void app.assignWorkout(w.id, c.id)}>
+                    {c.title}
+                  </Button>
+                ))}
+                <Button variant="ghost" onClick={() => void app.assignWorkout(w.id, null)}>
+                  Ignorieren
+                </Button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
   )
 }
 

@@ -1,7 +1,7 @@
 // Synchronisation lokal ⇄ Supabase: Outbox hochladen, Änderungen abrufen, der neuere Stand gewinnt.
 // Reihenfolge: erst abrufen (Konflikte auflösen), dann die verbleibende Outbox hochladen.
 
-import { COLLECTIONS, outboxId, type Collection, type SyncRecord } from './collections'
+import { COLLECTIONS, outboxId, READONLY, type Collection, type SyncRecord } from './collections'
 import type { IndexedDbRepository } from './indexedDb'
 import type { RemoteStore } from './remote'
 
@@ -75,6 +75,7 @@ export class SyncEngine {
 
   /** Lokale Änderung vormerken (value = null für Löschung). */
   async record(c: Collection, key: string, value: unknown): Promise<void> {
+    if (READONLY.has(c)) return
     const clientUpdatedAt = this.now().toISOString()
     await this.local.putOutbox({ id: outboxId(c, key), collection: c, key, value: value === null ? null : stripLocal(c, value), clientUpdatedAt })
     await this.local.putMeta(stampKey(c, key), clientUpdatedAt)
@@ -89,6 +90,7 @@ export class SyncEngine {
     if ((await this.local.getMeta<string>(MIGRATED)) === userId) return 0
     let n = 0
     for (const c of COLLECTIONS) {
+      if (READONLY.has(c)) continue
       for (const [key, value] of await this.local.entries(c)) {
         const stamp = (await this.local.getMeta<string>(stampKey(c, key))) ?? UNKNOWN_STAMP
         await this.local.putOutbox({ id: outboxId(c, key), collection: c, key, value: stripLocal(c, value), clientUpdatedAt: stamp })
@@ -100,6 +102,12 @@ export class SyncEngine {
     await this.local.putMeta(CURSOR, null)
     this.setStatus({ pending: (await this.local.outbox()).length })
     return n
+  }
+
+  /** Beim nächsten Abruf alles neu holen (z. B. nach dem Zurücksetzen). */
+  async resetCursor(): Promise<void> {
+    await this.local.putMeta(CURSOR, null)
+    await this.local.clearStamps()
   }
 
   /** Synchronisieren (mehrfache Aufrufe werden zusammengefasst). */

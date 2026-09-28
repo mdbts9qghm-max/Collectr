@@ -14,7 +14,8 @@
     "coverage": "vitest run --coverage",
     "plan:print": "vitest run src/core/plan/printPlan.test.ts --reporter=verbose",
     "e2e": "PW_CHROMIUM_PATH=${PW_CHROMIUM_PATH:-/opt/pw-browsers/chromium} playwright test && PW_CHROMIUM_PATH=${PW_CHROMIUM_PATH:-/opt/pw-browsers/chromium} playwright test -c playwright.cloud.config.ts",
-    "test:db": "bash supabase/tests/rls.sh"
+    "test:db": "bash supabase/tests/rls.sh",
+    "check:functions": "npx --yes deno@2 check supabase/functions/*/index.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

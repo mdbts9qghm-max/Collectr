@@ -5,6 +5,7 @@ import { CloudGate } from './app/cloud'
 import { Layout } from './ui/components/Layout'
 import { Cycle } from './ui/pages/Cycle'
 import { Onboarding } from './ui/pages/Onboarding'
+import { Privacy } from './ui/pages/Privacy'
 import { Settings } from './ui/pages/Settings'
 import { Today } from './ui/pages/Today'
 import { Tracking } from './ui/pages/Tracking'
@@ -33,6 +34,8 @@ function Routed() {
 }
 
 export default function App() {
+  // Öffentliche Seite ohne Anmeldung (Privacy-Policy-URL für WHOOP)
+  if (window.location.pathname === '/datenschutz') return <Privacy />
   return (
     <CloudGate>
       {(repo, onRemoteChange) => (

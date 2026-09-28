@@ -11,6 +11,29 @@ function session() {
 interface Store {
   rows: Record<string, Record<string, unknown>[]>
   posts: { table: string; body: unknown }[]
+  whoopSyncs?: number
+}
+
+/** Berlin-Zeit → ISO (Oktober 2026 = MESZ, UTC+2). */
+const berlin = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00+02:00`).toISOString()
+
+/** Nachgebildete WHOOP-Daten nach dem Abruf (was whoop-sync in die Tabellen schreiben würde). */
+function whoopRows(): Record<string, Record<string, unknown>[]> {
+  const now = new Date().toISOString()
+  const row = (id: string, data: unknown) => ({ id, data, deleted: false, updated_at: now })
+  return {
+    whoop_status: [{ key: 'whoop', data: { connected: true, connectedAt: now, lastSyncAt: now, counts: { recoveries: 1, sleeps: 2, workouts: 2 } }, deleted: false, updated_at: now }],
+    whoop_sleeps: [
+      row('s-night', { id: 's-night', start: berlin('2026-10-02', '22:30'), end: berlin('2026-10-03', '07:15'), nap: false, asleepMin: 480 }),
+      row('s-day', { id: 's-day', start: berlin('2026-10-04', '08:05'), end: berlin('2026-10-04', '14:00'), nap: false, asleepMin: 330 }),
+    ],
+    whoop_recoveries: [row('1', { cycleId: 1, sleepId: 's-night', score: 78 }), row('2', { cycleId: 2, sleepId: 's-day', score: 41, hrvMs: 50, restingHr: 57 })],
+    whoop_cycles: [],
+    whoop_workouts: [
+      row('w-run', { id: 'w-run', start: berlin('2026-10-03', '08:35'), end: berlin('2026-10-03', '09:25'), sportName: 'running', distanceM: 7200, strain: 9.4 }),
+      row('w-golf', { id: 'w-golf', start: berlin('2026-10-04', '16:00'), end: berlin('2026-10-04', '17:00'), sportName: 'golf' }),
+    ],
+  }
 }
 
 async function fakeSupabase(page: Page, opts: { password: string }): Promise<Store> {
@@ -27,6 +50,16 @@ async function fakeSupabase(page: Page, opts: { password: string }): Promise<Sto
     }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, headers: cors })
     if (url.pathname.startsWith('/auth/v1/user')) return route.fulfill({ status: 200, headers: cors, json: USER })
+    if (url.pathname === '/functions/v1/whoop-oauth-start') {
+      // Echte Function leitet zu WHOOP; hier direkt zurück zur App wie nach erfolgreichem Callback
+      Object.assign(store.rows, { whoop_status: whoopRows().whoop_status })
+      return route.fulfill({ status: 200, headers: cors, json: { url: 'http://localhost:4174/einstellungen?whoop=verbunden' } })
+    }
+    if (url.pathname === '/functions/v1/whoop-sync') {
+      store.whoopSyncs = (store.whoopSyncs ?? 0) + 1
+      Object.assign(store.rows, whoopRows())
+      return route.fulfill({ status: 200, headers: cors, json: { skipped: false, counts: { recoveries: 2 } } })
+    }
     const m = /^\/rest\/v1\/(\w+)$/.exec(url.pathname)
     if (m) {
       const table = m[1]!
@@ -89,3 +122,44 @@ test('Login mit E-Mail und Passwort, Erst-Umzug und Synchronisation', async ({ p
   await page.getByRole('button', { name: 'Abmelden' }).click()
   await expect(page.getByRole('button', { name: 'Anmelden' })).toBeVisible()
 })
+
+test('WHOOP verbinden, abrufen, Recovery nach der Nachtschicht, Workout automatisch erledigt', async ({ page }) => {
+  const store = await fakeSupabase(page, { password: 'richtig' })
+  await page.goto('/')
+  await page.getByLabel('E-Mail').fill('ich@example.com')
+  await page.getByLabel('Passwort').fill('richtig')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.getByRole('button', { name: 'Später machen' }).click()
+  await page.getByRole('button', { name: 'Plan starten' }).click()
+
+  // Schlaftag nach der Nachtschicht simulieren und WHOOP verbinden
+  await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await page.getByLabel('Simuliertes Datum').fill('2026-10-04')
+  await page.getByRole('button', { name: 'Setzen', exact: true }).click()
+  await page.getByRole('button', { name: 'Mit WHOOP verbinden' }).click()
+  await expect(page).toHaveURL(/whoop=verbunden/)
+  await expect(page.getByText('WHOOP wurde verbunden')).toBeVisible()
+  await expect(page.getByTestId('whoop-section')).toContainText('Verbunden seit', { timeout: 10_000 })
+  await expect.poll(() => store.whoopSyncs ?? 0).toBeGreaterThan(0)
+  await page.screenshot({ path: 'docs/screenshots/11-whoop-verbunden.png' })
+
+  // Heute: Recovery aus dem Tagschlaf (41 %), Quelle WHOOP
+  await page.getByRole('link', { name: 'Heute' }).click()
+  await expect(page.getByTestId('traffic')).toContainText('41 %', { timeout: 10_000 })
+  await expect(page.getByTestId('readiness')).toContainText('WHOOP')
+  await expect(page.getByTestId('readiness')).not.toContainText('Beispieldaten')
+
+  // Tracking: Lauf vom 03.10. automatisch erledigt, Golf als Vorschlag
+  await page.getByRole('link', { name: 'Tracking' }).click()
+  await expect(page.getByTestId('track-session').filter({ hasText: 'Lockerer Lauf' }).first()).toContainText('erledigt')
+  const sugg = page.getByTestId('workout-suggestions')
+  await expect(sugg).toContainText('golf')
+  await page.screenshot({ path: 'docs/screenshots/12-whoop-tracking.png' })
+  await sugg.getByRole('button', { name: 'Ignorieren' }).click()
+  await expect(page.getByTestId('workout-suggestions')).toHaveCount(0)
+  await expect.poll(() => store.posts.some((p) => p.table === 'workout_assignments')).toBe(true)
+  await expect.poll(() => store.posts.some((p) => p.table === 'session_logs')).toBe(true)
+})
+
