@@ -5,7 +5,7 @@ import { microIndexOf } from '../../core/plan'
 import { shiftLabel } from '../../core/shift'
 import { formatDateDE, formatTime, weekdayShortDE } from '../../core/time'
 import type { LocalDate, OverrideKind, PlanDay, ShiftOverride } from '../../core/types'
-import { Button, Card, Chip, Field, H2, Input } from '../components/common'
+import { Button, Card, Chip, Field, H2, Input, SegmentedLinks, Stat } from '../components/common'
 import { SessionCard } from '../components/SessionCard'
 
 const SHIFT_TONE: Record<string, 'neutral' | 'accent' | 'warn' | 'danger'> = {
@@ -27,15 +27,17 @@ export function Cycle() {
 
   return (
     <div className="space-y-4">
+      <SegmentedLinks label="Plan" items={[{ to: '/zyklus', label: 'Zyklus' }, { to: '/plan', label: 'Gesamtplan' }]} />
       {micros.map((m) => (
         <Card key={m.index}>
           <H2>
             {m.index === current ? 'Aktueller Rhythmus' : 'Nächster Rhythmus'} · {formatDateDE(m.start)}–{formatDateDE(m.end)}
           </H2>
-          <p className="mb-3 text-xs text-muted">
-            Mikrozyklus {m.index} · Mesozyklus {m.mesoIndex}
-            {m.kind === 'deload' && ' · Entlastung'} · Soll {Math.round((m.plannedKm * 7) / 5)} km/Woche
-          </p>
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            <Stat label="km/Woche" value={Math.round((m.plannedKm * 7) / 5)} />
+            <Stat label="hm/Woche" value={Math.round((m.plannedElevationM * 7) / 5)} />
+            <Stat label="Mikro" value={m.index} sub={`Meso ${m.mesoIndex}${m.kind === 'deload' ? ' · Entlastung' : ''}`} />
+          </div>
           <ul className="space-y-2">
             {plan.days
               .filter((d) => d.microIndex === m.index)
@@ -58,7 +60,7 @@ function DayRow({ day, isToday, onSelect }: { day: PlanDay; isToday: boolean; on
       <button
         type="button"
         onClick={onSelect}
-        className={`w-full rounded-xl border p-3 text-left ${isToday ? 'border-accent' : 'border-line'} bg-panel-2`}
+        className={`w-full rounded-xl p-3 text-left ${isToday ? 'ring-2 ring-accent' : ''} bg-panel-2`}
         data-testid={`day-${day.date}`}
       >
         <div className="flex items-center justify-between">

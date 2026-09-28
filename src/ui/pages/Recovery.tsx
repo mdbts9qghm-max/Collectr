@@ -5,7 +5,7 @@ import { adherence, recoveryRows, type RecoveryRow, type ShiftBand } from '../..
 import { CONFIG } from '../../core/config'
 import { shiftLabel } from '../../core/shift'
 import { formatDateDE } from '../../core/time'
-import { Card, H2 } from '../components/common'
+import { Card, H2, SegmentedButtons } from '../components/common'
 
 // Validierte Farben (dataviz, dunkle Fläche): Tagdienst Orange, Nacht Blau (Schlaftag = helleres Blau).
 // Die Datenlinie ist neutral (Text-Ton), die Schichten sind nur Hintergrund.
@@ -38,18 +38,12 @@ export function Recovery() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2" role="group" aria-label="Zeitraum">
-        {[14, 30, 60].map((d) => (
-          <button
-            key={d}
-            aria-pressed={days === d}
-            onClick={() => setDays(d)}
-            className={`min-h-11 flex-1 rounded-xl border text-sm ${days === d ? 'border-accent bg-accent/20 text-accent' : 'border-line bg-panel-2'}`}
-          >
-            {d} Tage
-          </button>
-        ))}
-      </div>
+      <SegmentedButtons
+        label="Zeitraum"
+        value={days}
+        onChange={setDays}
+        options={[14, 30, 60].map((d) => ({ value: d, label: `${d} Tage` }))}
+      />
 
       <div className="flex flex-wrap gap-3 text-xs text-muted" aria-label="Legende Schichten" data-testid="shift-legend">
         {(['day', 'night', 'after_night'] as ShiftBand[]).map((b) => (
@@ -95,7 +89,7 @@ export function Recovery() {
         <H2>Schlaf-Empfehlungen umgesetzt</H2>
         {adh && adh.rate !== null ? (
           <>
-            <p className="text-2xl font-bold text-accent">{Math.round(adh.rate * 100)} %</p>
+            <p className="text-3xl font-bold text-accent">{Math.round(adh.rate * 100)} %</p>
             <p className="text-xs text-muted">der letzten 14 Tage innerhalb von ±{CONFIG.sleep.adherenceToleranceMin} min bei Zubettgehen und Aufstehen</p>
             <ul className="mt-2 space-y-1 text-xs">
               {adh.days

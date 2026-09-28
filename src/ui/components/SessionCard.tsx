@@ -60,7 +60,7 @@ export function SessionDetails({ s }: { s: PlannedSession }) {
 export function SessionCard({ s, defaultOpen = false, children }: { s: PlannedSession; defaultOpen?: boolean; children?: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="rounded-xl border border-line bg-panel-2 p-3" data-testid="session">
+    <div className="rounded-xl bg-panel-2 p-3" data-testid="session">
       <button type="button" className="flex w-full items-start justify-between gap-2 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <div>
           <div className="font-medium">{s.title}</div>

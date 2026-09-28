@@ -32,10 +32,17 @@ function whoopRows(): Record<string, Record<string, unknown>[]> {
     whoop_recoveries: [row('1', { cycleId: 1, sleepId: 's-night', score: 78 }), row('2', { cycleId: 2, sleepId: 's-day', score: 41, hrvMs: 50, restingHr: 57 })],
     whoop_cycles: [],
     whoop_workouts: [
-      row('w-run', { id: 'w-run', start: berlin('2026-10-03', '08:35'), end: berlin('2026-10-03', '09:25'), sportName: 'running', distanceM: 7200, strain: 9.4 }),
-      row('w-golf', { id: 'w-golf', start: berlin('2026-10-04', '16:00'), end: berlin('2026-10-04', '17:00'), sportName: 'golf' }),
+      // Lauf am Schlaftag nachmittags (Tag 2 hat seit der Planänderung nur Kraft)
+      row('w-run', { id: 'w-run', start: berlin('2026-10-04', '15:35'), end: berlin('2026-10-04', '16:20'), sportName: 'running', distanceM: 7200, strain: 9.4 }),
+      row('w-golf', { id: 'w-golf', start: berlin('2026-10-03', '16:00'), end: berlin('2026-10-03', '17:00'), sportName: 'golf' }),
     ],
   }
+}
+
+/** Aufklappbare Gruppe (z. B. in den Einstellungen) öffnen, falls sie zu ist. */
+async function openGroup(page: Page, title: string) {
+  const d = page.locator('details', { has: page.locator(`summary:has-text("${title}")`) }).first()
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').first().click()
 }
 
 async function fakeSupabase(page: Page, opts: { password: string }): Promise<Store> {
@@ -114,6 +121,7 @@ test('Login mit E-Mail und Passwort, Erst-Umzug und Synchronisation', async ({ p
   await page.getByRole('link', { name: 'Einstellungen' }).click()
   await expect(page.getByText('Angemeldet als ich@example.com')).toBeVisible()
   const before = store.posts.length
+  await openGroup(page, 'Erweitert')
   await page.getByLabel('Simuliertes Datum').fill('2026-10-03')
   await page.getByRole('button', { name: 'Setzen', exact: true }).click()
   await page.getByRole('link', { name: 'Heute' }).click()
@@ -130,6 +138,7 @@ test('Login mit E-Mail und Passwort, Erst-Umzug und Synchronisation', async ({ p
 
   // Abmelden → Login
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'Konto')
   await page.getByRole('button', { name: 'Abmelden' }).click()
   await expect(page.getByRole('button', { name: 'Anmelden' })).toBeVisible()
 })
@@ -147,8 +156,10 @@ test('WHOOP verbinden, abrufen, Recovery nach der Nachtschicht, Workout automati
 
   // Schlaftag nach der Nachtschicht simulieren und WHOOP verbinden
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'Erweitert')
   await page.getByLabel('Simuliertes Datum').fill('2026-10-04')
   await page.getByRole('button', { name: 'Setzen', exact: true }).click()
+  await openGroup(page, 'WHOOP & Erinnerungen')
   await page.getByRole('button', { name: 'Mit WHOOP verbinden' }).click()
   await expect(page).toHaveURL(/whoop=verbunden/)
   await expect(page.getByText('WHOOP wurde verbunden')).toBeVisible()
@@ -163,6 +174,7 @@ test('WHOOP verbinden, abrufen, Recovery nach der Nachtschicht, Workout automati
   await expect(page.getByTestId('readiness')).not.toContainText('Beispieldaten')
 
   // Tracking: Lauf vom 03.10. automatisch erledigt, Golf als Vorschlag
+  await page.getByRole('link', { name: 'Training', exact: true }).click()
   await page.getByRole('link', { name: 'Tracking' }).click()
   await expect(page.getByTestId('track-session').filter({ hasText: 'Lockerer Lauf' }).first()).toContainText('erledigt')
   const sugg = page.getByTestId('workout-suggestions')
@@ -207,6 +219,7 @@ test('Erinnerungen: Push-Abo speichern, Erinnerungen hochladen, wieder abbestell
   await page.getByRole('button', { name: 'Später machen' }).click()
   await page.getByRole('button', { name: 'Plan starten' }).click()
   await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await openGroup(page, 'WHOOP & Erinnerungen')
 
   const card = page.getByTestId('reminders')
   await expect(card).toContainText('30 min vor dem empfohlenen Zubettgehen')

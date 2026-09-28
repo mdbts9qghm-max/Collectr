@@ -4,7 +4,7 @@ import { useApp } from '../../app/AppState'
 import { calendarWeeks, PHASE_LABEL } from '../../core/plan'
 import { raceChecklist } from '../../core/race'
 import { addDays, formatDateDE, formatDayMonthDE, isoWeek } from '../../core/time'
-import { Card, Chip, H2 } from '../components/common'
+import { Card, Chip, Disclosure, H2, SegmentedButtons, SegmentedLinks } from '../components/common'
 
 // Validierte Farben (dataviz): Soll = Blau, Ist = Orange; dunkle Stufen für die dunkle Fläche.
 const SOLL = '#3987e5'
@@ -82,32 +82,29 @@ export function PlanOverview() {
   const unit = mode === 'micro' ? 'pro Woche (Mikrozyklus × 7/5)' : 'je Kalenderwoche'
   return (
     <div className="space-y-4">
-      <div className="flex gap-2" role="group" aria-label="Zeiteinheit">
-        {(['micro', 'week'] as Mode[]).map((m) => (
-          <button
-            key={m}
-            aria-pressed={mode === m}
-            onClick={() => setMode(m)}
-            className={`min-h-11 flex-1 rounded-xl border text-sm ${mode === m ? 'border-accent bg-accent/20 text-accent' : 'border-line bg-panel-2'}`}
-          >
-            {m === 'micro' ? 'Mikrozyklen' : 'Kalenderwochen'}
-          </button>
-        ))}
-      </div>
+      <SegmentedLinks label="Plan" items={[{ to: '/zyklus', label: 'Zyklus' }, { to: '/plan', label: 'Gesamtplan' }]} />
+      <SegmentedButtons
+        label="Zeiteinheit"
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'micro', label: 'Mikrozyklen' },
+          { value: 'week', label: 'Kalenderwochen' },
+        ]}
+      />
 
       <ChartCard title={`Laufkilometer ${unit}`} rows={rows.map((r) => r.km)} unit="km" />
       <ChartCard title={`Höhenmeter ${unit}`} rows={rows.map((r) => r.hm)} unit="hm" />
       <ChartCard title={mode === 'micro' ? 'Kraftvolumen (Sätze je Mikrozyklus)' : 'Kraftvolumen (Sätze je Woche)'} rows={rows.map((r) => r.sets)} unit="Sätze" />
 
-      <Card>
-        <H2>Mesozyklen</H2>
+      <Disclosure card title="Mesozyklen" summary={`${plan.mesocycles.length} Blöcke`} defaultOpen>
         <ul className="space-y-2 text-sm" data-testid="mesocycles">
           {plan.mesocycles.map((m) => {
             const micros = plan.microcycles.filter((x) => x.mesoIndex === m.index)
             const deload = micros.find((x) => x.kind === 'deload')
             const active = today >= m.start && today <= m.end
             return (
-              <li key={m.index} className={`rounded-xl border p-3 ${active ? 'border-accent' : 'border-line'} bg-panel-2`}>
+              <li key={m.index} className={`rounded-xl p-3 ${active ? 'ring-2 ring-accent' : ''} bg-panel-2`}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
                     {m.index === 8 ? 'Taper' : `Meso ${m.index}`} · {PHASE_LABEL[m.phase]}
@@ -131,7 +128,7 @@ export function PlanOverview() {
           ))}
           <p>🏁 Rennen: Freitag, 18.06.2027, 23:00 Uhr (KW {isoWeek('2027-06-18').week})</p>
         </div>
-      </Card>
+      </Disclosure>
 
       <RaceChecklist />
     </div>
@@ -141,11 +138,12 @@ export function PlanOverview() {
 function RaceChecklist() {
   const app = useApp()
   const done = app.data.checklist
+  const items = raceChecklist()
+  const n = items.filter((i) => done[i.id]).length
   return (
-    <Card>
-      <H2>Checkliste Rennwoche</H2>
+    <Disclosure card title="Checkliste Rennwoche" summary={`${n}/${items.length} erledigt`}>
       <ul className="space-y-1" data-testid="checklist">
-        {raceChecklist().map((i) => (
+        {items.map((i) => (
           <li key={i.id}>
             <label className="flex min-h-11 items-start gap-3 text-sm">
               <input
@@ -162,7 +160,7 @@ function RaceChecklist() {
           </li>
         ))}
       </ul>
-    </Card>
+    </Disclosure>
   )
 }
 

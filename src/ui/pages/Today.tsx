@@ -3,12 +3,14 @@ import { useApp } from '../../app/AppState'
 import { nextTrainingDay, whoopActive, type DayItem, type Warning } from '../../app/compute'
 import { PHASE_LABEL } from '../../core/plan'
 import { raceCountdown } from '../../core/race'
+import type { ReadinessResult } from '../../core/recovery'
 import { shiftLabel } from '../../core/shift'
-import { berlinToInstant, formatDateDE, formatTime, weekdayLongDE } from '../../core/time'
+import { berlinToInstant, formatDateDE, formatNumberDE, formatTime, weekdayLongDE } from '../../core/time'
 import type { SleepBlock, SleepRecommendation } from '../../core/types'
-import { Button, Card, Chip, H2, TRAFFIC_LABEL, TrafficDot } from '../components/common'
+import { Button, Card, Chip, Disclosure, H2, TRAFFIC_LABEL } from '../components/common'
 import { ManualReadinessForm } from '../components/ManualReadinessForm'
-import { SessionCard, sessionMeta } from '../components/SessionCard'
+import { Ring, RING_COLOR } from '../components/Ring'
+import { SessionCard, SessionDetails, sessionMeta } from '../components/SessionCard'
 
 export function Today() {
   const app = useApp()
@@ -17,6 +19,9 @@ export function Today() {
   const [editReadiness, setEditReadiness] = useState(false)
   // Bei simuliertem Datum zählt der Countdown ab 12:00 Uhr dieses Tages.
   const cd = raceCountdown(data.settings.simulatedDate ? berlinToInstant(today, 12 * 60) : app.now)
+  const inPlan = !v.beforePlan && !v.afterRace
+  const r = v.readiness
+  const showForm = inPlan && (r.needsManualInput || editReadiness)
 
   return (
     <div className="space-y-4">
@@ -26,7 +31,7 @@ export function Today() {
 
       <Card>
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <div className="text-lg font-semibold">{weekdayLongDE(today)}</div>
             {v.day ? (
               <div className="text-sm text-muted" data-testid="shift-info">
@@ -38,33 +43,40 @@ export function Today() {
             )}
             {v.micro && (
               <div className="mt-1 text-xs text-muted">
-                {PHASE_LABEL[v.micro.phase]} · Mesozyklus {v.micro.mesoIndex} · Mikrozyklus {v.micro.index}
+                {PHASE_LABEL[v.micro.phase]} · Meso {v.micro.mesoIndex} · Mikro {v.micro.index}
                 {v.micro.kind === 'deload' && ' · Entlastung'}
               </div>
             )}
           </div>
-          <div className="text-right" data-testid="countdown">
-            <div className="text-2xl font-bold text-accent">{cd.started ? '🏁' : cd.days}</div>
-            <div className="text-xs text-muted">{cd.started ? 'Rennen' : 'Tage bis zum Start'}</div>
+          <div className="shrink-0 text-right" data-testid="countdown">
+            <div className="text-3xl font-bold leading-none text-accent">{cd.started ? '🏁' : cd.days}</div>
+            <div className="mt-1 text-[11px] uppercase tracking-wider text-muted">{cd.started ? 'Rennen' : 'Tage bis Start'}</div>
           </div>
         </div>
         {v.day?.window && (
-          <p className="mt-3 text-sm">
-            Trainingsfenster {formatTime(v.day.window.start)}–{formatTime(v.day.window.end)} Uhr
-            {v.day.window.easyOnly && ' · nur locker'}
-          </p>
+          <div className="mt-3">
+            <Chip>
+              Trainingsfenster {formatTime(v.day.window.start)}–{formatTime(v.day.window.end)} Uhr{v.day.window.easyOnly && ' · nur locker'}
+            </Chip>
+          </div>
         )}
       </Card>
 
-      {!v.beforePlan && !v.afterRace && (
+      {inPlan && (
         <Card data-testid="readiness">
-          <H2>Erholung</H2>
-          {v.readiness.needsManualInput || editReadiness ? (
-            <>
+          <div className="grid grid-cols-3 gap-2">
+            <RecoveryRing r={r} source={r.source === 'manual' ? 'manuell' : whoopActive(data) ? 'WHOOP' : 'WHOOP (Beispieldaten)'} onEdit={() => setEditReadiness((e) => !e)} />
+            <SleepRing r={r} />
+            <TrainingRing items={v.items} />
+          </div>
+          {showForm && (
+            <div className="mt-4 border-t border-line pt-4">
               <p className="mb-3 text-sm text-muted">
-                {whoopActive(data) && v.day?.shift.dayKind === 'sleep_day'
-                  ? 'Dein Tagschlaf ist noch nicht in WHOOP. Bitte kurz eintragen (oder später erneut öffnen):'
-                  : 'Keine WHOOP-Daten für heute. Bitte kurz eintragen:'}
+                {r.needsManualInput
+                  ? whoopActive(data) && v.day?.shift.dayKind === 'sleep_day'
+                    ? 'Dein Tagschlaf ist noch nicht in WHOOP. Bitte kurz eintragen (oder später erneut öffnen):'
+                    : 'Keine WHOOP-Daten für heute. Bitte kurz eintragen:'
+                  : 'Erholung selbst eintragen:'}
               </p>
               <ManualReadinessForm
                 date={today}
@@ -74,29 +86,13 @@ export function Today() {
                   setEditReadiness(false)
                 }}
               />
-            </>
-          ) : (
-            <div className="flex items-center gap-4">
-              <TrafficDot traffic={v.readiness.traffic} size="lg" />
-              <div className="flex-1">
-                <div className="text-lg font-semibold" data-testid="traffic">
-                  {TRAFFIC_LABEL[v.readiness.traffic!]} · {v.readiness.score} %
-                </div>
-                <div className="text-xs text-muted">
-                  {v.readiness.source === 'manual' ? 'manuelle Eingabe' : whoopActive(data) ? 'WHOOP' : 'WHOOP (Beispieldaten)'}
-                  {v.readiness.sleepMin !== undefined && ` · ${(v.readiness.sleepMin / 60).toFixed(1).replace('.', ',')} h Schlaf`}
-                </div>
-              </div>
-              <Button variant="ghost" onClick={() => setEditReadiness(true)}>
-                ändern
-              </Button>
             </div>
           )}
         </Card>
       )}
 
       <Card>
-        <H2>Heute</H2>
+        <H2>Training heute</H2>
         {v.beforePlan ? (
           <BeforePlan next={nextTrainingDay(plan, today)} />
         ) : v.items.length === 0 ? (
@@ -112,13 +108,15 @@ export function Today() {
           </div>
         )}
         {v.day && v.day.removed.length > 0 && (
-          <ul className="mt-3 space-y-1 text-xs text-muted" data-testid="removed">
-            {v.day.removed.map((r, i) => (
-              <li key={i}>
-                {r.session.title}: {r.note}
-              </li>
-            ))}
-          </ul>
+          <Disclosure title={`${v.day.removed.length} Einheit${v.day.removed.length === 1 ? '' : 'en'} gestrichen`} className="mt-3">
+            <ul className="space-y-1 text-xs text-muted" data-testid="removed">
+              {v.day.removed.map((x, i) => (
+                <li key={i}>
+                  {x.session.title}: {x.note}
+                </li>
+              ))}
+            </ul>
+          </Disclosure>
         )}
       </Card>
 
@@ -134,11 +132,76 @@ export function Today() {
   )
 }
 
+const TRAFFIC_RING = { green: RING_COLOR.green, yellow: RING_COLOR.yellow, red: RING_COLOR.red } as const
+const hours = (min: number) => (min / 60).toFixed(1).replace('.', ',')
+
+function RecoveryRing({ r, source, onEdit }: { r: ReadinessResult; source: string; onEdit: () => void }) {
+  const has = !r.needsManualInput && r.score !== undefined
+  return (
+    <Ring
+      progress={has ? (r.score ?? 0) / 100 : 0}
+      color={has && r.traffic ? TRAFFIC_RING[r.traffic] : RING_COLOR.none}
+      value={has ? `${r.score} %` : '–'}
+      label="Erholung"
+      sub={has ? `${TRAFFIC_LABEL[r.traffic!]} · ${source}` : 'bitte eintragen'}
+      onClick={onEdit}
+      valueTestId="traffic"
+    />
+  )
+}
+
+function SleepRing({ r }: { r: ReadinessResult }) {
+  const has = r.sleepMin !== undefined
+  return (
+    <Ring
+      progress={has ? r.sleepMin! / (r.needMin || 1) : 0}
+      color={RING_COLOR.sleep}
+      value={has ? hours(r.sleepMin!) : '–'}
+      {...(has ? { unit: 'h' } : {})}
+      label="Schlaf"
+      sub={`Bedarf ${hours(r.needMin)} h`}
+    />
+  )
+}
+
+function TrainingRing({ items }: { items: DayItem[] }) {
+  let planned = 0
+  let done = 0
+  let km = 0
+  for (const it of items) {
+    const active = it.rejected ? it.session : it.adjustment.adjusted
+    if (!active || active.optional) continue
+    planned += active.durationMin
+    if (active.category === 'run') km += active.distanceKm ?? 0
+    if (it.log?.status === 'done') done += it.log.durationMin ?? active.durationMin
+  }
+  return (
+    <Ring
+      progress={planned ? done / planned : 0}
+      color={RING_COLOR.training}
+      value={planned ? String(done) : '–'}
+      {...(planned ? { unit: 'min' } : {})}
+      label="Training"
+      sub={planned ? `von ${planned} min${km ? ` · ${formatNumberDE(km)} km` : ''}` : 'Ruhetag'}
+      testId="training-ring"
+    />
+  )
+}
+
 function WarningBanner({ w, onAck }: { w: Warning; onAck: () => void }) {
   const cls = { danger: 'border-red/50 bg-red/10', warn: 'border-yellow/50 bg-yellow/10', info: 'border-accent/40 bg-accent/10' }[w.level]
+  // Erster Satz sichtbar, der Rest beim Antippen
+  const m = /^(.+?[.!?])\s+(.+)$/s.exec(w.text)
+  const head = m ? m[1]! : w.text
+  const rest = m ? m[2]! : ''
   return (
     <div role="alert" className={`rounded-2xl border p-3 text-sm ${cls}`} data-testid={`warning-${w.id}`}>
-      <p>{w.text}</p>
+      <p className="font-medium">{head}</p>
+      {rest && (
+        <Disclosure title="Mehr lesen">
+          <p>{rest}</p>
+        </Disclosure>
+      )}
       {w.ackable && (
         <Button className="mt-2" onClick={onAck}>
           Verstanden
@@ -169,33 +232,40 @@ function TodayItem({ item }: { item: DayItem }) {
   const { session, adjustment, log, rejected } = item
   const changed = adjustment.action !== 'keep' && adjustment.action !== 'needs_input'
   const active = rejected ? session : adjustment.adjusted
+  const shown = active ?? session
   return (
-    <div className="space-y-2" data-testid="today-item">
-      {changed && !rejected ? (
-        <div className="rounded-xl border border-yellow/40 bg-yellow/5 p-3" data-testid="adjustment">
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <div className="text-muted">Original</div>
-              <div className="line-through decoration-muted">{session.title}</div>
-              <div className="text-muted">{sessionMeta(session)}</div>
-            </div>
-            <div>
-              <div className="text-muted">Anpassung</div>
-              <div className="font-medium">{adjustment.adjusted ? adjustment.adjusted.title : 'Ruhetag'}</div>
-              {adjustment.adjusted && <div className="text-muted">{sessionMeta(adjustment.adjusted)}</div>}
-            </div>
-          </div>
-          <p className="mt-2 text-sm" data-testid="reason">
+    <div className="space-y-3 rounded-xl bg-panel-2 p-3" data-testid="today-item">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className={`font-medium ${active ? '' : 'line-through decoration-muted'}`}>{active ? active.title : `${session.title} → Ruhetag`}</div>
+          <div className="text-xs text-muted">{sessionMeta(shown)}</div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {changed && !rejected && <Chip tone="warn">angepasst</Chip>}
+          {shown.isKey && <Chip tone="accent">Schlüssel</Chip>}
+          {shown.optional && <Chip>optional</Chip>}
+        </div>
+      </div>
+
+      {changed && !rejected && (
+        <div className="rounded-lg border border-yellow/30 bg-yellow/5 p-2" data-testid="adjustment">
+          <p className="text-sm" data-testid="reason">
             {adjustment.reason}
           </p>
           {adjustment.alternative && <p className="mt-1 text-xs text-muted">Freiwillig: {adjustment.alternative.title}</p>}
+          <Disclosure title="Original ansehen">
+            <div className="text-xs">
+              <div className="line-through decoration-muted">{session.title}</div>
+              <div className="text-muted">{sessionMeta(session)}</div>
+            </div>
+          </Disclosure>
           {!log && (
-            <Button variant="ghost" className="mt-1 px-0" onClick={() => app.setDecision(session.id, session.date, true)}>
+            <Button variant="ghost" className="px-0" onClick={() => app.setDecision(session.id, session.date, true)}>
               Original ausführen
             </Button>
           )}
         </div>
-      ) : null}
+      )}
       {rejected && changed && (
         <p className="text-xs text-yellow">
           Anpassung abgelehnt, Original wird ausgeführt (protokolliert).{' '}
@@ -206,8 +276,14 @@ function TodayItem({ item }: { item: DayItem }) {
           )}
         </p>
       )}
-      {active ? <SessionCard s={active} /> : null}
       {adjustment.action === 'needs_input' && <p className="text-xs text-muted">Bewertung folgt nach der Eingabe deiner Erholung.</p>}
+
+      {active && (
+        <Disclosure title="Ablauf und Übungen">
+          <SessionDetails s={active} />
+        </Disclosure>
+      )}
+
       {log ? (
         <div className="flex items-center justify-between text-sm">
           <Chip tone={log.status === 'done' ? 'accent' : 'neutral'}>{log.status === 'done' ? 'Erledigt' : 'Ausgelassen'}</Chip>
@@ -245,27 +321,33 @@ function blockText(b: SleepBlock): string {
 }
 
 function SleepCard({ rec }: { rec: SleepRecommendation }) {
+  const rows: { label: string; value: string }[] = []
+  if (rec.daySleep) rows.push({ label: 'Tagschlaf', value: blockText(rec.daySleep) })
+  if (rec.nap) rows.push({ label: 'Nap', value: blockText(rec.nap) })
+  if (rec.departure !== undefined) rows.push({ label: 'Losfahren', value: `${formatTime(rec.departure)} Uhr` })
+  if (rec.night) rows.push({ label: 'Heute Nacht', value: `ins Bett ${formatTime(rec.night.start.minutes)}, aufstehen ${formatTime(rec.night.end.minutes)} Uhr` })
   return (
     <Card data-testid="sleep">
       <H2>Schlaf</H2>
-      <ul className="space-y-1 text-sm">
-        {rec.daySleep && <li>Tagschlaf nach der Nacht: {blockText(rec.daySleep)}</li>}
-        {rec.nap && <li>Nap: {blockText(rec.nap)}</li>}
-        {rec.departure !== undefined && <li>Losfahren: {formatTime(rec.departure)} Uhr</li>}
-        {rec.night && (
-          <li>
-            Heute Nacht: ins Bett {formatTime(rec.night.start.minutes)} Uhr, aufstehen {formatTime(rec.night.end.minutes)} Uhr
+      <ol className="relative space-y-3 border-l border-line pl-4">
+        {rows.map((x) => (
+          <li key={x.label} className="relative text-sm">
+            <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-[#3987e5]" />
+            <span className="text-muted">{x.label}: </span>
+            <span className="font-medium">{x.value}</span>
           </li>
-        )}
-      </ul>
-      {rec.notes.length > 0 && (
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted">
-          {rec.notes.map((n, i) => (
-            <li key={i}>{n}</li>
-          ))}
-        </ul>
+        ))}
+      </ol>
+      {(rec.notes.length > 0 || rec.tip) && (
+        <Disclosure title="Hinweise" className="mt-3">
+          <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
+            {rec.notes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+          {rec.tip && <p className="mt-2 text-xs text-accent">Tipp: {rec.tip}</p>}
+        </Disclosure>
       )}
-      {rec.tip && <p className="mt-2 text-xs text-accent">Tipp: {rec.tip}</p>}
     </Card>
   )
 }

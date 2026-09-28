@@ -4,7 +4,7 @@ import { useApp } from '../../app/AppState'
 import { effectiveStrengthState } from '../../app/compute'
 import { canEnterLevel, isNewLevel, LADDER_IDS, LADDERS, levelDef, maxLevel } from '../../core/strength'
 import { formatDateDE, formatDayMonthDE } from '../../core/time'
-import { Button, Card, Chip, H2 } from '../components/common'
+import { Button, Card, Chip, Disclosure, H2, SegmentedLinks } from '../components/common'
 import { StrengthTestForm } from '../components/StrengthTestForm'
 
 const PULL = '#3987e5'
@@ -19,6 +19,7 @@ export function Strength() {
 
   return (
     <div className="space-y-4">
+      <SegmentedLinks label="Training" items={[{ to: '/kraft', label: 'Kraft' }, { to: '/tracking', label: 'Tracking' }]} />
       <Card>
         <H2>Aktuelle Stufen</H2>
         <ul className="space-y-3" data-testid="ladders">
@@ -29,7 +30,7 @@ export function Strength() {
             const next = last ? null : levelDef(id, lvl + 1)
             const blocked = !last && !canEnterLevel(id, lvl + 1, state.levels)
             return (
-              <li key={id} className="rounded-xl border border-line bg-panel-2 p-3">
+              <li key={id} className="rounded-xl bg-panel-2 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted">{LADDERS[id].name}</span>
                   <span className="text-xs text-muted">
@@ -86,30 +87,32 @@ export function Strength() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <table className="mt-2 w-full text-xs">
-              <thead className="text-muted">
-                <tr>
-                  <th className="text-left font-normal">Datum</th>
-                  <th className="text-right font-normal">Klimmz.</th>
-                  <th className="text-right font-normal">Dips</th>
-                  <th className="text-right font-normal">Hollow</th>
-                  <th className="text-right font-normal">FL / BL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tests.map((t) => (
-                  <tr key={t.date} className="border-t border-line">
-                    <td>{formatDateDE(t.date)}</td>
-                    <td className="text-right">{t.maxPullups}</td>
-                    <td className="text-right">{t.maxDips}</td>
-                    <td className="text-right">{t.hollowHoldSec} s</td>
-                    <td className="text-right">
-                      {t.frontLever.stage + 1}/{t.backLever.stage + 1}
-                    </td>
+            <Disclosure title={`Alle Tests (${tests.length})`} className="mt-2">
+              <table className="w-full text-xs">
+                <thead className="text-muted">
+                  <tr>
+                    <th className="text-left font-normal">Datum</th>
+                    <th className="text-right font-normal">Klimmz.</th>
+                    <th className="text-right font-normal">Dips</th>
+                    <th className="text-right font-normal">Hollow</th>
+                    <th className="text-right font-normal">FL / BL</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tests.map((t) => (
+                    <tr key={t.date} className="border-t border-line">
+                      <td>{formatDateDE(t.date)}</td>
+                      <td className="text-right">{t.maxPullups}</td>
+                      <td className="text-right">{t.maxDips}</td>
+                      <td className="text-right">{t.hollowHoldSec} s</td>
+                      <td className="text-right">
+                        {t.frontLever.stage + 1}/{t.backLever.stage + 1}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Disclosure>
           </>
         )}
         {showForm ? (

@@ -83,6 +83,9 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Push: Migration 4 (`push_subscriptions`, `push_reminders` + RPC `replace_push_reminders`, `push_sent` nur Service Role), Function `push-send` (Cron alle 5 min, `supabase/sql/push-cron.sql`)
   - `vercel.json` (SPA-Rewrites, Cache- und Sicherheits-Header); Vercel-Deployment und echter Push-Versand macht der Nutzer nach Anleitung
   - Tests: 233 Vitest, 8 Playwright (inkl. Offline, Export, Import, Push-Abo), RLS mit 20 Tabellen
+- [x] **Nach dem Livegang – Oberfläche aufgeräumt** (Nutzerwunsch „wie WHOOP, nichts wegnehmen“): Heute mit drei Ringen (Erholung, Schlaf, Training),
+  4 Reiter (Heute · Plan [Zyklus | Gesamtplan] · Erholung · Training [Kraft | Tracking]), Einstellungen als aufklappbare Gruppen,
+  Details hinter „Ablauf und Übungen“, „Original ansehen“, „Hinweise“. Bausteine: `Ring`, `Disclosure`, `SegmentedLinks/Buttons`, `Stat`, `Sub`
 
 ## Phase 2 – Plan (freigegeben)
 
