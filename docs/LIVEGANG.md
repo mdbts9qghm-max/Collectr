@@ -41,13 +41,14 @@ Du bekommst einen **Public Key** und einen **Private Key**.
 
 1. <https://vercel.com> → **Add New… → Project** → GitHub-Repository **Collectr** importieren.
 2. Framework: **Vite** (wird erkannt). Build: `npm run build`, Output: `dist` (steht auch in `vercel.json`).
-3. **Environment Variables** (alle drei sind öffentlich und landen im Frontend):
+3. **Environment Variables** (alle sind öffentlich und landen im Frontend):
 
    | Name | Wert |
    |---|---|
    | `VITE_SUPABASE_URL` | Project URL aus Supabase |
    | `VITE_SUPABASE_ANON_KEY` | anon/public Key aus Supabase |
    | `VITE_VAPID_PUBLIC_KEY` | Public Key aus Schritt 1 |
+   | `VITE_LOGIN_EMAIL` | optional: deine Login-E-Mail. Dann zeigt die Anmeldung nur ein Passwort-Feld |
 
    **Nicht** in Vercel: Service Role Key, WHOOP Client Secret, VAPID Private Key, CRON_SECRET.
 4. **Deploy**. Vercel veröffentlicht den **Production Branch** (Standard `main`). Solange die Arbeit auf `claude/gifted-ride-l7rok2` liegt, bekommst du dafür eine Vorschau-Adresse. Für die feste Adresse den Branch nach `main` mergen (Pull Request) oder unter **Settings → Git → Production Branch** umstellen.

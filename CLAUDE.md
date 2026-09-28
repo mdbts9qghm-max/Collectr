@@ -38,6 +38,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
 | Phase 6 | Push-Erinnerungen erst in Phase 7; gelernte Muster anzeigen, Nutzung per Schalter (Standard aus) |
 | Phase 7 | Push 30 min vor Zubettgehen/Nap; .ics mit Einheiten, Schichten, Schlaf/Nap; Dienstplan-Import mit Vorschau und Bestätigung |
+| Login | Optional nur Passwort-Feld: `VITE_LOGIN_EMAIL` in Vercel, E-Mail dann fest (Entscheidung nach Phase 7) |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)

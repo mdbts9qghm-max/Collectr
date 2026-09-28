@@ -13,6 +13,8 @@ import { disablePush } from './push'
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+/** Optional: feste E-Mail, dann fragt die Anmeldung nur das Passwort ab. */
+const LOGIN_EMAIL = (import.meta.env.VITE_LOGIN_EMAIL as string | undefined)?.trim() || undefined
 
 let client: SupabaseClient | null = null
 export function supabase(): SupabaseClient | null {
@@ -127,7 +129,7 @@ export function CloudGate({ children }: { children: (repo: Repository, onRemoteC
 
   if (!ready) return <div className="p-6 text-muted">Lade …</div>
   if (!sb) return <>{children(local)}</>
-  if (!session) return <Login onLogin={async (email, password) => (await sb.auth.signInWithPassword({ email, password })).error?.message ?? null} />
+  if (!session) return <Login {...(LOGIN_EMAIL ? { fixedEmail: LOGIN_EMAIL } : {})} onLogin={async (email, password) => (await sb.auth.signInWithPassword({ email, password })).error?.message ?? null} />
 
   const value: CloudContextValue = {
     client: sb,
