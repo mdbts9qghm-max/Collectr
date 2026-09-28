@@ -30,6 +30,9 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Losfahren | Arbeitsbeginn − 15 min Arbeitsweg, ohne Extra-Puffer (Tag 1: 06:30, Tag 2: 18:30, V: 07:30) |
 | App-Name | Collectr, im Hauptverzeichnis dieses Repos |
 | Git | am Phasenende automatisch committen und pushen, wenn Tests und Build grün sind |
+| Nachtlauf | Tag 4 nachts (Start ca. 21:00), Tag 5 ausschlafen, danach locker/Oberkörper oder B2B Teil 2 am Nachmittag |
+| Vorausschau (6.3a) | nur ab Gelb. Bei Grün läuft die Einheit immer wie geplant |
+| Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (längster Lauf, B2B-Spitze, Berg, erste Läufe > 30 km) bis +12 % darüber |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -43,8 +46,25 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 
 - [x] **Phase 1 – Planung:** offene Fragen geklärt, Architektur, Datenmodell, Ordnerstruktur und Algorithmen in `docs/PLANUNG.md`, CLAUDE.md und Git eingerichtet
 - [ ] **Phase 2 – Kernlogik:** Schicht, Plan, Kraft, Erholung, Anpassung, Schlaf als reine Module mit allen Tests aus SPEC 11
+  - Freigegebener Plan: `docs/PHASE2_PLAN.md` und Abschnitt „Phase 2 – Plan“ unten
+  - [x] Projekt-Setup (Vite 8, React 19, TS 6 strict, Vitest 5, date-fns + @date-fns/tz)
+  - [x] `config.ts`, `types.ts`, `time/`, `shift/` (mit Tests)
+  - [x] `strength/` (Leitern, Einstufung, Aufstieg, Session-Bau, mit Tests)
+  - [x] `plan/` (Periodisierung, Umfang, Vorlagen, Scheduler, Verschieben, generatePlan, mit Tests; `npm run plan:print` mit `PRINT_PLAN=1`)
+  - [ ] `recovery/`: `readiness.ts` und `lookahead.ts` geschrieben, aber **noch ohne Tests**. Es fehlen `rules.ts` (adjustSession-Pipeline), `microcycle.ts` (Reduktion nächster Mikrozyklus), `load.ts` (Trainingslast), Nachhol-Vorschlag, Tests
+  - [ ] `sleep/recommend.ts` (+ `sleepAdherence`), `whoop/assign.ts`, `race/`, `fixtures/` mit Tests (`sleep/baseline.ts` existiert bereits)
+  - [ ] Abschluss: `npm test`, `npm run build`, Coverage, Commit + Push
 - [ ] **Phase 3 – Oberfläche:** Onboarding, Heute, Zyklus, Gesamtplan, Kraft, Tracking, Playwright im Handy-Format
 - [ ] **Phase 4 – Supabase:** Auth, Schema, RLS, Umzug der Daten, Anleitung für das Dashboard
 - [ ] **Phase 5 – WHOOP:** OAuth, Abruf, Token-Refresh, Zuordnung zu Einheiten, Redirect-URI und Scopes
 - [ ] **Phase 6 – Automatik:** Webhooks, tägliche Anpassung, Erholungs-Ansicht, Auswertungen
 - [ ] **Phase 7 – Livegang:** PWA, Vercel, .ics-Export, README
+
+## Phase 2 – Plan (freigegeben)
+
+Reine Module in `src/core/` (config, types, time, shift, plan, strength, recovery, sleep, whoop, race, fixtures), jeweils mit `*.test.ts`.
+Die Erholungsregeln: Warnsignal → Rot (Ruhetag oder max. 30 min sehr locker/Mobility) → Schlaf < 5 h (harte Einheiten
+gestrichen, freiwillige Alternative; Calisthenics-Hauptsession nur Technik) → Tag 3 (≥ Gelb und ≥ 5 h Tagschlaf) → Gelb
+(nur hohe Empfindlichkeit eine Stufe runter, −10 bis −25 %) → Vorausschau (nur ab Gelb, Umwandlung ab Stärke 0,5,
+z. B. Schwelle → 45 min locker) → Grün wie geplant. Nie härter als geplant. Begründung in einem Satz.
+Lange Lauftypen (langer Lauf, B2B, Berg, Nachtlauf) sind laut SPEC 5.3 nur auf Tag 4/5 erlaubt. „Alle Typen auf Tag 2“ gilt für alle übrigen Typen.
