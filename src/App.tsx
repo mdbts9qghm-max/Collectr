@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppProvider, useApp } from './app/AppState'
+import { CloudGate } from './app/cloud'
 import { Layout } from './ui/components/Layout'
 import { Cycle } from './ui/pages/Cycle'
 import { Onboarding } from './ui/pages/Onboarding'
@@ -33,10 +34,14 @@ function Routed() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Routed />
-      </BrowserRouter>
-    </AppProvider>
+    <CloudGate>
+      {(repo, onRemoteChange) => (
+        <AppProvider repo={repo} {...(onRemoteChange ? { onRemoteChange } : {})}>
+          <BrowserRouter>
+            <Routed />
+          </BrowserRouter>
+        </AppProvider>
+      )}
+    </CloudGate>
   )
 }

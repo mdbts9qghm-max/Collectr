@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 // Tests im Handy-Format (SPEC 12, Phase 3). Chromium ist in der Umgebung vorinstalliert.
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: /cloud\.spec\.ts/,
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

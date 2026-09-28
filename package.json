@@ -13,10 +13,12 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "plan:print": "vitest run src/core/plan/printPlan.test.ts --reporter=verbose",
-    "e2e": "PW_CHROMIUM_PATH=${PW_CHROMIUM_PATH:-/opt/pw-browsers/chromium} playwright test"
+    "e2e": "PW_CHROMIUM_PATH=${PW_CHROMIUM_PATH:-/opt/pw-browsers/chromium} playwright test && PW_CHROMIUM_PATH=${PW_CHROMIUM_PATH:-/opt/pw-browsers/chromium} playwright test -c playwright.cloud.config.ts",
+    "test:db": "bash supabase/tests/rls.sh"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
+    "@supabase/supabase-js": "^2.117.2",
     "@tailwindcss/vite": "^4.3.3",
     "date-fns": "^4.4.0",
     "idb": "^8.0.3",

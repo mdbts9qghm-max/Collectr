@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../app/AppState'
+import { useCloud } from '../../app/cloud'
 import { CONFIG, resolveConfig, type RecoveryWeights } from '../../core/config'
 import { isValidDate } from '../../core/time'
 import type { Profile } from '../../core/types'
@@ -51,6 +52,34 @@ export function ProfileFields({ profile, onChange }: { profile: Profile; onChang
   )
 }
 
+function AccountCard() {
+  const cloud = useCloud()
+  if (!cloud) {
+    return (
+      <Card>
+        <H2>Konto</H2>
+        <p className="text-sm text-muted">Nur lokal auf diesem Gerät gespeichert (Supabase ist nicht konfiguriert).</p>
+      </Card>
+    )
+  }
+  const { status } = cloud
+  return (
+    <Card>
+      <H2>Konto</H2>
+      <p className="text-sm">Angemeldet als {cloud.email}</p>
+      <p className="mt-1 text-xs text-muted">
+        {status.state === 'error' ? `Fehler: ${status.error}` : status.state === 'offline' ? 'Offline, Änderungen werden später hochgeladen.' : 'Daten werden mit Supabase synchronisiert.'}
+        {status.pending > 0 && ` ${status.pending} Änderung(en) ausstehend.`}
+        {status.lastSync && ` Zuletzt: ${new Date(status.lastSync).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}`}
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button onClick={() => void cloud.syncNow()}>Jetzt synchronisieren</Button>
+        <Button onClick={() => void cloud.signOut()}>Abmelden</Button>
+      </div>
+    </Card>
+  )
+}
+
 export function Settings() {
   const app = useApp()
   const s = app.data.settings
@@ -74,6 +103,7 @@ export function Settings() {
 
   return (
     <div className="space-y-4">
+      <AccountCard />
       {msg && (
         <div role="status" className="rounded-2xl border border-accent/40 bg-accent/10 p-3 text-sm">
           {msg}
@@ -186,7 +216,7 @@ export function Settings() {
           variant="danger"
           className="mt-3 w-full"
           onClick={async () => {
-            if (window.confirm('Alle Daten auf diesem Gerät löschen? Das kann nicht rückgängig gemacht werden.')) await app.resetAll()
+            if (window.confirm('Alle Daten löschen (auf diesem Gerät und, wenn angemeldet, auch in der Cloud)? Das kann nicht rückgängig gemacht werden.')) await app.resetAll()
           }}
         >
           Alle Daten zurücksetzen

@@ -1,26 +1,35 @@
 // Lokale Speicherung in IndexedDB (bis Phase 4). Offline lesbar.
 
 import { openDB, type IDBPDatabase } from 'idb'
+import { LOCAL, type Collection, type SyncRecord } from './collections'
 import type { ManualReadiness, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
 import { defaultSettings } from './defaults'
 import type { AdjustmentDecision, AppSettings, BackupData, Repository } from './types'
 
 const DB_NAME = 'collectr'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORES = ['kv', 'overrides', 'logs', 'manual', 'tests', 'decisions'] as const
+/** Sync-Verwaltung (Phase 4): ausstehende Änderungen und Metadaten (Cursor, Zeitstempel). */
+const SYNC_STORES = ['outbox', 'meta'] as const
 
 export class IndexedDbRepository implements Repository {
   private dbp: Promise<IDBPDatabase>
 
   constructor(name = DB_NAME) {
     this.dbp = openDB(name, DB_VERSION, {
-      upgrade(db) {
-        db.createObjectStore('kv')
-        db.createObjectStore('overrides', { keyPath: 'date' })
-        db.createObjectStore('logs', { keyPath: 'sessionId' })
-        db.createObjectStore('manual', { keyPath: 'date' })
-        db.createObjectStore('tests', { keyPath: 'date' })
-        db.createObjectStore('decisions', { keyPath: 'sessionId' })
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore('kv')
+          db.createObjectStore('overrides', { keyPath: 'date' })
+          db.createObjectStore('logs', { keyPath: 'sessionId' })
+          db.createObjectStore('manual', { keyPath: 'date' })
+          db.createObjectStore('tests', { keyPath: 'date' })
+          db.createObjectStore('decisions', { keyPath: 'sessionId' })
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore('outbox', { keyPath: 'id' })
+          db.createObjectStore('meta')
+        }
       },
     })
   }
@@ -92,6 +101,56 @@ export class IndexedDbRepository implements Repository {
   }
   putDecision(d: AdjustmentDecision) {
     return this.put('decisions', d)
+  }
+
+  // --- Rohzugriff für die Synchronisation -------------------------------------------------
+
+  /** Alle Datensätze einer Sammlung als [Schlüssel, Wert]. */
+  async entries(c: Collection): Promise<[string, unknown][]> {
+    const loc = LOCAL[c]
+    const db = await this.dbp
+    if (loc.kvKey) {
+      const v = await db.get('kv', loc.kvKey)
+      return v === undefined ? [] : [[loc.kvKey, v]]
+    }
+    const all = (await db.getAll(loc.store)) as Record<string, unknown>[]
+    return all.map((v) => [String(v[loc.keyPath!]), v])
+  }
+
+  async getRecord(c: Collection, key: string): Promise<unknown> {
+    const loc = LOCAL[c]
+    return (await this.dbp).get(loc.store, loc.kvKey ?? key)
+  }
+
+  /** Datensatz schreiben (value) oder löschen (null). */
+  async applyRecord(c: Collection, key: string, value: unknown): Promise<void> {
+    const loc = LOCAL[c]
+    const db = await this.dbp
+    if (value === null || value === undefined) await db.delete(loc.store, loc.kvKey ?? key)
+    else if (loc.kvKey) await db.put('kv', value, loc.kvKey)
+    else await db.put(loc.store, value)
+  }
+
+  async outbox(): Promise<(SyncRecord & { id: string })[]> {
+    return (await this.dbp).getAll('outbox') as Promise<(SyncRecord & { id: string })[]>
+  }
+  async putOutbox(r: SyncRecord & { id: string }): Promise<void> {
+    await (await this.dbp).put('outbox', r)
+  }
+  async deleteOutbox(id: string): Promise<void> {
+    await (await this.dbp).delete('outbox', id)
+  }
+  async getMeta<T>(key: string): Promise<T | undefined> {
+    return (await this.dbp).get('meta', key) as Promise<T | undefined>
+  }
+  async putMeta(key: string, value: unknown): Promise<void> {
+    await (await this.dbp).put('meta', value, key)
+  }
+  async clearSyncState(): Promise<void> {
+    const db = await this.dbp
+    const tx = db.transaction([...SYNC_STORES], 'readwrite')
+    await Promise.all(SYNC_STORES.map((s) => tx.objectStore(s).clear()))
+    await tx.done
   }
 
   async exportAll(now: Date): Promise<BackupData> {

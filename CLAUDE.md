@@ -34,6 +34,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Vorausschau (6.3a) | nur ab Gelb. Bei Grün läuft die Einheit immer wie geplant |
 | Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (längster Lauf, B2B-Spitze, Berg, erste Läufe > 30 km) bis +12 % darüber |
 | Phase 3 | Manuelle Eingabe + Demo-Modus, Datum simulieren in den Einstellungen, einfache Einstellungen, IndexedDB |
+| Phase 4 | Login E-Mail + Passwort; offline lesen und eintragen, später synchronisieren; Zurücksetzen löscht auch in der Cloud |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -41,7 +42,8 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 - `npm run dev` – Entwicklungsserver
 - `npm test` – Vitest (einmalig), `npm run test:watch`
 - `npm run build` – Typecheck und Produktions-Build
-- `npm run e2e` – Playwright im Handy-Format (ab Phase 3)
+- `npm run e2e` – Playwright im Handy-Format (lokal + Cloud mit nachgebildetem Supabase)
+- `npm run test:db` – Migration + RLS gegen temporären lokalen Postgres
 
 ## Fortschritt
 
@@ -54,7 +56,11 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Daten lokal in IndexedDB (`src/data`, Repository-Interface für Phase 4), App-Zustand in `src/app` (reine Berechnung in `compute.ts`)
   - Erholung: manuelle Eingabe oder Demo-Modus (Beispieldaten); „Datum simulieren“ in den Einstellungen
   - Tests: 173 Vitest-Tests, Playwright-Durchgang im Handy-Format (`npm run e2e`), Screenshots in `docs/screenshots/`
-- [ ] **Phase 4 – Supabase:** Auth, Schema, RLS, Umzug der Daten, Anleitung für das Dashboard
+- [x] **Phase 4 – Supabase:** Login (E-Mail + Passwort), Schema mit RLS, lokal zuerst + Sync, Erst-Umzug (Plan: `docs/PHASE4_PLAN.md`)
+  - Migration `supabase/migrations/20261001000000_init.sql`, RLS-Test mit lokalem Postgres: `npm run test:db`
+  - Sync: `src/data/sync.ts` (Outbox, erst abrufen, dann hochladen, neuerer Stand gewinnt, Tombstones), `simulatedDate` bleibt lokal
+  - Ohne `VITE_SUPABASE_URL` läuft die App nur lokal. Cloud-E2E gegen nachgebildetes Supabase: `e2e/cloud.spec.ts`
+  - Anleitung für das Dashboard: `docs/SUPABASE.md` (Nutzer wartet ggf. noch auf die Einrichtung)
 - [ ] **Phase 5 – WHOOP:** OAuth, Abruf, Token-Refresh, Zuordnung zu Einheiten, Redirect-URI und Scopes
 - [ ] **Phase 6 – Automatik:** Webhooks, tägliche Anpassung, Erholungs-Ansicht, Auswertungen
 - [ ] **Phase 7 – Livegang:** PWA, Vercel, .ics-Export, README

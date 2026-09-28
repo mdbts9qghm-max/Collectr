@@ -47,7 +47,16 @@ async function loadAll(repo: Repository): Promise<AppData> {
   return { settings, overrides, logs, manual, strengthTests, strengthState, checklist, decisions }
 }
 
-export function AppProvider({ children, repo: injected }: { children: ReactNode; repo?: Repository }) {
+export function AppProvider({
+  children,
+  repo: injected,
+  onRemoteChange,
+}: {
+  children: ReactNode
+  repo?: Repository
+  /** Aus der Cloud übernommene Änderungen → neu laden. */
+  onRemoteChange?: (fn: () => void) => () => void
+}) {
   const repo = useMemo(() => injected ?? new IndexedDbRepository(), [injected])
   const [data, setData] = useState<AppData | null>(null)
   const [now, setNow] = useState(() => Date.now())
@@ -57,8 +66,12 @@ export function AppProvider({ children, repo: injected }: { children: ReactNode;
     void reload()
     // Datum aktuell halten (Mitternacht, Countdown)
     const t = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(t)
-  }, [reload])
+    const off = onRemoteChange?.(() => void reload())
+    return () => {
+      clearInterval(t)
+      off?.()
+    }
+  }, [reload, onRemoteChange])
 
   const value = useMemo<AppContextValue | null>(() => {
     if (!data) return null

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { useApp } from '../../app/AppState'
+import { useCloud } from '../../app/cloud'
 import { formatDateDE, weekdayShortDE } from '../../core/time'
 import { Disclaimer } from './common'
 
@@ -10,6 +11,20 @@ const TABS = [
   { to: '/kraft', label: 'Kraft', icon: '▲' },
   { to: '/tracking', label: 'Tracking', icon: '✓' },
 ]
+
+function SyncBadge() {
+  const cloud = useCloud()
+  if (!cloud) return null
+  const { state, pending } = cloud.status
+  const label =
+    state === 'syncing' ? 'Synchronisiere …' : state === 'offline' ? `Offline${pending ? ` · ${pending} ausstehend` : ''}` : state === 'error' ? 'Sync-Fehler' : pending ? `${pending} ausstehend` : 'Synchron'
+  const color = state === 'error' ? 'text-red' : state === 'offline' || pending ? 'text-yellow' : 'text-accent'
+  return (
+    <button onClick={() => void cloud.syncNow()} className={`ml-auto mr-2 text-xs ${color}`} aria-label={`Synchronisation: ${label}`} data-testid="sync-badge">
+      {state === 'syncing' ? '↻' : '●'} {label}
+    </button>
+  )
+}
 
 export function Layout() {
   const { today, data } = useApp()
@@ -24,6 +39,7 @@ export function Layout() {
             {data.settings.demoMode && <span className="ml-2 text-accent">Demo</span>}
           </div>
         </div>
+        <SyncBadge />
         <NavLink to="/einstellungen" aria-label="Einstellungen" className="grid h-11 w-11 place-items-center rounded-xl border border-line text-lg">
           ⚙
         </NavLink>
