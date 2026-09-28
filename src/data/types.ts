@@ -11,6 +11,8 @@ export interface AppSettings {
   recoveryWeights: Partial<RecoveryWeights>
   /** Beispieldaten statt echter Erholungsdaten anzeigen. */
   demoMode: boolean
+  /** Gelernte Muster in der Vorausschau nutzen (SPEC 6.4, Standard aus). */
+  usePatterns?: boolean
   /** Datum simulieren (null = echtes Datum). */
   simulatedDate: LocalDate | null
   /** Zuletzt bestätigte Urlaubs-Erinnerung. */

@@ -12,6 +12,7 @@ import { Tracking } from './ui/pages/Tracking'
 
 // Seiten mit Diagrammen (Recharts) werden erst bei Bedarf geladen.
 const PlanOverview = lazy(() => import('./ui/pages/PlanOverview').then((m) => ({ default: m.PlanOverview })))
+const Recovery = lazy(() => import('./ui/pages/Recovery').then((m) => ({ default: m.Recovery })))
 const Strength = lazy(() => import('./ui/pages/Strength').then((m) => ({ default: m.Strength })))
 const loading = <div className="p-4 text-sm text-muted">Lade …</div>
 
@@ -24,6 +25,14 @@ function Routed() {
         <Route index element={<Today />} />
         <Route path="zyklus" element={<Cycle />} />
         <Route path="plan" element={<Suspense fallback={loading}><PlanOverview /></Suspense>} />
+        <Route
+          path="erholung"
+          element={
+            <Suspense fallback={loading}>
+              <Recovery />
+            </Suspense>
+          }
+        />
         <Route path="kraft" element={<Suspense fallback={loading}><Strength /></Suspense>} />
         <Route path="tracking" element={<Tracking />} />
         <Route path="einstellungen" element={<Settings />} />

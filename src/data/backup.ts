@@ -48,6 +48,7 @@ export const backupSchema = z.object({
     anchorDate: date,
     recoveryWeights: z.record(z.string(), z.number()),
     demoMode: z.boolean(),
+    usePatterns: z.boolean().optional(),
     simulatedDate: date.nullable(),
     vacationReminderAck: date.optional(),
   }),

@@ -1,6 +1,7 @@
 // Datenbank-Anbindung der Edge Functions mit der Service Role (nur serverseitig).
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { DataRow, Db, StoredTokens, WhoopStatus, WhoopTable } from './handlers.ts'
+import type { WebhookDb } from './webhook.ts'
 
 export function serviceClient(): SupabaseClient {
   const url = Deno.env.get('SUPABASE_URL')
@@ -13,7 +14,7 @@ function check(error: { message: string } | null, what: string) {
   if (error) throw new Error(`${what}: ${error.message}`)
 }
 
-export class SupabaseDb implements Db {
+export class SupabaseDb implements Db, WebhookDb {
   private sb: SupabaseClient
   constructor(sb: SupabaseClient) {
     this.sb = sb
@@ -72,5 +73,20 @@ export class SupabaseDb implements Db {
   async saveStatus(userId: string, s: WhoopStatus): Promise<void> {
     const { error } = await this.sb.from('whoop_status').upsert({ user_id: userId, key: 'whoop', data: s, deleted: false })
     check(error, 'Status speichern')
+  }
+
+  async findUserByWhoopId(whoopUserId: number): Promise<string | null> {
+    const { data, error } = await this.sb.from('whoop_tokens').select('user_id').eq('whoop_user_id', whoopUserId).maybeSingle()
+    check(error, 'Nutzer suchen')
+    return (data?.user_id as string | undefined) ?? null
+  }
+  async markDeleted(table: WhoopTable, userId: string, id: string): Promise<void> {
+    const { error } = await this.sb.from(table).update({ deleted: true }).eq('user_id', userId).eq('id', id)
+    check(error, `${table} löschen`)
+  }
+  async listConnectedUsers(): Promise<string[]> {
+    const { data, error } = await this.sb.from('whoop_tokens').select('user_id')
+    check(error, 'Nutzer auflisten')
+    return (data ?? []).map((r) => r.user_id as string)
   }
 }

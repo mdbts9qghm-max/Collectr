@@ -8,6 +8,7 @@ const TABS = [
   { to: '/', label: 'Heute', icon: '●' },
   { to: '/zyklus', label: 'Zyklus', icon: '◐' },
   { to: '/plan', label: 'Plan', icon: '▤' },
+  { to: '/erholung', label: 'Erholung', icon: '♥' },
   { to: '/kraft', label: 'Kraft', icon: '▲' },
   { to: '/tracking', label: 'Tracking', icon: '✓' },
 ]
@@ -51,7 +52,7 @@ export function Layout() {
         </footer>
       </main>
       <nav
-        className="sticky bottom-0 z-10 grid grid-cols-5 border-t border-line bg-bg/95 backdrop-blur"
+        className="sticky bottom-0 z-10 grid grid-cols-6 border-t border-line bg-bg/95 backdrop-blur"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Hauptnavigation"
       >
@@ -60,7 +61,7 @@ export function Layout() {
             key={t.to}
             to={t.to}
             end={t.to === '/'}
-            className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${isActive ? 'text-accent' : 'text-muted'}`}
+            className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${isActive ? 'text-accent' : 'text-muted'}`}
           >
             <span aria-hidden>{t.icon}</span>
             {t.label}

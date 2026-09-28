@@ -113,4 +113,23 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(page.getByTestId('disclaimer')).toBeVisible()
   await noHorizontalScroll(page)
   await shot(page, '09-heute-demo-mai')
+
+  // --- Erholung (Phase 6): Diagramme mit Schicht-Hintergrund, Auswertungen, Tabelle ---
+  await page.getByRole('link', { name: 'Erholung' }).click()
+  await expect(page.getByTestId('recovery-chart')).toHaveCount(4)
+  await expect(page.getByTestId('shift-legend')).toContainText('Nachtschicht')
+  await expect(page.getByTestId('patterns')).toContainText('Nach Nachtschichten')
+  await noHorizontalScroll(page)
+  await shot(page, '13-erholung')
+  await page.getByRole('button', { name: 'Tabelle' }).click()
+  await expect(page.getByTestId('recovery-table')).toContainText('Nachtschicht')
+  await page.getByRole('button', { name: '60 Tage' }).click()
+  await expect(page.getByTestId('recovery-table').locator('tbody tr')).toHaveCount(60)
+
+  // Schalter „Gelernte Muster nutzen“
+  await page.getByRole('link', { name: 'Einstellungen' }).click()
+  await page.getByLabel('Gelernte Muster nutzen').check()
+  await page.getByRole('link', { name: 'Erholung' }).click()
+  await expect(page.getByTestId('patterns')).toContainText('In der Vorausschau: genutzt')
 })
+

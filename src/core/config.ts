@@ -506,6 +506,13 @@ export const CONFIG = {
       /** Schlafdefizit wachsend: heute ≥ 30 min mehr als vor 2 Tagen. */
       debtGrowthMin: 30,
     },
+    /** Gelernte Muster (SPEC 6.4): ab so vielen Tagen mit Daten und so vielen Beobachtungen je Effekt. */
+    patterns: {
+      minDays: 42,
+      minObservations: 4,
+      /** Als „langer Lauf“ zählt ein erledigter Lauf ab so vielen km (oder ein Schlüssel-Lauf). */
+      longRunMinKm: 20,
+    },
     /** Mikrozyklus-Reduktion (SPEC 6.3). */
     microReduction: {
       redStreak: 2,

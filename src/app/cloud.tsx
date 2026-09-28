@@ -107,14 +107,20 @@ export function CloudGate({ children }: { children: (repo: Repository, onRemoteC
     }
     void openSync()
     const onVisible = () => document.visibilityState === 'visible' && void openSync()
+    // Live: neuer WHOOP-Abruf (Webhook/Zeitplan) → sofort synchronisieren
+    const channel = sb!
+      .channel('whoop-status')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whoop_status' }, () => run())
+      .subscribe()
     window.addEventListener('online', run)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       off()
+      void sb!.removeChannel(channel)
       window.removeEventListener('online', run)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [engine, userId, local, fetchWhoop])
+  }, [engine, userId, local, fetchWhoop, sb])
 
   if (!ready) return <div className="p-6 text-muted">Lade …</div>
   if (!sb) return <>{children(local)}</>

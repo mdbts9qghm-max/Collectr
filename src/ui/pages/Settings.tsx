@@ -215,6 +215,23 @@ export function Settings() {
       </Card>
 
       <Card>
+        <H2>Gelernte Muster</H2>
+        <label className="flex min-h-11 items-center justify-between gap-3">
+          <span className="text-sm">In der Vorausschau nutzen (z. B. typischer Recovery-Abfall nach Nachtschichten)</span>
+          <input
+            type="checkbox"
+            className="h-6 w-6 shrink-0 accent-[#34d399]"
+            checked={s.usePatterns ?? false}
+            onChange={(e) => app.updateSettings({ usePatterns: e.target.checked })}
+            aria-label="Gelernte Muster nutzen"
+          />
+        </label>
+        <p className="text-xs text-muted">
+          {app.patterns.enoughData ? 'Genügend Daten vorhanden.' : `Wirkt erst ab ca. 6 Wochen Daten (bisher ${app.patterns.daysWithData} Tage).`} Auswertungen siehst du unter „Erholung“.
+        </p>
+      </Card>
+
+      <Card>
         <H2>Datum simulieren</H2>
         <p className="mb-2 text-xs text-muted">Nur zum Ausprobieren. Leer lassen für das echte Datum.</p>
         <div className="flex gap-2">

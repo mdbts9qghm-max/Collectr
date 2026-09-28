@@ -36,6 +36,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Phase 3 | Manuelle Eingabe + Demo-Modus, Datum simulieren in den Einstellungen, einfache Einstellungen, IndexedDB |
 | Phase 4 | Login E-Mail + Passwort; offline lesen und eintragen, später synchronisieren; Zurücksetzen löscht auch in der Cloud |
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
+| Phase 6 | Push-Erinnerungen erst in Phase 7; gelernte Muster anzeigen, Nutzung per Schalter (Standard aus) |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -70,7 +71,10 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - API v2 ungeprüft gegen echte WHOOP-Antworten (Netzwerk gesperrt), alle URLs/Felder in `_shared/whoopApi.ts`
   - App: WHOOP-Daten nur lesend synchronisiert, Erholung aus WHOOP (manuelle Eingabe hat Vorrang), eindeutige Workouts automatisch erledigt, Rest als Vorschlag im Tracking
   - Datenschutzseite `/datenschutz` (öffentlich, für das WHOOP-Dashboard)
-- [ ] **Phase 6 – Automatik:** Webhooks, tägliche Anpassung, Erholungs-Ansicht, Auswertungen
+- [x] **Phase 6 – Automatik:** Webhooks, täglicher Abruf, Realtime, Erholungs-Ansicht, Auswertungen (Plan: `docs/PHASE6_PLAN.md`, Anleitung: `docs/AUTOMATIK.md`)
+  - `whoop-webhook` (HMAC-Signatur, inkrementeller Abruf, `*.deleted` markiert Zeilen), `whoop-sync-all` (X-Cron-Secret), Cron-SQL `supabase/sql/cron.sql` (2× täglich, UTC)
+  - Migration 3: `whoop_status` in Realtime → geöffnete App synchronisiert sofort
+  - Tab „Erholung“ (Schichten als Hintergrund, Tabelle), Schlaf-Umsetzung, `src/core/recovery/patterns.ts` (Nachtschicht, langer Lauf, schwere Beine), Schalter „Gelernte Muster“ (Standard aus)
 - [ ] **Phase 7 – Livegang:** PWA, Vercel, .ics-Export, README
 
 ## Phase 2 – Plan (freigegeben)

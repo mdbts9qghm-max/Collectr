@@ -1,12 +1,13 @@
 // App-Zustand: lädt die Daten aus dem Repository und berechnet Kalender, Plan und Tagesansichten.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import type { Patterns } from '../core/recovery'
 import { applyStrengthTest, evaluateSession, type ProgressResult } from '../core/strength'
 import type { LocalDate, ManualReadiness, SessionLog, ShiftOverride, StrengthResult, StrengthTest } from '../core/types'
 import { parseBackup } from '../data/backup'
 import { IndexedDbRepository } from '../data/indexedDb'
 import type { AppSettings, Repository } from '../data/types'
-import { buildCalendar, buildDayView, buildPlan, currentDate, effectiveStrengthState, recoveryHistory, whoopActive, workoutActions, type AppData, type DayView, type WorkoutSuggestion } from './compute'
+import { buildCalendar, buildDayView, buildPatterns, buildPlan, currentDate, effectiveStrengthState, recoveryHistory, whoopActive, workoutActions, type AppData, type DayView, type WorkoutSuggestion } from './compute'
 
 interface AppContextValue {
   data: AppData
@@ -16,6 +17,8 @@ interface AppContextValue {
   cal: ReturnType<typeof buildCalendar>
   plan: ReturnType<typeof buildPlan>
   dayView: (date: LocalDate) => DayView
+  /** Gelernte Muster (SPEC 6.4). */
+  patterns: Patterns
   /** WHOOP-Workouts, die bestätigt oder korrigiert werden sollen. */
   workoutSuggestions: WorkoutSuggestion[]
   /** Workout einer Einheit zuordnen (null = ignorieren). */
@@ -85,9 +88,10 @@ export function AppProvider({
     const cal = buildCalendar(data.settings, data.overrides)
     const history = recoveryHistory(data, cal, today)
     const plan = buildPlan(data, cal, history)
+    const patterns = buildPatterns(data, cal, plan, today)
     const cache = new Map<LocalDate, DayView>()
     const dayView = (date: LocalDate) => {
-      if (!cache.has(date)) cache.set(date, buildDayView(data, cal, plan, date === today ? history : recoveryHistory(data, cal, date), date))
+      if (!cache.has(date)) cache.set(date, buildDayView(data, cal, plan, date === today ? history : recoveryHistory(data, cal, date), date, patterns))
       return cache.get(date)!
     }
     const run = async (fn: () => Promise<void>) => {
@@ -102,6 +106,7 @@ export function AppProvider({
       cal,
       plan,
       dayView,
+      patterns,
       workoutSuggestions: actions.suggestions,
       assignWorkout: (workoutId, sessionId) => run(() => repo.putAssignment({ workoutId, sessionId, decidedAt: new Date().toISOString() })),
       // Optimistisch: Schalter und Eingaben reagieren sofort, gespeichert wird im Hintergrund.

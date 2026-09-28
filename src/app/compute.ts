@@ -6,6 +6,9 @@ import { findSession, generatePlan, microIndexOf } from '../core/plan'
 import {
   adjustSession,
   assessReadiness,
+  expectedDrop,
+  learnPatterns,
+  type Patterns,
   dailyLoads,
   microModifiersFromHistory,
   suggestCatchUp,
@@ -76,19 +79,21 @@ export function effectiveStrengthState(data: Pick<AppData, 'strengthState' | 'st
 
 /** Tage mit Beispieldaten im Demo-Modus (bis einschließlich `date`). */
 const DEMO_DAYS = 45
+/** Zeitraum für die gelernten Muster (Tage). */
+export const PATTERN_DAYS = 90
 
 /** Erholungsverlauf: WHOOP, sonst Demo-Daten; manuelle Eingaben haben für ihren Tag Vorrang. */
-export function recoveryHistory(data: AppData, cal: ShiftCalendar, date: LocalDate): RecoveryDay[] {
+export function recoveryHistory(data: AppData, cal: ShiftCalendar, date: LocalDate, days: number = DEMO_DAYS): RecoveryDay[] {
   const byDate = new Map<LocalDate, RecoveryDay>()
   if (whoopActive(data)) {
     const w = { sleeps: data.whoop.sleeps, recoveries: data.whoop.recoveries, cycles: data.whoop.cycles }
-    for (let i = DEMO_DAYS - 1; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const d = addDays(date, -i)
       const r = assignRecoveryDay(cal, d, w)
       if (r) byDate.set(d, r)
     }
   } else if (data.settings.demoMode) {
-    for (const d of sampleRecoveryDays(cal, { start: addDays(date, -(DEMO_DAYS - 1)), days: DEMO_DAYS, redDays: [DEMO_DAYS - 12, DEMO_DAYS - 11] })) byDate.set(d.date, d)
+    for (const d of sampleRecoveryDays(cal, { start: addDays(date, -(days - 1)), days, redDays: [days - 12, days - 11] })) byDate.set(d.date, d)
   }
   for (const m of data.manual) byDate.set(m.date, { date: m.date, source: 'manual', manual: m })
   return [...byDate.values()].sort((a, b) => compareDates(a.date, b.date))
@@ -138,7 +143,13 @@ export interface DayView {
   catchUp: CatchUpSuggestion | null
 }
 
-export function buildDayView(data: AppData, cal: ShiftCalendar, plan: Plan, history: readonly RecoveryDay[], date: LocalDate): DayView {
+/** Gelernte Muster aus den letzten 90 Tagen (SPEC 6.4). */
+export function buildPatterns(data: AppData, cal: ShiftCalendar, plan: Plan, date: LocalDate): Patterns {
+  const sessionsById = new Map(plan.days.flatMap((d) => d.sessions).map((s) => [s.id, s]))
+  return learnPatterns({ cal, days: recoveryHistory(data, cal, date, PATTERN_DAYS), logs: data.logs, sessionsById })
+}
+
+export function buildDayView(data: AppData, cal: ShiftCalendar, plan: Plan, history: readonly RecoveryDay[], date: LocalDate, patterns?: Patterns): DayView {
   const day = plan.days.find((d) => d.date === date)
   const mi = microIndexOf(date)
   const micro = mi ? plan.microcycles.find((m) => m.index === mi) : undefined
@@ -154,6 +165,14 @@ export function buildDayView(data: AppData, cal: ShiftCalendar, plan: Plan, hist
     weights: data.settings.recoveryWeights,
   })
   const upcoming = upcomingKeySessions(plan, date, cal)
+  // Gelernte Muster nur, wenn in den Einstellungen eingeschaltet
+  const expectedDropPct =
+    data.settings.usePatterns && patterns
+      ? expectedDrop(patterns, {
+          nightShiftBetween: upcoming.some((u) => u.nightShiftBetween),
+          longRunBetween: (day?.sessions ?? []).some((s) => ['long_run', 'b2b_1', 'night_run', 'mountain_day'].includes(s.type)),
+        })
+      : 0
   const strengthState = effectiveStrengthState(data)
   const items: DayItem[] = (day?.sessions ?? []).map((session) => {
     const adjustment = adjustSession(session, {
@@ -163,6 +182,7 @@ export function buildDayView(data: AppData, cal: ShiftCalendar, plan: Plan, hist
       upcoming,
       sameDayTypes: day!.sessions.filter((s) => s !== session).map((s) => s.type),
       strengthState,
+      expectedDropPct,
     })
     const log = data.logs.find((l) => l.sessionId === session.id)
     const rejected = data.decisions.find((d) => d.sessionId === session.id)?.rejected ?? false

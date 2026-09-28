@@ -16,9 +16,11 @@ function env(name: string): string {
   return v
 }
 
-export function makeDeps(): Deps {
+export function makeDeps(): Deps & { webhookDb: SupabaseDb } {
+  const db = new SupabaseDb(serviceClient())
   return {
-    db: new SupabaseDb(serviceClient()),
+    db,
+    webhookDb: db,
     env: { clientId: env('WHOOP_CLIENT_ID'), clientSecret: env('WHOOP_CLIENT_SECRET'), redirectUri: env('WHOOP_REDIRECT_URI'), appUrl: env('APP_URL') },
     fetch: (u, init) => fetch(u, init),
     now: () => new Date(),

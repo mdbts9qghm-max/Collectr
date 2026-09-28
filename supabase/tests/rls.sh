@@ -22,6 +22,7 @@ PSQL=(psql -h "$DIR" -p "$PORT" -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X
 create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
+create publication supabase_realtime;
 create schema auth;
 create table auth.users (id uuid primary key);
 create function auth.uid() returns uuid language sql stable as $$
@@ -140,4 +141,5 @@ do $$ begin
   begin perform * from public.whoop_recoveries; raise exception 'anon liest WHOOP'; exception when insufficient_privilege then null; end;
 end $$;
 SQL
-echo "RLS-Tests: alle bestanden (17 Tabellen, Isolation A/B, anon gesperrt, updated_at, WHOOP-Tokens nur serverseitig)."
+"${PSQL[@]}" -tAc "select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'whoop_status'" | grep -qx 1 || { echo "whoop_status fehlt in Realtime"; exit 1; }
+echo "RLS-Tests: alle bestanden (17 Tabellen, Isolation A/B, anon gesperrt, updated_at, WHOOP-Tokens nur serverseitig, Realtime)."

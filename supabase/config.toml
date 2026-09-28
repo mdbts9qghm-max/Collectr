@@ -13,3 +13,9 @@ verify_jwt = true
 
 [functions.whoop-disconnect]
 verify_jwt = true
+
+[functions.whoop-webhook]
+verify_jwt = false
+
+[functions.whoop-sync-all]
+verify_jwt = false
