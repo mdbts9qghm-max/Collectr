@@ -47,7 +47,7 @@ test('Heute ist offline lesbar (neu laden ohne Netz)', async ({ page, context })
   await page.reload()
   await expect(page.getByTestId('countdown')).toBeVisible()
   await expect(page.getByTestId('today-item').first()).toBeVisible()
-  await page.screenshot({ path: 'docs/screenshots/15-offline.png' })
+  await page.screenshot({ path: 'docs/screenshots/16-offline.png' })
   await page.getByRole('link', { name: 'Zyklus' }).click()
   await expect(page.getByTestId('day-2026-10-02')).toBeVisible()
   await page.goto('/plan')
@@ -68,7 +68,7 @@ test('Kalender-Export (.ics) enthält Einheiten, Schichten und Schlaf', async ({
   expect(ics).toContain('UID:schicht-2026-10-02@collectr')
   expect(ics).toContain('UID:nap-2026-10-03@collectr')
   expect(ics).toMatch(/UID:einheit-2026-10-03/)
-  await page.screenshot({ path: 'docs/screenshots/13-export.png' })
+  await page.screenshot({ path: 'docs/screenshots/14-export.png' })
 })
 
 test('Dienstplan-Import: Vorschau, Auswahl, Übernahme als V-Schicht', async ({ page }) => {
@@ -105,7 +105,7 @@ test('Dienstplan-Import: Vorschau, Auswahl, Übernahme als V-Schicht', async ({ 
   await expect(preview).toContainText('06.10.2026: Frei → V-Schicht')
   await expect(preview).toContainText('12.10.2026: Tagschicht → Urlaub')
   await expect(preview).toContainText('1 Termin(e) nicht erkannt')
-  await page.screenshot({ path: 'docs/screenshots/14-dienstplan-import.png' })
+  await page.screenshot({ path: 'docs/screenshots/15-dienstplan-import.png' })
   // Urlaub abwählen, nur V übernehmen
   await preview.getByText('12.10.2026: Tagschicht → Urlaub').click()
   await preview.getByRole('button', { name: 'Übernehmen (1)' }).click()

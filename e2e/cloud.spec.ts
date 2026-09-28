@@ -221,7 +221,7 @@ test('Erinnerungen: Push-Abo speichern, Erinnerungen hochladen, wieder abbestell
   expect(items.length).toBeGreaterThan(3)
   expect(items.some((i) => i.id.endsWith('-bed') && i.title === 'In 30 min schlafen gehen')).toBe(true)
   expect(items.every((i) => Date.parse(i.due_at) > Date.now() - 60_000)).toBe(true)
-  await page.screenshot({ path: 'docs/screenshots/16-erinnerungen.png' })
+  await page.screenshot({ path: 'docs/screenshots/17-erinnerungen.png' })
 
   await toggle.uncheck()
   await expect(toggle).not.toBeChecked()

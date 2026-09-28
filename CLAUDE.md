@@ -37,6 +37,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Phase 4 | Login E-Mail + Passwort; offline lesen und eintragen, später synchronisieren; Zurücksetzen löscht auch in der Cloud |
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
 | Phase 6 | Push-Erinnerungen erst in Phase 7; gelernte Muster anzeigen, Nutzung per Schalter (Standard aus) |
+| Phase 7 | Push 30 min vor Zubettgehen/Nap; .ics mit Einheiten, Schichten, Schlaf/Nap; Dienstplan-Import mit Vorschau und Bestätigung |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -75,7 +76,12 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - `whoop-webhook` (HMAC-Signatur, inkrementeller Abruf, `*.deleted` markiert Zeilen), `whoop-sync-all` (X-Cron-Secret), Cron-SQL `supabase/sql/cron.sql` (2× täglich, UTC)
   - Migration 3: `whoop_status` in Realtime → geöffnete App synchronisiert sofort
   - Tab „Erholung“ (Schichten als Hintergrund, Tabelle), Schlaf-Umsetzung, `src/core/recovery/patterns.ts` (Nachtschicht, langer Lauf, schwere Beine), Schalter „Gelernte Muster“ (Standard aus)
-- [ ] **Phase 7 – Livegang:** PWA, Vercel, .ics-Export, README
+- [x] **Phase 7 – Livegang:** PWA, Push, Vercel, .ics-Export/-Import, README (Plan: `docs/PHASE7_PLAN.md`, Anleitung: `docs/LIVEGANG.md`)
+  - PWA mit `vite-plugin-pwa` (injectManifest, `src/sw/sw.ts`, eigene `tsconfig.sw.json`), Hinweis „Neue Version“, Icons aus `public/icon.svg` (`node scripts/icons.mjs`)
+  - Kern: `src/core/export/ics.ts`, `src/core/shift/icsImport.ts`, `src/core/sleep/reminders.ts`
+  - Push: Migration 4 (`push_subscriptions`, `push_reminders` + RPC `replace_push_reminders`, `push_sent` nur Service Role), Function `push-send` (Cron alle 5 min, `supabase/sql/push-cron.sql`)
+  - `vercel.json` (SPA-Rewrites, Cache- und Sicherheits-Header); Vercel-Deployment und echter Push-Versand macht der Nutzer nach Anleitung
+  - Tests: 233 Vitest, 8 Playwright (inkl. Offline, Export, Import, Push-Abo), RLS mit 20 Tabellen
 
 ## Phase 2 – Plan (freigegeben)
 
