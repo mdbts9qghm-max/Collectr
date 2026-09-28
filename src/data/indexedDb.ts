@@ -1,0 +1,133 @@
+// Lokale Speicherung in IndexedDB (bis Phase 4). Offline lesbar.
+
+import { openDB, type IDBPDatabase } from 'idb'
+import type { ManualReadiness, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
+import { defaultSettings } from './defaults'
+import type { AdjustmentDecision, AppSettings, BackupData, Repository } from './types'
+
+const DB_NAME = 'collectr'
+const DB_VERSION = 1
+const STORES = ['kv', 'overrides', 'logs', 'manual', 'tests', 'decisions'] as const
+
+export class IndexedDbRepository implements Repository {
+  private dbp: Promise<IDBPDatabase>
+
+  constructor(name = DB_NAME) {
+    this.dbp = openDB(name, DB_VERSION, {
+      upgrade(db) {
+        db.createObjectStore('kv')
+        db.createObjectStore('overrides', { keyPath: 'date' })
+        db.createObjectStore('logs', { keyPath: 'sessionId' })
+        db.createObjectStore('manual', { keyPath: 'date' })
+        db.createObjectStore('tests', { keyPath: 'date' })
+        db.createObjectStore('decisions', { keyPath: 'sessionId' })
+      },
+    })
+  }
+
+  private async kvGet<T>(key: string): Promise<T | undefined> {
+    return (await this.dbp).get('kv', key) as Promise<T | undefined>
+  }
+  private async kvPut(key: string, value: unknown): Promise<void> {
+    await (await this.dbp).put('kv', value, key)
+  }
+  private async all<T>(store: string): Promise<T[]> {
+    return (await this.dbp).getAll(store) as Promise<T[]>
+  }
+  private async put(store: string, value: unknown): Promise<void> {
+    await (await this.dbp).put(store, value)
+  }
+
+  async getSettings(): Promise<AppSettings> {
+    const s = await this.kvGet<AppSettings>('settings')
+    return s ? { ...defaultSettings(), ...s } : defaultSettings()
+  }
+  saveSettings(s: AppSettings) {
+    return this.kvPut('settings', s)
+  }
+  listOverrides() {
+    return this.all<ShiftOverride>('overrides')
+  }
+  putOverride(o: ShiftOverride) {
+    return this.put('overrides', o)
+  }
+  async deleteOverride(date: string) {
+    await (await this.dbp).delete('overrides', date)
+  }
+  listLogs() {
+    return this.all<SessionLog>('logs')
+  }
+  putLog(l: SessionLog) {
+    return this.put('logs', l)
+  }
+  async deleteLog(sessionId: string) {
+    await (await this.dbp).delete('logs', sessionId)
+  }
+  listManual() {
+    return this.all<ManualReadiness>('manual')
+  }
+  putManual(m: ManualReadiness) {
+    return this.put('manual', m)
+  }
+  listStrengthTests() {
+    return this.all<StrengthTest>('tests')
+  }
+  putStrengthTest(t: StrengthTest) {
+    return this.put('tests', t)
+  }
+  async getStrengthState() {
+    return (await this.kvGet<StrengthState>('strengthState')) ?? null
+  }
+  saveStrengthState(s: StrengthState) {
+    return this.kvPut('strengthState', s)
+  }
+  async getChecklist() {
+    return (await this.kvGet<Record<string, boolean>>('checklist')) ?? {}
+  }
+  saveChecklist(c: Record<string, boolean>) {
+    return this.kvPut('checklist', c)
+  }
+  listDecisions() {
+    return this.all<AdjustmentDecision>('decisions')
+  }
+  putDecision(d: AdjustmentDecision) {
+    return this.put('decisions', d)
+  }
+
+  async exportAll(now: Date): Promise<BackupData> {
+    return {
+      version: 1,
+      exportedAt: now.toISOString(),
+      settings: await this.getSettings(),
+      overrides: await this.listOverrides(),
+      logs: await this.listLogs(),
+      manual: await this.listManual(),
+      strengthTests: await this.listStrengthTests(),
+      strengthState: await this.getStrengthState(),
+      checklist: await this.getChecklist(),
+      decisions: await this.listDecisions(),
+    }
+  }
+
+  async importAll(b: BackupData): Promise<void> {
+    await this.clearAll()
+    const db = await this.dbp
+    const tx = db.transaction([...STORES], 'readwrite')
+    await tx.objectStore('kv').put(b.settings, 'settings')
+    if (b.strengthState) await tx.objectStore('kv').put(b.strengthState, 'strengthState')
+    await tx.objectStore('kv').put(b.checklist, 'checklist')
+    for (const o of b.overrides) await tx.objectStore('overrides').put(o)
+    for (const l of b.logs) await tx.objectStore('logs').put(l)
+    for (const m of b.manual) await tx.objectStore('manual').put(m)
+    for (const t of b.strengthTests) await tx.objectStore('tests').put(t)
+    for (const d of b.decisions) await tx.objectStore('decisions').put(d)
+    await tx.done
+  }
+
+  async clearAll(): Promise<void> {
+    const db = await this.dbp
+    const tx = db.transaction([...STORES], 'readwrite')
+    await Promise.all(STORES.map((s) => tx.objectStore(s).clear()))
+    await tx.done
+  }
+}

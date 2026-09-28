@@ -33,6 +33,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Nachtlauf | Tag 4 nachts (Start ca. 21:00), Tag 5 ausschlafen, danach locker/Oberkörper oder B2B Teil 2 am Nachmittag |
 | Vorausschau (6.3a) | nur ab Gelb. Bei Grün läuft die Einheit immer wie geplant |
 | Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (längster Lauf, B2B-Spitze, Berg, erste Läufe > 30 km) bis +12 % darüber |
+| Phase 3 | Manuelle Eingabe + Demo-Modus, Datum simulieren in den Einstellungen, einfache Einstellungen, IndexedDB |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -49,7 +50,10 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Plan: `docs/PHASE2_PLAN.md`. Module: config, types, time, shift, plan, strength, recovery, sleep, whoop, race, fixtures
   - Gesamtplan prüfen: `PRINT_PLAN=1 npx vitest run src/core/plan/printPlan.test.ts --silent=false`
   - WHOOP-Zuordnung: Hauptschlaf, der vor dem Trainingsfenster begann und höchstens 12 h vorher endete (sonst manuelle Eingabe)
-- [ ] **Phase 3 – Oberfläche:** Onboarding, Heute, Zyklus, Gesamtplan, Kraft, Tracking, Playwright im Handy-Format
+- [x] **Phase 3 – Oberfläche:** Onboarding, Heute, Zyklus, Gesamtplan (+ Checkliste Rennwoche), Kraft, Tracking, Einstellungen (Plan: `docs/PHASE3_PLAN.md`)
+  - Daten lokal in IndexedDB (`src/data`, Repository-Interface für Phase 4), App-Zustand in `src/app` (reine Berechnung in `compute.ts`)
+  - Erholung: manuelle Eingabe oder Demo-Modus (Beispieldaten); „Datum simulieren“ in den Einstellungen
+  - Tests: 173 Vitest-Tests, Playwright-Durchgang im Handy-Format (`npm run e2e`), Screenshots in `docs/screenshots/`
 - [ ] **Phase 4 – Supabase:** Auth, Schema, RLS, Umzug der Daten, Anleitung für das Dashboard
 - [ ] **Phase 5 – WHOOP:** OAuth, Abruf, Token-Refresh, Zuordnung zu Einheiten, Redirect-URI und Scopes
 - [ ] **Phase 6 – Automatik:** Webhooks, tägliche Anpassung, Erholungs-Ansicht, Auswertungen

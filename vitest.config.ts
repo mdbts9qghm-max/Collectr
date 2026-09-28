@@ -9,8 +9,8 @@ export default defineConfig({
     env: { TZ: 'America/New_York' },
     coverage: {
       provider: 'v8',
-      include: ['src/core/**/*.ts'],
-      exclude: ['src/core/**/*.test.ts', 'src/core/fixtures/**'],
+      include: ['src/core/**/*.ts', 'src/app/**/*.ts', 'src/data/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/core/fixtures/**'],
     },
   },
 })
