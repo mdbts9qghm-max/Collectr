@@ -1,0 +1,22 @@
+# Abhängigkeiten und Build
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Secrets – niemals committen
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/.temp/
+
+# Test-/Tool-Ausgaben
+playwright-report/
+test-results/
+.vercel/
+
+# System
+.DS_Store
+*.log
