@@ -19,3 +19,6 @@ verify_jwt = false
 
 [functions.whoop-sync-all]
 verify_jwt = false
+
+[functions.push-send]
+verify_jwt = false

@@ -11,6 +11,8 @@ function session() {
 interface Store {
   rows: Record<string, Record<string, unknown>[]>
   posts: { table: string; body: unknown }[]
+  deletes: { table: string; query: string }[]
+  rpcs: { name: string; body: unknown }[]
   whoopSyncs?: number
 }
 
@@ -37,7 +39,7 @@ function whoopRows(): Record<string, Record<string, unknown>[]> {
 }
 
 async function fakeSupabase(page: Page, opts: { password: string }): Promise<Store> {
-  const store: Store = { rows: {}, posts: [] }
+  const store: Store = { rows: {}, posts: [], deletes: [], rpcs: [] }
   await page.route('https://fake.supabase.test/**', async (route: Route) => {
     const req = route.request()
     const url = new URL(req.url())
@@ -60,15 +62,24 @@ async function fakeSupabase(page: Page, opts: { password: string }): Promise<Sto
       Object.assign(store.rows, whoopRows())
       return route.fulfill({ status: 200, headers: cors, json: { skipped: false, counts: { recoveries: 2 } } })
     }
+    const rpc = /^\/rest\/v1\/rpc\/(\w+)$/.exec(url.pathname)
+    if (rpc) {
+      store.rpcs.push({ name: rpc[1]!, body: req.postDataJSON() })
+      return route.fulfill({ status: 204, headers: cors, body: '' })
+    }
     const m = /^\/rest\/v1\/(\w+)$/.exec(url.pathname)
     if (m) {
       const table = m[1]!
       if (req.method() === 'GET') return route.fulfill({ status: 200, headers: cors, json: store.rows[table] ?? [] })
       if (req.method() === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>[]
+        const body = req.postDataJSON() as Record<string, unknown>[] | Record<string, unknown>
         store.posts.push({ table, body })
-        store.rows[table] = [...(store.rows[table] ?? []), ...body.map((b) => ({ ...b, updated_at: new Date().toISOString() }))]
+        store.rows[table] = [...(store.rows[table] ?? []), ...(Array.isArray(body) ? body : [body]).map((b) => ({ ...b, updated_at: new Date().toISOString() }))]
         return route.fulfill({ status: 201, headers: cors, body: '' })
+      }
+      if (req.method() === 'DELETE') {
+        store.deletes.push({ table, query: url.search })
+        return route.fulfill({ status: 204, headers: cors, body: '' })
       }
     }
     return route.fulfill({ status: 404, headers: cors, json: { message: `unbekannt: ${url.pathname}` } })
@@ -163,3 +174,56 @@ test('WHOOP verbinden, abrufen, Recovery nach der Nachtschicht, Workout automati
   await expect.poll(() => store.posts.some((p) => p.table === 'session_logs')).toBe(true)
 })
 
+
+test('Erinnerungen: Push-Abo speichern, Erinnerungen hochladen, wieder abbestellen', async ({ page, context }) => {
+  // Headless-Chromium hat keinen Push-Dienst: Abo und Erlaubnis werden nachgebildet
+  await context.grantPermissions(['notifications'])
+  await page.addInitScript(() => {
+    let sub: PushSubscription | null = null
+    const fake = {
+      endpoint: 'https://push.example/abo-1',
+      toJSON: () => ({ endpoint: 'https://push.example/abo-1', keys: { p256dh: 'p256dh-key', auth: 'auth-key' } }),
+      unsubscribe: async () => {
+        sub = null
+        return true
+      },
+    } as unknown as PushSubscription
+    PushManager.prototype.subscribe = async function () {
+      sub = fake
+      return fake
+    }
+    PushManager.prototype.getSubscription = async function () {
+      return sub
+    }
+    Notification.requestPermission = async () => 'granted'
+  })
+  const store = await fakeSupabase(page, { password: 'richtig' })
+  await page.goto('/')
+  await page.getByLabel('E-Mail').fill('ich@example.com')
+  await page.getByLabel('Passwort').fill('richtig')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.getByRole('button', { name: 'Später machen' }).click()
+  await page.getByRole('button', { name: 'Plan starten' }).click()
+  await page.getByRole('link', { name: 'Einstellungen' }).click()
+
+  const card = page.getByTestId('reminders')
+  await expect(card).toContainText('30 min vor dem empfohlenen Zubettgehen')
+  await expect(page.getByTestId('next-reminders')).toContainText('In 30 min schlafen gehen')
+  const toggle = card.getByLabel('Erinnerungen')
+  await expect(toggle).toBeEnabled()
+  await toggle.check()
+  await expect(toggle).toBeChecked()
+  await expect.poll(() => store.posts.find((p) => p.table === 'push_subscriptions')?.body).toMatchObject({ endpoint: 'https://push.example/abo-1', p256dh: 'p256dh-key', auth: 'auth-key' })
+  await expect.poll(() => store.rpcs.length).toBeGreaterThan(0)
+  const items = (store.rpcs[0]!.body as { items: { id: string; due_at: string; title: string }[] }).items
+  expect(items.length).toBeGreaterThan(3)
+  expect(items.some((i) => i.id.endsWith('-bed') && i.title === 'In 30 min schlafen gehen')).toBe(true)
+  expect(items.every((i) => Date.parse(i.due_at) > Date.now() - 60_000)).toBe(true)
+  await page.screenshot({ path: 'docs/screenshots/16-erinnerungen.png' })
+
+  await toggle.uncheck()
+  await expect(toggle).not.toBeChecked()
+  await expect.poll(() => store.deletes.some((d) => d.table === 'push_subscriptions' && d.query.includes('endpoint'))).toBe(true)
+})

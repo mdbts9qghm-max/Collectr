@@ -20,6 +20,11 @@ export default defineConfig({
     port: 4174,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { VITE_SUPABASE_URL: 'https://fake.supabase.test', VITE_SUPABASE_ANON_KEY: 'test-anon-key' },
+    // Öffentlicher VAPID-Testschlüssel (der private Schlüssel wurde verworfen, Versand wird nicht getestet)
+    env: {
+      VITE_SUPABASE_URL: 'https://fake.supabase.test',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+      VITE_VAPID_PUBLIC_KEY: 'BBkjodmFCyZunIAbgJaJvXcZHwQqKaudGKkrIeRzXpP6C0Q_o6lTCgl2JNUmXJBAnMtFWd6FRST7MSyNkMz60oo',
+    },
   },
 })

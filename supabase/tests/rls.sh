@@ -99,14 +99,14 @@ begin
                   has_table_privilege('anon', c.oid, 'select') as anon_select
            from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
            where ns.nspname = 'public' and c.relkind = 'r'
-             and c.relname in ('settings','shift_overrides','session_logs','manual_readiness','strength_tests','strength_state','checklist','adjustment_decisions','workout_assignments')
+             and c.relname in ('settings','shift_overrides','session_logs','manual_readiness','strength_tests','strength_state','checklist','adjustment_decisions','workout_assignments','push_subscriptions','push_reminders')
   loop
     if not t.relrowsecurity or not t.relforcerowsecurity then raise exception 'RLS fehlt auf %', t.relname; end if;
     if t.n <> 4 then raise exception '% hat % statt 4 Policies', t.relname, t.n; end if;
     if t.anon_select then raise exception 'anon darf % lesen', t.relname; end if;
   end loop;
-  if (select count(*) from pg_class c join pg_namespace ns on ns.oid = c.relnamespace where ns.nspname = 'public' and c.relkind = 'r') <> 17 then
-    raise exception 'erwartet 17 Tabellen';
+  if (select count(*) from pg_class c join pg_namespace ns on ns.oid = c.relnamespace where ns.nspname = 'public' and c.relkind = 'r') <> 20 then
+    raise exception 'erwartet 20 Tabellen';
   end if;
 end $$;
 SQL
@@ -141,5 +141,35 @@ do $$ begin
   begin perform * from public.whoop_recoveries; raise exception 'anon liest WHOOP'; exception when insufficient_privilege then null; end;
 end $$;
 SQL
+# Push (Phase 7): Abos/Erinnerungen je Nutzer, Versandprotokoll nur Service Role, Ersetzen der Erinnerungen
+"${PSQL[@]}" <<'SQL'
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://push/a', 'p', 'a');
+select public.replace_push_reminders('[{"id":"d1-nap","due_at":"2099-01-01T14:30:00Z","title":"In 30 min Nap","body":"x"},{"id":"d1-bed","due_at":"2099-01-01T21:30:00Z","title":"In 30 min schlafen gehen","body":"y"}]');
+insert into public.push_reminders (id, due_at, title, body) values ('alt', now() - interval '1 hour', 't', 'b');
+select public.replace_push_reminders('[{"id":"d1-bed","due_at":"2099-01-01T21:45:00Z","title":"In 30 min schlafen gehen","body":"y2"}]');
+do $$ begin
+  if (select count(*) from public.push_reminders) <> 2 then raise exception 'Ersetzen: erwartet d1-bed und die vergangene Erinnerung'; end if;
+  if (select body from public.push_reminders where id = 'd1-bed') <> 'y2' then raise exception 'Erinnerung nicht aktualisiert'; end if;
+  if not exists (select 1 from public.push_reminders where id = 'alt') then raise exception 'vergangene Erinnerung gelöscht'; end if;
+  begin perform * from public.push_sent; raise exception 'Versandprotokoll lesbar'; exception when insufficient_privilege then null; end;
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select public.replace_push_reminders('[]');
+do $$ begin
+  if (select count(*) from public.push_subscriptions) <> 0 then raise exception 'B sieht Abo von A'; end if;
+  if (select count(*) from public.push_reminders) <> 0 then raise exception 'B sieht Erinnerungen von A'; end if;
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin
+  if (select count(*) from public.push_reminders) <> 2 then raise exception 'B hat Erinnerungen von A gelöscht'; end if;
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  begin perform public.replace_push_reminders('[]'); raise exception 'anon darf Erinnerungen ersetzen'; exception when insufficient_privilege then null; end;
+end $$;
+SQL
 "${PSQL[@]}" -tAc "select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'whoop_status'" | grep -qx 1 || { echo "whoop_status fehlt in Realtime"; exit 1; }
-echo "RLS-Tests: alle bestanden (17 Tabellen, Isolation A/B, anon gesperrt, updated_at, WHOOP-Tokens nur serverseitig, Realtime)."
+echo "RLS-Tests: alle bestanden (20 Tabellen, Isolation A/B, anon gesperrt, updated_at, WHOOP-Tokens nur serverseitig, Realtime, Push)."

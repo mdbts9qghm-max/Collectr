@@ -9,6 +9,7 @@ import { SyncEngine, type SyncStatus } from '../data/sync'
 import { SyncingRepository } from '../data/syncingRepository'
 import type { Repository } from '../data/types'
 import { Login } from '../ui/pages/Login'
+import { disablePush } from './push'
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -31,6 +32,8 @@ export interface WhoopActions {
 }
 
 export interface CloudContextValue {
+  /** Supabase-Client des angemeldeten Nutzers (für Push-Abo und Erinnerungen). */
+  client: SupabaseClient
   email: string
   status: SyncStatus
   syncNow: () => Promise<void>
@@ -127,11 +130,14 @@ export function CloudGate({ children }: { children: (repo: Repository, onRemoteC
   if (!session) return <Login onLogin={async (email, password) => (await sb.auth.signInWithPassword({ email, password })).error?.message ?? null} />
 
   const value: CloudContextValue = {
+    client: sb,
     email: session.user.email ?? '',
     status,
     syncNow: () => engine!.sync(),
     signOut: async () => {
       await engine?.sync()
+      // Nach dem Abmelden keine Erinnerungen mehr auf diesem Gerät
+      await disablePush(sb).catch(() => null)
       await sb.auth.signOut()
     },
     whoop: {

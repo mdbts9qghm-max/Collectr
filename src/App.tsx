@@ -9,6 +9,7 @@ import { Privacy } from './ui/pages/Privacy'
 import { Settings } from './ui/pages/Settings'
 import { Today } from './ui/pages/Today'
 import { Tracking } from './ui/pages/Tracking'
+import { UpdatePrompt } from './ui/components/UpdatePrompt'
 
 // Seiten mit Diagrammen (Recharts) werden erst bei Bedarf geladen.
 const PlanOverview = lazy(() => import('./ui/pages/PlanOverview').then((m) => ({ default: m.PlanOverview })))
@@ -46,14 +47,17 @@ export default function App() {
   // Öffentliche Seite ohne Anmeldung (Privacy-Policy-URL für WHOOP)
   if (window.location.pathname === '/datenschutz') return <Privacy />
   return (
-    <CloudGate>
-      {(repo, onRemoteChange) => (
-        <AppProvider repo={repo} {...(onRemoteChange ? { onRemoteChange } : {})}>
-          <BrowserRouter>
-            <Routed />
-          </BrowserRouter>
-        </AppProvider>
-      )}
-    </CloudGate>
+    <>
+      <UpdatePrompt />
+      <CloudGate>
+        {(repo, onRemoteChange) => (
+          <AppProvider repo={repo} {...(onRemoteChange ? { onRemoteChange } : {})}>
+            <BrowserRouter>
+              <Routed />
+            </BrowserRouter>
+          </AppProvider>
+        )}
+      </CloudGate>
+    </>
   )
 }

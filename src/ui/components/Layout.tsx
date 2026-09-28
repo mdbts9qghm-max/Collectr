@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 import { useApp } from '../../app/AppState'
 import { useCloud } from '../../app/cloud'
+import { PushSync } from '../../app/PushSync'
 import { formatDateDE, weekdayShortDE } from '../../core/time'
 import { Disclaimer } from './common'
 
@@ -31,6 +32,7 @@ export function Layout() {
   const { today, data } = useApp()
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
+      <PushSync />
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-bg/95 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <div>
           <div className="text-base font-semibold">Collectr</div>

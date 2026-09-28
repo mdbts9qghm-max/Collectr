@@ -5,6 +5,7 @@ import { CONFIG, resolveConfig, type RecoveryWeights } from '../../core/config'
 import { isValidDate } from '../../core/time'
 import type { Profile } from '../../core/types'
 import { Button, Card, Field, H2, Input, NumberInput } from '../components/common'
+import { CalendarExportCard, InstallCard, RemindersCard, RosterImportCard } from './SettingsPhase7'
 
 const WEIGHT_LABEL: Record<keyof RecoveryWeights, string> = {
   recovery: 'Recovery Score',
@@ -165,6 +166,9 @@ export function Settings() {
         </Button>
       </Card>
 
+      <InstallCard />
+      <RemindersCard />
+
       <Card>
         <H2>Schichtmodell</H2>
         <p className="mb-2 text-sm text-muted">
@@ -177,6 +181,8 @@ export function Settings() {
           Ankerdatum speichern
         </Button>
       </Card>
+
+      <RosterImportCard />
 
       <Card>
         <H2>Gewichtung der Erholungsfaktoren</H2>
@@ -251,6 +257,8 @@ export function Settings() {
           </Button>
         )}
       </Card>
+
+      <CalendarExportCard />
 
       <Card>
         <H2>Backup</H2>

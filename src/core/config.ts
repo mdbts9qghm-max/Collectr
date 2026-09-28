@@ -174,6 +174,33 @@ export const CONFIG = {
     raceNapMin: 120,
     /** Toleranz für „Empfehlung umgesetzt“. */
     adherenceToleranceMin: 30,
+    /** Push-Erinnerung so viele Minuten vor Zubettgehen bzw. Nap (Entscheidung Phase 7). */
+    reminderLeadMin: 30,
+    /** Erinnerungen für so viele Tage im Voraus planen. */
+    reminderDays: 7,
+  },
+
+  // ---------------------------------------------------------------------------
+  // Dienstplan-Import (.ics, SPEC 4.1)
+  // ---------------------------------------------------------------------------
+  icsImport: {
+    /** Toleranz beim Erkennen der Schicht an der Beginnzeit (min). */
+    startToleranceMin: 45,
+    /** Dienst länger als geplant um mindestens so viele Minuten → Überstunden. */
+    overtimeMinMin: 30,
+    /**
+     * Stichwörter in der Termin-Zusammenfassung (Wörter klein geschrieben, genaue Übereinstimmung,
+     * „*“ am Ende = Wortanfang). Reihenfolge = Vorrang. Ohne Stichwort entscheidet die Beginnzeit.
+     */
+    keywords: [
+      ['KRANK', ['krank*', 'au', 'arbeitsunfähig*']],
+      ['URLAUB', ['urlaub*', 'vacation', 'u']],
+      ['FORTBILDUNG', ['fortbildung*', 'schulung*', 'seminar*']],
+      ['FREI', ['frei', 'off', 'x', 'dienstfrei', 'ausgleich*']],
+      ['N', ['nacht*', 'night*', 'n']],
+      ['V', ['v', 'vdienst', 'vschicht']],
+      ['T', ['tag', 'tagdienst', 'tagschicht', 'früh*', 'day*', 't']],
+    ] as const,
   },
 
   // ---------------------------------------------------------------------------
