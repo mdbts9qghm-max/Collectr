@@ -17,7 +17,7 @@ const data: WhoopData = {
   sleeps: [
     sleep('s1', '2026-10-02', h(22, 30), '2026-10-03', h(7, 30), false, { cycleId: 1, performancePct: 90 }), // nach der Tagschicht
     sleep('nap', '2026-10-03', h(15), '2026-10-03', h(16, 30), true, { cycleId: 1 }), // Vorschlaf vor der Nacht
-    sleep('s2', '2026-10-04', h(8), '2026-10-04', h(14), false, { cycleId: 2 }), // Tagschlaf nach der Nacht
+    sleep('s2', '2026-10-04', h(8), '2026-10-04', h(14), false, { cycleId: 2, respiratoryRate: 15.8 }), // Tagschlaf nach der Nacht
     sleep('s3', '2026-10-04', h(22, 30), '2026-10-05', h(7), false, { cycleId: 3 }),
   ],
   recoveries: [
@@ -34,6 +34,7 @@ const data: WhoopData = {
 describe('WHOOP-Zuordnung über Zyklen statt Kalendertage (SPEC 8, 11)', () => {
   it('Schlaf nach der Nachtschicht (08:00–14:00) gehört zum Schlaftag', () => {
     const d = assignRecoveryDay(cal, '2026-10-04', data)!
+    expect(d.respiratoryRate).toBe(15.8)
     expect(d.recoveryScore).toBe(41)
     expect(d.sleep!.durationMin).toBe(360)
     expect(d.sleep!.daySleep).toBe(true)

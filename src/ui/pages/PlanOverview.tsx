@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useApp } from '../../app/AppState'
+import { actualByDate, sumVolume } from '../../app/volumeView'
 import { calendarWeeks, PHASE_LABEL } from '../../core/plan'
-import { raceChecklist } from '../../core/race'
+import { raceChecklist, raceConflict } from '../../core/race'
 import { addDays, formatDateDE, formatDayMonthDE, isoWeek } from '../../core/time'
 import { Card, Chip, Disclosure, H2, SegmentedButtons, SegmentedLinks } from '../components/common'
 
@@ -26,43 +27,25 @@ export function PlanOverview() {
   const { plan, data, today } = useApp()
   const [mode, setMode] = useState<Mode>('micro')
 
-  const actual = useMemo(() => {
-    const byDate = new Map<string, { km: number; hm: number; sets: number }>()
-    const sessions = new Map(plan.days.flatMap((d) => d.sessions).map((s) => [s.id, s]))
-    for (const l of data.logs) {
-      if (l.status !== 'done') continue
-      const s = sessions.get(l.sessionId)
-      const e = byDate.get(l.date) ?? { km: 0, hm: 0, sets: 0 }
-      if (s?.category === 'run' || l.distanceKm !== undefined) {
-        e.km += l.distanceKm ?? s?.distanceKm ?? 0
-        e.hm += l.elevationM ?? s?.elevationM ?? 0
-      }
-      if (s?.category === 'strength') e.sets += s.strengthSets ?? 0
-      byDate.set(l.date, e)
-    }
-    return byDate
-  }, [data.logs, plan])
+  const actual = useMemo(() => actualByDate(plan, data.logs), [plan, data.logs])
 
   const rows = useMemo(() => {
-    const sumActual = (from: string, to: string, k: 'km' | 'hm' | 'sets') => {
-      let v = 0
-      for (const [d, e] of actual) if (d >= from && d <= to) v += e[k]
-      return v
-    }
+    const sumActual = (from: string, to: string, k: 'km' | 'hm' | 'sets') => sumVolume(actual, from, to)[k]
     // Ist-Werte erst ab dem ersten Protokoll und nur für begonnene Zeiträume.
     const firstLog = data.logs.map((l) => l.date).sort()[0]
     const past = (start: string, end: string) => start <= today && firstLog !== undefined && end >= firstLog
     if (mode === 'micro') {
       return plan.microcycles.map((m) => {
         const note = `${PHASE_LABEL[m.phase]}${m.kind === 'deload' ? ', Entlastung' : ''}${m.isKeyPeak ? ', Schlüsselspitze' : ''}`
-        const mk = (soll: number, k: 'km' | 'hm' | 'sets', f = 7 / 5): Row => ({
+        // Pro Rhythmus (5 Tage), wie in der Zyklus-Ansicht
+        const mk = (soll: number, k: 'km' | 'hm' | 'sets', f = 1): Row => ({
           key: String(m.index),
           label: formatDayMonthDE(m.start),
           soll: Math.round(soll * f),
           ist: past(m.start, m.end) ? Math.round(sumActual(m.start, m.end, k) * f) : null,
           note,
         })
-        return { km: mk(m.plannedKm, 'km'), hm: mk(m.plannedElevationM, 'hm'), sets: mk(m.strengthSets, 'sets', 1) }
+        return { km: mk(m.plannedKm, 'km'), hm: mk(m.plannedElevationM, 'hm'), sets: mk(m.strengthSets, 'sets') }
       })
     }
     return calendarWeeks(plan).map((w) => {
@@ -79,10 +62,10 @@ export function PlanOverview() {
     })
   }, [plan, mode, actual, today, data.logs])
 
-  const unit = mode === 'micro' ? 'pro Woche (Mikrozyklus × 7/5)' : 'je Kalenderwoche'
+  const unit = mode === 'micro' ? 'pro Rhythmus (5 Tage)' : 'je Kalenderwoche'
   return (
     <div className="space-y-4">
-      <SegmentedLinks label="Plan" items={[{ to: '/zyklus', label: 'Zyklus' }, { to: '/plan', label: 'Gesamtplan' }]} />
+      <SegmentedLinks label="Coach" items={[{ to: '/zyklus', label: 'Zyklus' }, { to: '/plan', label: 'Gesamtplan' }]} />
       <SegmentedButtons
         label="Zeiteinheit"
         value={mode}
@@ -92,6 +75,8 @@ export function PlanOverview() {
           { value: 'week', label: 'Kalenderwochen' },
         ]}
       />
+
+      <RaceChecklist />
 
       <ChartCard title={`Laufkilometer ${unit}`} rows={rows.map((r) => r.km)} unit="km" />
       <ChartCard title={`Höhenmeter ${unit}`} rows={rows.map((r) => r.hm)} unit="hm" />
@@ -129,19 +114,23 @@ export function PlanOverview() {
           <p>🏁 Rennen: Freitag, 18.06.2027, 23:00 Uhr (KW {isoWeek('2027-06-18').week})</p>
         </div>
       </Disclosure>
-
-      <RaceChecklist />
     </div>
   )
 }
 
 function RaceChecklist() {
   const app = useApp()
+  const conflict = raceConflict(app.cal)
   const done = app.data.checklist
   const items = raceChecklist()
   const n = items.filter((i) => done[i.id]).length
   return (
-    <Disclosure card title="Checkliste Rennwoche" summary={`${n}/${items.length} erledigt`}>
+    <Disclosure card title="Checkliste Rennwoche" summary={`${n}/${items.length} erledigt`} defaultOpen={conflict.hasConflict}>
+      {conflict.hasConflict && (
+        <div role="alert" className="mb-3 rounded-xl border border-yellow/50 bg-yellow/10 p-3 text-sm" data-testid="warning-vacation">
+          {conflict.message}
+        </div>
+      )}
       <ul className="space-y-1" data-testid="checklist">
         {items.map((i) => (
           <li key={i.id}>

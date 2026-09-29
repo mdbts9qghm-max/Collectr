@@ -78,6 +78,7 @@ export interface RawSleep {
     }
     sleep_performance_percentage?: number
     sleep_efficiency_percentage?: number
+    respiratory_rate?: number
   }
 }
 
@@ -117,6 +118,8 @@ export interface NormSleep {
   efficiencyPct?: number
   needMin?: number
   debtMin?: number
+  /** Atemfrequenz im Schlaf (Atemzüge/min). */
+  respiratoryRate?: number
 }
 export interface NormRecovery {
   cycleId: number
@@ -184,6 +187,7 @@ export function normalizeSleep(r: RawSleep): NormSleep {
     efficiencyPct: s?.sleep_efficiency_percentage,
     needMin: min(needMs),
     debtMin: min(need?.need_from_sleep_debt_milli),
+    respiratoryRate: s?.respiratory_rate !== undefined ? Math.round(s.respiratory_rate * 10) / 10 : undefined,
   })
 }
 

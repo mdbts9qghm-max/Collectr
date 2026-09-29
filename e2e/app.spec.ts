@@ -42,7 +42,8 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
 
   // --- Heute (echtes Datum vor Planstart oder im Plan) ---
   await expect(page.getByTestId('countdown')).toBeVisible()
-  await expect(page.getByTestId('warning-vacation')).toBeVisible()
+  // Urlaubs-Warnung nicht mehr auf Heute (steht im Coach bei der Rennwoche)
+  await expect(page.getByTestId('warning-vacation')).toHaveCount(0)
   await expect(page.getByTestId('disclaimer')).toBeVisible()
 
   // --- Tag 2 im Aufbau simulieren, manuelle Erholung eintragen ---
@@ -54,6 +55,11 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await page.getByRole('button', { name: 'Speichern', exact: true }).click()
   await expect(page.getByTestId('traffic')).toBeVisible()
   await expect(page.getByTestId('training-ring')).toContainText('Training')
+  await expect(page.getByTestId('vitals')).toContainText('Atmung')
+  await expect(page.getByTestId('shift-card')).toContainText('Nachtschicht')
+  await page.getByRole('button', { name: 'Schicht ändern' }).click()
+  await expect(page.getByRole('dialog', { name: 'Tag bearbeiten' })).toContainText('aktuell Nachtschicht')
+  await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen' }).click()
   const adj = page.getByTestId('adjustment').first()
   await expect(adj).toBeVisible()
   await expect(adj.getByTestId('reason')).toContainText(/Bereitschaft \d+ %/)
@@ -66,8 +72,9 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(page.getByTestId('today-item').first()).toContainText('Erledigt')
 
   // --- Zyklus: V-Schicht auf Tag 5 eintragen ---
-  await page.getByRole('link', { name: 'Plan', exact: true }).click()
+  await page.getByRole('link', { name: 'Coach', exact: true }).click()
   await expect(page).toHaveURL(/\/zyklus$/)
+  await expect(page.getByTestId('volume').first()).toContainText('pro Rhythmus')
   const d5 = page.getByTestId('day-2026-12-15')
   await expect(d5).toContainText('Frei')
   await expect(d5).toContainText('Bergauf-Intervalle')
@@ -82,11 +89,15 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(d5).toContainText(/gestrichen|Verschoben/)
   await noHorizontalScroll(page)
   await shot(page, '04-zyklus-v-schicht')
+  await page.getByRole('button', { name: 'Kalenderwochen' }).click()
+  await expect(page.getByTestId('volume').first()).toContainText('pro Woche')
+  await expect(page.getByTestId('day-2026-12-14')).toBeVisible()
 
   // --- Gesamtplan ---
   await page.getByRole('link', { name: 'Gesamtplan' }).click()
   await expect(page.getByTestId('chart')).toHaveCount(3)
   await expect(page.getByTestId('mesocycles')).toContainText('Rennspezifisch')
+  await expect(page.getByTestId('warning-vacation')).toContainText('Urlaub')
   await openGroup(page, 'Checkliste Rennwoche')
   const firstItem = page.getByTestId('checklist').getByRole('checkbox').first()
   await firstItem.check()
@@ -96,15 +107,15 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(page.getByTestId('chart')).toHaveCount(3)
 
   // --- Kraft ---
-  await page.getByRole('link', { name: 'Training', exact: true }).click()
+  await page.getByRole('link', { name: 'Calisthenics', exact: true }).click()
   await expect(page).toHaveURL(/\/kraft$/)
+  await expect(page.getByTestId('skill-bar')).toContainText('Front Lever')
   await expect(page.getByTestId('ladders')).toContainText('Strikte Klimmzüge (Aufbau)')
   await expect(page.getByTestId('test-chart')).toBeVisible()
   await noHorizontalScroll(page)
   await shot(page, '06-kraft')
 
   // --- Tracking: Kraft-Ergebnisse eintragen ---
-  await page.getByRole('link', { name: 'Tracking' }).click()
   await page.getByTestId('track-session').filter({ hasText: 'Schweres Beintraining' }).first().click()
   const results = page.getByTestId('strength-results')
   await expect(results).toBeVisible()
@@ -130,7 +141,11 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await shot(page, '09-heute-demo-mai')
 
   // --- Erholung (Phase 6): Diagramme mit Schicht-Hintergrund, Auswertungen, Tabelle ---
-  await page.getByRole('link', { name: 'Erholung' }).click()
+  await page.getByRole('link', { name: 'Schlaf & Erholung' }).click()
+  await expect(page.getByTestId('sleep-plan-row')).toHaveCount(10)
+  await expect(page.getByTestId('evening')).toContainText('Vorbereitung für morgen')
+  await expect(page.getByTestId('whoop-today')).toContainText('%')
+  await page.getByRole('button', { name: 'Statistiken' }).click()
   await expect(page.getByTestId('recovery-chart')).toHaveCount(4)
   await expect(page.getByTestId('shift-legend')).toContainText('Nachtschicht')
   await expect(page.getByTestId('patterns')).toContainText('Nach Nachtschichten')
@@ -145,7 +160,7 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await page.getByRole('link', { name: 'Einstellungen' }).click()
   await openGroup(page, 'Erweitert')
   await page.getByLabel('Gelernte Muster nutzen').check()
-  await page.getByRole('link', { name: 'Erholung' }).click()
+  await page.getByRole('link', { name: 'Schlaf & Erholung' }).click()
   await expect(page.getByTestId('patterns')).toContainText('In der Vorausschau: genutzt')
 })
 

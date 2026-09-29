@@ -3,7 +3,7 @@ import { useApp } from '../../app/AppState'
 import { LADDERS } from '../../core/strength'
 import { addDays, formatDateDE, formatTime, instantToBerlin, weekdayShortDE } from '../../core/time'
 import type { Ladder, PlannedSession, SessionLog, StrengthResult } from '../../core/types'
-import { Button, Card, Chip, Disclosure, Field, H2, Input, NumberInput, Rating, SegmentedLinks } from '../components/common'
+import { Button, Card, Chip, Disclosure, Field, H2, Input, NumberInput, Rating } from '../components/common'
 import { sessionMeta } from '../components/SessionCard'
 
 const LOOKBACK_DAYS = 7
@@ -34,7 +34,9 @@ export function Tracking() {
   const open = days.flatMap((d) => d.sessions).filter((s) => !app.data.logs.some((l) => l.sessionId === s.id)).length
   return (
     <div className="space-y-4">
-      <SegmentedLinks label="Training" items={[{ to: '/kraft', label: 'Kraft' }, { to: '/tracking', label: 'Tracking' }]} />
+      <h2 className="pt-2 text-lg font-semibold" id="tracking">
+        Tracking
+      </h2>
       {message && (
         <div role="status" className="rounded-2xl border border-accent/40 bg-accent/10 p-3 text-sm" data-testid="tracking-message">
           {message}

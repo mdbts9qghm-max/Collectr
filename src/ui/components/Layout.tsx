@@ -5,12 +5,12 @@ import { PushSync } from '../../app/PushSync'
 import { formatDateDE, weekdayShortDE } from '../../core/time'
 import { Disclaimer } from './common'
 
-// 4 Reiter: Plan fasst Zyklus + Gesamtplan zusammen, Training fasst Kraft + Tracking zusammen.
+// 4 Reiter (Wunsch nach dem Livegang): Heute · Coach (Zyklus | Gesamtplan) · Schlaf & Erholung · Calisthenics (Skills, Tests, Tracking).
 const TABS = [
   { to: '/', label: 'Heute', paths: ['/'], icon: 'M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.5Z' },
-  { to: '/zyklus', label: 'Plan', paths: ['/zyklus', '/plan'], icon: 'M7 3v2M17 3v2M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 7h3v3H8z' },
-  { to: '/erholung', label: 'Erholung', paths: ['/erholung'], icon: 'M3 12h4l2-5 4 10 2-5h6' },
-  { to: '/kraft', label: 'Training', paths: ['/kraft', '/tracking'], icon: 'M4 9v6M8 7v10M16 7v10M20 9v6M8 12h8' },
+  { to: '/zyklus', label: 'Coach', paths: ['/zyklus', '/plan'], icon: 'M7 3v2M17 3v2M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 7h3v3H8z' },
+  { to: '/erholung', label: 'Schlaf & Erholung', paths: ['/erholung'], icon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z' },
+  { to: '/kraft', label: 'Calisthenics', paths: ['/kraft', '/tracking'], icon: 'M4 9v6M8 7v10M16 7v10M20 9v6M8 12h8' },
 ]
 
 function SyncBadge() {
@@ -69,7 +69,7 @@ export function Layout() {
               key={t.to}
               to={t.to}
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] ${active ? 'text-accent' : 'text-muted'}`}
+              className={`flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-center text-[11px] leading-tight ${active ? 'text-accent' : 'text-muted'}`}
             >
               <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                 <path d={t.icon} />

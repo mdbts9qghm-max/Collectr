@@ -70,6 +70,7 @@ const SLEEP: RawSleep = {
     sleep_needed: { baseline_milli: 27_000_000, need_from_sleep_debt_milli: 2_400_000, need_from_recent_strain_milli: 600_000, need_from_recent_nap_milli: -1_200_000 },
     sleep_performance_percentage: 78,
     sleep_efficiency_percentage: 91,
+    respiratory_rate: 15.26,
   },
 }
 
@@ -88,6 +89,7 @@ describe('Normalisierung API v2', () => {
       efficiencyPct: 91,
       needMin: 480,
       debtMin: 40,
+      respiratoryRate: 15.3,
     })
   })
 

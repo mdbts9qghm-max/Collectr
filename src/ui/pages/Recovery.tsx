@@ -3,9 +3,13 @@ import { Bar, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, Responsiv
 import { useApp } from '../../app/AppState'
 import { adherence, recoveryRows, type RecoveryRow, type ShiftBand } from '../../app/recoveryView'
 import { CONFIG } from '../../core/config'
-import { shiftLabel } from '../../core/shift'
-import { formatDateDE } from '../../core/time'
-import { Card, H2, SegmentedButtons } from '../components/common'
+import { effectiveShift, shiftLabel } from '../../core/shift'
+import { microIndexOf } from '../../core/plan'
+import { eveningRoutine, recommendSleep } from '../../core/sleep'
+import { addDays, formatDateDE, formatTime, weekdayShortDE } from '../../core/time'
+import { Button, Card, Chip, H2, SegmentedButtons, Sub, TRAFFIC_LABEL } from '../components/common'
+import { Ring, RING_COLOR } from '../components/Ring'
+import { Vitals } from '../components/Vitals'
 
 // Validierte Farben (dataviz, dunkle Fläche): Tagdienst Orange, Nacht Blau (Schlaftag = helleres Blau).
 // Die Datenlinie ist neutral (Text-Ton), die Schichten sind nur Hintergrund.
@@ -32,39 +36,78 @@ export function Recovery() {
   const app = useApp()
   const [days, setDays] = useState(30)
   const [table, setTable] = useState(false)
+  const [stats, setStats] = useState(false)
   const rows = useMemo(() => recoveryRows(app.data, app.cal, app.today, days), [app.data, app.cal, app.today, days])
   const adh = useMemo(() => adherence(app.data, app.cal, app.plan, app.today, 14), [app.data, app.cal, app.plan, app.today])
   const hasData = rows.some((r) => r.score !== undefined)
+  const view = app.dayView(app.today)
+  const r = view.readiness
 
   return (
     <div className="space-y-4">
-      <SegmentedButtons
-        label="Zeitraum"
-        value={days}
-        onChange={setDays}
-        options={[14, 30, 60].map((d) => ({ value: d, label: `${d} Tage` }))}
-      />
+      <Card data-testid="whoop-today">
+        <H2>Heute</H2>
+        <div className="grid grid-cols-2 gap-2">
+          <Ring
+            progress={r.score !== undefined && !r.needsManualInput ? r.score / 100 : 0}
+            color={r.traffic && !r.needsManualInput ? RING_COLOR[r.traffic] : RING_COLOR.none}
+            value={r.score !== undefined && !r.needsManualInput ? `${r.score} %` : '–'}
+            label="Erholung"
+            sub={r.traffic && !r.needsManualInput ? TRAFFIC_LABEL[r.traffic] : 'keine Daten'}
+          />
+          <Ring
+            progress={r.sleepMin !== undefined ? r.sleepMin / (r.needMin || 1) : 0}
+            color={RING_COLOR.sleep}
+            value={r.sleepMin !== undefined ? (r.sleepMin / 60).toFixed(1).replace('.', ',') : '–'}
+            {...(r.sleepMin !== undefined ? { unit: 'h' } : {})}
+            label="Schlaf"
+            sub={`Bedarf ${(r.needMin / 60).toFixed(1).replace('.', ',')} h${r.debtMin > 0 ? ` · Defizit ${Math.round(r.debtMin / 60 * 10) / 10} h`.replace('.', ',') : ''}`}
+          />
+        </div>
+        <div className="mt-4">
+          <Vitals />
+        </div>
+      </Card>
 
-      <div className="flex flex-wrap gap-3 text-xs text-muted" aria-label="Legende Schichten" data-testid="shift-legend">
-        {(['day', 'night', 'after_night'] as ShiftBand[]).map((b) => (
-          <span key={b} className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ background: BAND[b].fill, opacity: Math.min(1, BAND[b].opacity * 2.5) }} />
-            {BAND[b].label}
-          </span>
-        ))}
-        <button className="ml-auto underline" onClick={() => setTable((t) => !t)}>
-          {table ? 'Diagramme' : 'Tabelle'}
-        </button>
-      </div>
+      <EveningCard />
 
-      {!hasData && (
-        <Card>
-          <p className="text-sm text-muted">Noch keine Erholungsdaten. Verbinde WHOOP, trage deine Erholung in „Heute“ ein oder schalte den Demo-Modus ein.</p>
-        </Card>
+      <SleepPlan />
+
+      <Button className="w-full" aria-expanded={stats} onClick={() => setStats((x) => !x)}>
+        {stats ? 'Statistiken ausblenden' : 'Statistiken'}
+      </Button>
+
+      {stats && (
+        <div className="space-y-4" data-testid="statistics">
+          <SegmentedButtons
+            label="Zeitraum"
+            value={days}
+            onChange={setDays}
+            options={[14, 30, 60].map((d) => ({ value: d, label: `${d} Tage` }))}
+          />
+
+          <div className="flex flex-wrap gap-3 text-xs text-muted" aria-label="Legende Schichten" data-testid="shift-legend">
+            {(['day', 'night', 'after_night'] as ShiftBand[]).map((b) => (
+              <span key={b} className="flex items-center gap-1">
+                <span className="inline-block h-3 w-3 rounded-sm" style={{ background: BAND[b].fill, opacity: Math.min(1, BAND[b].opacity * 2.5) }} />
+                {BAND[b].label}
+              </span>
+            ))}
+            <button className="ml-auto underline" onClick={() => setTable((t) => !t)}>
+              {table ? 'Diagramme' : 'Tabelle'}
+            </button>
+          </div>
+
+          {!hasData && (
+            <Card>
+              <p className="text-sm text-muted">Noch keine Erholungsdaten. Verbinde WHOOP, trage deine Erholung in „Heute“ ein oder schalte den Demo-Modus ein.</p>
+            </Card>
+          )}
+
+          {hasData && table && <RecoveryTable rows={rows} />}
+          {hasData && !table && METRICS.map((m) => <MetricChart key={m.key} rows={rows} m={m} />)}
+        </div>
       )}
-
-      {hasData && table && <RecoveryTable rows={rows} />}
-      {hasData && !table && METRICS.map((m) => <MetricChart key={m.key} rows={rows} m={m} />)}
 
       <Card data-testid="patterns">
         <H2>Auswertungen</H2>
@@ -192,6 +235,88 @@ function RecoveryTable({ rows }: { rows: RecoveryRow[] }) {
           </tbody>
         </table>
       </div>
+    </Card>
+  )
+}
+
+/** Schlafplan für den aktuellen und den nächsten Rhythmus (10 Tage). */
+function SleepPlan() {
+  const app = useApp()
+  const current = microIndexOf(app.today)
+  const from = current ? app.plan.microcycles[current - 1]!.start : app.today
+  const dates = Array.from({ length: CONFIG.plan.microLengthDays * 2 }, (_, i) => addDays(from, i))
+  return (
+    <Card data-testid="sleep-plan">
+      <H2>Schlafplan · aktueller und nächster Rhythmus</H2>
+      <ul className="divide-y divide-line">
+        {dates.map((date) => {
+          const rec = date === app.today ? app.dayView(date).sleep : recommendSleep({ cal: app.cal, date, plan: app.plan })
+          const sh = effectiveShift(app.cal, date)
+          const extra = [
+            rec.daySleep && `Tagschlaf ${formatTime(rec.daySleep.start.minutes)}–${formatTime(rec.daySleep.end.minutes)}`,
+            rec.nap && `Nap ${formatTime(rec.nap.start.minutes)}–${formatTime(rec.nap.end.minutes)}`,
+            rec.departure !== undefined && `losfahren ${formatTime(rec.departure)}`,
+          ].filter(Boolean)
+          return (
+            <li key={date} className={`py-2 text-sm ${date === app.today ? 'text-accent' : ''}`} data-testid="sleep-plan-row">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">
+                  {weekdayShortDE(date)} {formatDateDE(date)}
+                </span>
+                <Chip>{shiftLabel(sh.code)}</Chip>
+              </div>
+              <div className="text-xs text-muted">
+                {rec.night ? `ins Bett ${formatTime(rec.night.start.minutes)} · aufstehen ${formatTime(rec.night.end.minutes)}` : 'Nacht im Dienst'}
+                {extra.length > 0 && ` · ${extra.join(' · ')}`}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
+}
+
+/** Heute Abend und morgen: Zeitplan, Vorbereitung und Tipps. */
+function EveningCard() {
+  const app = useApp()
+  const rec = app.dayView(app.today).sleep
+  const tomorrow = addDays(app.today, 1)
+  const routine = eveningRoutine(rec, effectiveShift(app.cal, app.today), effectiveShift(app.cal, tomorrow), app.plan.days.find((d) => d.date === tomorrow)?.sessions ?? [])
+  const tips = [rec.tip, ...rec.notes].filter((t): t is string => !!t)
+  return (
+    <Card data-testid="evening">
+      <H2>Heute Abend und morgen</H2>
+      {routine.steps.length > 0 && (
+        <ol className="relative mb-4 space-y-2 border-l border-line pl-4">
+          {routine.steps.map((st) => (
+            <li key={st.text} className="relative text-sm">
+              <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-[#3987e5]" />
+              <span className="font-semibold">{formatTime(st.atMin)}</span> <span className="text-muted">·</span> {st.text}
+            </li>
+          ))}
+        </ol>
+      )}
+      {routine.prepare.length > 0 && (
+        <>
+          <Sub>Vorbereitung für morgen</Sub>
+          <ul className="mt-1 mb-4 list-disc space-y-1 pl-5 text-sm">
+            {routine.prepare.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {tips.length > 0 && (
+        <>
+          <Sub>Tipps</Sub>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted">
+            {tips.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </>
+      )}
     </Card>
   )
 }

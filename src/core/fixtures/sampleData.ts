@@ -67,6 +67,7 @@ export function sampleWhoopData(cal: ShiftCalendar, opts: SampleOptions): WhoopD
       performancePct: Math.round(70 + rand() * 25),
       efficiencyPct: Math.round(82 + rand() * 12),
       needMin: 480,
+      respiratoryRate: Math.round((red ? 16.8 : 14.6 + noise / 40) * 10) / 10,
     }
     const asleep = Math.round(((end + (sDate !== eDate ? 1440 : 0) - start) * (s.efficiencyPct ?? 90)) / 100)
     s.asleepMin = red ? Math.min(asleep, 280) : asleep

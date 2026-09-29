@@ -395,6 +395,8 @@ export interface RecoveryDay {
   hrvMs?: number
   restingHr?: number
   spo2?: number
+  /** Atemfrequenz im Hauptschlaf (Atemzüge/min). */
+  respiratoryRate?: number
   sleep?: SleepData
   /** Strain des Vortags (WHOOP 0–21). */
   strainPrevDay?: number

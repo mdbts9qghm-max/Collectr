@@ -4,7 +4,8 @@ import { useApp } from '../../app/AppState'
 import { effectiveStrengthState } from '../../app/compute'
 import { canEnterLevel, isNewLevel, LADDER_IDS, LADDERS, levelDef, maxLevel } from '../../core/strength'
 import { formatDateDE, formatDayMonthDE } from '../../core/time'
-import { Button, Card, Chip, Disclosure, H2, SegmentedLinks } from '../components/common'
+import { Button, Card, Chip, Disclosure, H2 } from '../components/common'
+import { Tracking } from './Tracking'
 import { StrengthTestForm } from '../components/StrengthTestForm'
 
 const PULL = '#3987e5'
@@ -19,9 +20,33 @@ export function Strength() {
 
   return (
     <div className="space-y-4">
-      <SegmentedLinks label="Training" items={[{ to: '/kraft', label: 'Kraft' }, { to: '/tracking', label: 'Tracking' }]} />
-      <Card>
-        <H2>Aktuelle Stufen</H2>
+      <Card data-testid="skill-bar">
+        <H2>Fortschritt Skills</H2>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {LADDER_IDS.map((id) => {
+            const lvl = state.levels[id]
+            const max = maxLevel(id)
+            return (
+              <div key={id}>
+                <div className="flex items-baseline justify-between gap-1 text-xs">
+                  <span className="truncate font-medium">{LADDERS[id].name}</span>
+                  <span className="shrink-0 text-muted">
+                    {lvl + 1}/{max + 1}
+                  </span>
+                </div>
+                <div className="mt-1 h-2 rounded-full bg-line" aria-hidden>
+                  <div className="h-2 rounded-full bg-accent" style={{ width: `${((lvl + 1) / (max + 1)) * 100}%` }} />
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-muted">
+                  {levelDef(id, lvl).name}
+                  {isNewLevel(state, id) && <span className="ml-1 text-accent">neu</span>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+      <Disclosure card title="Stufen und nächste Ziele">
         <ul className="space-y-3" data-testid="ladders">
           {LADDER_IDS.map((id) => {
             const lvl = state.levels[id]
@@ -56,7 +81,7 @@ export function Strength() {
             )
           })}
         </ul>
-      </Card>
+      </Disclosure>
 
       <Card>
         <H2>Krafttests</H2>
@@ -131,6 +156,7 @@ export function Strength() {
           </Button>
         )}
       </Card>
+      <Tracking />
     </div>
   )
 }

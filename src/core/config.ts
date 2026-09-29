@@ -180,6 +180,19 @@ export const CONFIG = {
     reminderLeadMin: 30,
     /** Erinnerungen für so viele Tage im Voraus planen. */
     reminderDays: 7,
+    /** Abendroutine: Abstände vor dem Zubettgehen (min). */
+    evening: {
+      /** Kein Koffein mehr (Halbwertszeit ca. 5–6 h). */
+      caffeineStopMin: 8 * 60,
+      /** Letzte größere Mahlzeit. */
+      lastMealMin: 3 * 60,
+      /** Sachen für morgen packen, danach zur Ruhe kommen. */
+      prepareMin: 90,
+      /** Bildschirme weg, Licht dimmen. */
+      screensOffMin: 60,
+      /** Einheit morgen gilt als früh, wenn sie vor dieser Uhrzeit beginnt. */
+      earlySessionBefore: 9 * 60,
+    },
   },
 
   // ---------------------------------------------------------------------------
