@@ -86,6 +86,13 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 - [x] **Nach dem Livegang – Oberfläche aufgeräumt** (Nutzerwunsch „wie WHOOP, nichts wegnehmen“): Heute mit drei Ringen (Erholung, Schlaf, Training),
   4 Reiter (Heute · Plan [Zyklus | Gesamtplan] · Erholung · Training [Kraft | Tracking]), Einstellungen als aufklappbare Gruppen,
   Details hinter „Ablauf und Übungen“, „Original ansehen“, „Hinweise“. Bausteine: `Ring`, `Disclosure`, `SegmentedLinks/Buttons`, `Stat`, `Sub`
+- [x] **Neue Aufteilung** (Nutzerwunsch): 4 Reiter **Heute · Coach · Schlaf & Erholung · Calisthenics**
+  - Heute: Schicht (mit „Schicht ändern“) → Ringe → HRV/Ruhepuls/Atmung (`Vitals`, Abweichung zum 30-Tage-Schnitt) → Countdown → Training → ins Bett/aufstehen + 1–2 Tipps.
+    Urlaubs-Warnung nicht auf Heute, sondern im Gesamtplan bei der Checkliste Rennwoche
+  - Coach: Zyklus mit Umschalter Rhythmus (Soll/Ist pro 5 Tage) | Kalenderwochen (Soll/Ist pro Woche), Gesamtplan pro Rhythmus; `src/app/volumeView.ts`
+  - Schlaf & Erholung: WHOOP heute, Abendroutine (`src/core/sleep/evening.ts`), Schlafplan 10 Tage, Knopf „Statistiken“, Auswertungen, Umsetzung
+  - Calisthenics: Skill-Fortschrittsleiste, Stufen, Krafttests, Tracking (`/tracking` → `/kraft`)
+  - Atemfrequenz aus WHOOP (`respiratoryRate` im Schlaf), braucht Neu-Deploy der Edge Functions
 
 ## Phase 2 – Plan (freigegeben)
 

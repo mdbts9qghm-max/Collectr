@@ -174,8 +174,7 @@ test('WHOOP verbinden, abrufen, Recovery nach der Nachtschicht, Workout automati
   await expect(page.getByTestId('readiness')).not.toContainText('Beispieldaten')
 
   // Tracking: Lauf vom 03.10. automatisch erledigt, Golf als Vorschlag
-  await page.getByRole('link', { name: 'Training', exact: true }).click()
-  await page.getByRole('link', { name: 'Tracking' }).click()
+  await page.getByRole('link', { name: 'Calisthenics', exact: true }).click()
   await expect(page.getByTestId('track-session').filter({ hasText: 'Lockerer Lauf' }).first()).toContainText('erledigt')
   const sugg = page.getByTestId('workout-suggestions')
   await expect(sugg).toContainText('golf')

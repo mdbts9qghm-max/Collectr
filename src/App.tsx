@@ -8,7 +8,6 @@ import { Onboarding } from './ui/pages/Onboarding'
 import { Privacy } from './ui/pages/Privacy'
 import { Settings } from './ui/pages/Settings'
 import { Today } from './ui/pages/Today'
-import { Tracking } from './ui/pages/Tracking'
 import { UpdatePrompt } from './ui/components/UpdatePrompt'
 
 // Seiten mit Diagrammen (Recharts) werden erst bei Bedarf geladen.
@@ -35,7 +34,7 @@ function Routed() {
           }
         />
         <Route path="kraft" element={<Suspense fallback={loading}><Strength /></Suspense>} />
-        <Route path="tracking" element={<Tracking />} />
+        <Route path="tracking" element={<Navigate to="/kraft" replace />} />
         <Route path="einstellungen" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

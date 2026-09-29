@@ -4,11 +4,13 @@ import { nextTrainingDay, whoopActive, type DayItem, type Warning } from '../../
 import { PHASE_LABEL } from '../../core/plan'
 import { raceCountdown } from '../../core/race'
 import type { ReadinessResult } from '../../core/recovery'
-import { shiftLabel } from '../../core/shift'
+import { effectiveShift, shiftLabel } from '../../core/shift'
 import { berlinToInstant, formatDateDE, formatNumberDE, formatTime, weekdayLongDE } from '../../core/time'
 import type { SleepBlock, SleepRecommendation } from '../../core/types'
-import { Button, Card, Chip, Disclosure, H2, TRAFFIC_LABEL } from '../components/common'
+import { Button, Card, Chip, Disclosure, H2, Stat, TRAFFIC_LABEL } from '../components/common'
 import { ManualReadinessForm } from '../components/ManualReadinessForm'
+import { OverrideSheet } from '../components/OverrideSheet'
+import { Vitals } from '../components/Vitals'
 import { Ring, RING_COLOR } from '../components/Ring'
 import { SessionCard, SessionDetails, sessionMeta } from '../components/SessionCard'
 
@@ -17,41 +19,40 @@ export function Today() {
   const { today, plan, data } = app
   const v = app.dayView(today)
   const [editReadiness, setEditReadiness] = useState(false)
+  const [shiftSheet, setShiftSheet] = useState(false)
   // Bei simuliertem Datum zählt der Countdown ab 12:00 Uhr dieses Tages.
   const cd = raceCountdown(data.settings.simulatedDate ? berlinToInstant(today, 12 * 60) : app.now)
-  const inPlan = !v.beforePlan && !v.afterRace
   const r = v.readiness
-  const showForm = inPlan && (r.needsManualInput || editReadiness)
+  const showForm = !v.afterRace && (r.needsManualInput || editReadiness)
+
+  // Die Urlaubs-Warnung zum Rennen steht im Coach bei der Checkliste Rennwoche (Wunsch: nicht auf Heute).
+  const warnings = v.warnings.filter((w) => w.id !== 'vacation')
 
   return (
     <div className="space-y-4">
-      {v.warnings.map((w) => (
+      {warnings.map((w) => (
         <WarningBanner key={w.id} w={w} onAck={() => app.updateSettings({ vacationReminderAck: today })} />
       ))}
 
-      <Card>
+      <Card data-testid="shift-card">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-lg font-semibold">{weekdayLongDE(today)}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">{weekdayLongDE(today)} · Schicht</div>
+            <div className="text-xl font-bold">{v.day ? shiftLabel(v.day.shift.code) : shiftLabel(effectiveShift(app.cal, today).code)}</div>
             {v.day ? (
               <div className="text-sm text-muted" data-testid="shift-info">
                 Zyklustag {v.day.shift.cycleDay} · {shiftLabel(v.day.shift.code)}
-                {v.day.shift.work && ` · Beginn ${formatTime(v.day.shift.work.actualStart)}`}
+                {v.day.shift.work && ` · Beginn ${formatTime(v.day.shift.work.actualStart)} · losfahren ${formatTime(v.day.shift.work.departure)}`}
               </div>
             ) : (
               <div className="text-sm text-muted">{v.beforePlan ? 'Der Plan beginnt am 02.10.2026.' : 'Außerhalb des Plans'}</div>
             )}
-            {v.micro && (
-              <div className="mt-1 text-xs text-muted">
-                {PHASE_LABEL[v.micro.phase]} · Meso {v.micro.mesoIndex} · Mikro {v.micro.index}
-                {v.micro.kind === 'deload' && ' · Entlastung'}
-              </div>
-            )}
           </div>
-          <div className="shrink-0 text-right" data-testid="countdown">
-            <div className="text-3xl font-bold leading-none text-accent">{cd.started ? '🏁' : cd.days}</div>
-            <div className="mt-1 text-[11px] uppercase tracking-wider text-muted">{cd.started ? 'Rennen' : 'Tage bis Start'}</div>
-          </div>
+          {v.day && (
+            <Button className="shrink-0" onClick={() => setShiftSheet(true)}>
+              Schicht ändern
+            </Button>
+          )}
         </div>
         {v.day?.window && (
           <div className="mt-3">
@@ -62,7 +63,7 @@ export function Today() {
         )}
       </Card>
 
-      {inPlan && (
+      {!v.afterRace && (
         <Card data-testid="readiness">
           <div className="grid grid-cols-3 gap-2">
             <RecoveryRing r={r} source={r.source === 'manual' ? 'manuell' : whoopActive(data) ? 'WHOOP' : 'WHOOP (Beispieldaten)'} onEdit={() => setEditReadiness((e) => !e)} />
@@ -88,8 +89,29 @@ export function Today() {
               />
             </div>
           )}
+          <div className="mt-4">
+            <Vitals />
+          </div>
         </Card>
       )}
+
+      <Card>
+        <div className="flex items-center justify-between gap-3" data-testid="countdown">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Ehrwald Trail · 18.06.2027, 23:00 Uhr</div>
+            {v.micro && (
+              <div className="mt-1 text-sm text-muted">
+                {PHASE_LABEL[v.micro.phase]} · Meso {v.micro.mesoIndex} · Mikro {v.micro.index}
+                {v.micro.kind === 'deload' && ' · Entlastung'}
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-3xl font-bold leading-none text-accent">{cd.started ? '🏁' : cd.days}</div>
+            <div className="mt-1 text-[11px] uppercase tracking-wider text-muted">{cd.started ? 'Rennen' : 'Tage bis Start'}</div>
+          </div>
+        </div>
+      </Card>
 
       <Card>
         <H2>Training heute</H2>
@@ -128,6 +150,7 @@ export function Today() {
       )}
 
       <SleepCard rec={v.sleep} />
+      {shiftSheet && <OverrideSheet date={today} onClose={() => setShiftSheet(false)} />}
     </div>
   )
 }
@@ -321,32 +344,38 @@ function blockText(b: SleepBlock): string {
 }
 
 function SleepCard({ rec }: { rec: SleepRecommendation }) {
-  const rows: { label: string; value: string }[] = []
-  if (rec.daySleep) rows.push({ label: 'Tagschlaf', value: blockText(rec.daySleep) })
-  if (rec.nap) rows.push({ label: 'Nap', value: blockText(rec.nap) })
-  if (rec.departure !== undefined) rows.push({ label: 'Losfahren', value: `${formatTime(rec.departure)} Uhr` })
-  if (rec.night) rows.push({ label: 'Heute Nacht', value: `ins Bett ${formatTime(rec.night.start.minutes)}, aufstehen ${formatTime(rec.night.end.minutes)} Uhr` })
+  const small: { label: string; value: string }[] = []
+  if (rec.daySleep) small.push({ label: 'Tagschlaf', value: blockText(rec.daySleep) })
+  if (rec.nap) small.push({ label: 'Nap', value: blockText(rec.nap) })
+  if (rec.departure !== undefined) small.push({ label: 'Losfahren', value: `${formatTime(rec.departure)} Uhr` })
+  const tips = [rec.tip, ...rec.notes].filter((t): t is string => !!t).slice(0, 2)
   return (
     <Card data-testid="sleep">
       <H2>Schlaf</H2>
-      <ol className="relative space-y-3 border-l border-line pl-4">
-        {rows.map((x) => (
-          <li key={x.label} className="relative text-sm">
-            <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-[#3987e5]" />
-            <span className="text-muted">{x.label}: </span>
-            <span className="font-medium">{x.value}</span>
-          </li>
-        ))}
-      </ol>
-      {(rec.notes.length > 0 || rec.tip) && (
-        <Disclosure title="Hinweise" className="mt-3">
-          <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
-            {rec.notes.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
-          {rec.tip && <p className="mt-2 text-xs text-accent">Tipp: {rec.tip}</p>}
-        </Disclosure>
+      {rec.night ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Heute ins Bett" value={`${formatTime(rec.night.start.minutes)}`} sub="Uhr" />
+          <Stat label="Morgen aufstehen" value={`${formatTime(rec.night.end.minutes)}`} sub="Uhr" />
+        </div>
+      ) : (
+        <p className="text-sm">Heute Nacht Dienst: Der Hauptschlaf folgt morgen nach der Schicht.</p>
+      )}
+      {small.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm">
+          {small.map((x) => (
+            <li key={x.label}>
+              <span className="text-muted">{x.label}: </span>
+              <span className="font-medium">{x.value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {tips.length > 0 && (
+        <ul className="mt-3 space-y-1 text-xs text-accent" data-testid="sleep-tips">
+          {tips.map((t, i) => (
+            <li key={i}>💡 {t}</li>
+          ))}
+        </ul>
       )}
     </Card>
   )

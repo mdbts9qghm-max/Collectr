@@ -25,6 +25,8 @@ export interface WhoopSleep {
   efficiencyPct?: number
   needMin?: number
   debtMin?: number
+  /** Atemfrequenz im Schlaf (Atemzüge/min). */
+  respiratoryRate?: number
 }
 
 export interface WhoopRecovery {
@@ -109,6 +111,7 @@ export function assignRecoveryDay(cal: ShiftCalendar, date: LocalDate, data: Who
     ...(recovery?.hrvMs !== undefined ? { hrvMs: recovery.hrvMs } : {}),
     ...(recovery?.restingHr !== undefined ? { restingHr: recovery.restingHr } : {}),
     ...(recovery?.spo2 !== undefined ? { spo2: recovery.spo2 } : {}),
+    ...(main.respiratoryRate !== undefined ? { respiratoryRate: main.respiratoryRate } : {}),
     ...(prevCycle?.strain !== undefined ? { strainPrevDay: prevCycle.strain } : {}),
     sleep: {
       durationMin,
