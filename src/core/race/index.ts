@@ -3,20 +3,36 @@
 
 import { CONFIG } from '../config'
 import { effectiveShift, shiftLabel, type ShiftCalendar } from '../shift'
-import { addDays, berlinToInstant, compareDates, dateRange, formatDateDE, weekdayShortDE } from '../time'
+import { rhythmStart } from '../plan/periodization'
+import { addDays, berlinToInstant, compareDates, dateRange, formatDateDE, formatTime, weekdayLongDE, weekdayShortDE } from '../time'
 import type { LocalDate, ShiftCode } from '../types'
 
 const R = CONFIG.race
 
+/** Rennen in Kurzform für die Oberfläche: „Arberland Classic Trail · 18.09.2027, 07:00 Uhr“. */
+export function raceHeadline(): string {
+  return `${R.shortName} · ${formatDateDE(R.date)}, ${formatTime(R.startMin)} Uhr`
+}
+
+/** Eckdaten: „66 km, 2.514 hm, Start 07:00 Uhr, Zeitlimit 13 h“. */
+export function raceFacts(): string {
+  return `${R.distanceKm} km, ${String(R.elevationGainM).replace(/\B(?=(\d{3})+$)/g, '.')} hm, Start ${formatTime(R.startMin)} Uhr, Zeitlimit ${R.cutoffHours} h`
+}
+
+/** Termin lang: „Samstag, 18.09.2027, 07:00 Uhr“ (mit Hinweis, solange er vorläufig ist). */
+export function raceDateLong(): string {
+  return `${weekdayLongDE(R.date)}, ${formatDateDE(R.date)}, ${formatTime(R.startMin)} Uhr${R.dateProvisional ? ' (vorläufig)' : ''}`
+}
+
 export interface RaceConflict {
   hasConflict: boolean
   days: { date: LocalDate; code: ShiftCode; label: string; isWork: boolean }[]
-  /** Urlaub für den empfohlenen Zeitraum (14.–20.06.) vollständig eingetragen. */
+  /** Urlaub für den empfohlenen Zeitraum (`race.vacationRecommendedFrom`–`To`) vollständig eingetragen. */
   recommendedVacationComplete: boolean
   message: string
 }
 
-/** Prüft Renntag, Zielschluss-Tag und Folgenacht gegen den Schichtplan. */
+/** Prüft die Pflicht-Urlaubstage (Anreise und Renntag) gegen den Schichtplan. */
 export function raceConflict(cal: ShiftCalendar): RaceConflict {
   const days = R.vacationRequired.map((date) => {
     const s = effectiveShift(cal, date)
@@ -26,7 +42,7 @@ export function raceConflict(cal: ShiftCalendar): RaceConflict {
   const recommendedVacationComplete = dateRange(R.vacationRecommendedFrom, R.vacationRecommendedTo).every((d) => effectiveShift(cal, d).code === 'U')
   const conflicts = days.filter((d) => d.isWork).map((d) => `${weekdayShortDE(d.date)}, ${formatDateDE(d.date)}: ${d.label}`)
   const message = hasConflict
-    ? `Rennen am ${formatDateDE(R.date)} um 23:00 Uhr kollidiert mit deinem Dienstplan (${conflicts.join('; ')}). Beantrage Urlaub mindestens für ${formatDateDE(R.vacationRequired[0]!)}–${formatDateDE(R.vacationRequired.at(-1)!)}, besser ab ${formatDateDE(R.vacationRecommendedFrom)} für einen ausgeruhten Taper und die Anreise.`
+    ? `Rennen am ${formatDateDE(R.date)} um ${formatTime(R.startMin)} Uhr kollidiert mit deinem Dienstplan (${conflicts.join('; ')}). Beantrage Urlaub mindestens für ${formatDateDE(R.vacationRequired[0]!)}–${formatDateDE(R.vacationRequired.at(-1)!)}, besser ab ${formatDateDE(R.vacationRecommendedFrom)} für einen ausgeruhten Taper und die Anreise.`
     : recommendedVacationComplete
       ? 'Urlaub für die Rennwoche ist eingetragen.'
       : `Die Renntage sind frei. Empfehlung: Urlaub ab ${formatDateDE(R.vacationRecommendedFrom)} für einen ausgeruhten Taper und die Anreise.`
@@ -53,17 +69,20 @@ export interface ChecklistItem {
 
 /** Checkliste für die Rennwoche (SPEC 7). */
 export function raceChecklist(): ChecklistItem[] {
+  const vacation = `${formatDateDE(R.vacationRecommendedFrom).slice(0, 6)}–${formatDateDE(R.vacationRecommendedTo)}`
+  const start = formatTime(R.startMin)
+  const wake = formatTime(R.startMin - R.wakeBeforeStartMin)
   return [
-    { id: 'urlaub', group: 'Organisation', text: 'Urlaub 14.–20.06.2027 beantragt und im Plan eingetragen' },
-    { id: 'anreise', group: 'Anreise', text: 'Anreise nach Ehrwald (Tirol) planen, Unterkunft buchen, Startnummernausgabe prüfen' },
-    { id: 'pflicht', group: 'Ausrüstung', text: 'Pflichtausrüstung laut Veranstalter vollständig (Jacke, Hose, Rettungsdecke, Handy, Becher …)' },
-    { id: 'lampe', group: 'Ausrüstung', text: 'Stirnlampe geladen und getestet, Ersatzakkus bzw. zweite Lampe eingepackt' },
+    { id: 'urlaub', group: 'Organisation', text: `Urlaub ${vacation} beantragt und im Plan eingetragen` },
+    { id: 'termin', group: 'Organisation', text: `Renntermin und Anmeldung beim Veranstalter prüfen${R.dateProvisional ? ' (Termin ist noch vorläufig)' : ''}` },
+    { id: 'anreise', group: 'Anreise', text: `Anreise nach ${R.location} planen, Unterkunft buchen, Startnummernausgabe prüfen` },
+    { id: 'pflicht', group: 'Ausrüstung', text: 'Pflichtausrüstung laut Veranstalter vollständig (Jacke, Rettungsdecke, Handy, Becher …)' },
     { id: 'schuhe', group: 'Ausrüstung', text: 'Eingelaufene Schuhe, Stöcke, Rucksack aus den langen Läufen' },
-    { id: 'wetter', group: 'Ausrüstung', text: 'Warme Schicht für die Nacht und die Höhe, Wetterbericht Zugspitze prüfen' },
+    { id: 'wetter', group: 'Ausrüstung', text: 'Wetterbericht prüfen, Regenjacke und warme Schicht für den Morgen einpacken' },
     { id: 'verpflegung', group: 'Verpflegung', text: 'Verpflegungsplan: 60–90 g Kohlenhydrate pro Stunde, im Training getestet' },
-    { id: 'drop', group: 'Verpflegung', text: 'Verpflegungsstellen und Streckenprofil kennen, Zeitplan für das Zeitlimit von 22 h' },
-    { id: 'nap', group: 'Schlaf', text: 'Schlafstrategie: gute Nächte vorher, Nap am Nachmittag des Renntags (Start 23:00 Uhr)' },
-    { id: 'koffein', group: 'Schlaf', text: 'Koffein-Plan für die Nacht (erst ab dem Start, nicht vor dem Nap)' },
+    { id: 'drop', group: 'Verpflegung', text: `Verpflegungsstellen und Streckenprofil kennen, Zeitplan für das Zeitlimit von ${R.cutoffHours} h` },
+    { id: 'schlaf', group: 'Schlaf', text: `Schlafstrategie: in den Tagen vorher früh ins Bett, am Renntag ${wake} Uhr aufstehen (Start ${start} Uhr)` },
+    { id: 'fruehstueck', group: 'Schlaf', text: 'Renn-Frühstück aus den langen Läufen im Rennzeitplan, Koffein erst am Morgen' },
   ]
 }
 
@@ -74,7 +93,7 @@ export interface TaperShiftNote {
 
 /** Nachtschichten in Taper-Phase und Rennwoche kosten Erholung (SPEC 7). */
 export function taperShiftNotes(cal: ShiftCalendar): TaperShiftNote[] {
-  const taperStart = addDays(CONFIG.plan.startDate, (CONFIG.plan.taperMicros.taper1 - 1) * CONFIG.plan.microLengthDays)
+  const taperStart = rhythmStart(CONFIG.plan.taperMicros.taper1)
   return dateRange(taperStart, addDays(R.date, -1))
     .filter((d) => effectiveShift(cal, d).code === 'N')
     .map((date) => ({

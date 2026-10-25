@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSettings } from '../data/defaults'
 import { berlinToInstant } from '../core/time'
-import { buildCalendar, buildDayView, buildPlan, currentDate, effectiveStrengthState, EMPTY_WHOOP, nextTrainingDay, recoveryHistory, workoutActions, type AppData } from './compute'
+import { CONFIG } from '../core/config'
+import {
+  buildCalendar,
+  buildDayView,
+  buildPlan,
+  currentDate,
+  effectiveStrengthState,
+  EMPTY_WHOOP,
+  HISTORY_RESET_NOTICE,
+  needsHistoryReset,
+  nextTrainingDay,
+  recoveryHistory,
+  workoutActions,
+  type AppData,
+} from './compute'
 
 function data(over: Partial<AppData> = {}, settings: Partial<AppData['settings']> = {}): AppData {
   return {
@@ -34,7 +48,7 @@ describe('Tagesansicht', () => {
   })
 
   it('ohne Erholungsdaten: manuelle Eingabe wird angefordert, kein Fehler', () => {
-    const { v } = view(data(), '2026-10-03')
+    const { v } = view(data(), '2026-10-28')
     expect(v.readiness.needsManualInput).toBe(true)
     expect(v.items.length).toBeGreaterThan(0)
     expect(v.items.every((i) => i.adjustment.action === 'needs_input')).toBe(true)
@@ -64,16 +78,27 @@ describe('Tagesansicht', () => {
     expect(v2.warnings.find((x) => x.id === 'vacation')!.level).toBe('warn')
   })
 
-  it('Bergwochenende wird vorher angekündigt', () => {
-    const { v } = view(data(), '2027-05-01')
-    expect(v.warnings.some((w) => w.id === 'mountain-48')).toBe(true)
+  it('Bergwochenende und Streckenbesichtigung werden vorher angekündigt', () => {
+    const { v } = view(data(), '2027-07-01')
+    expect(v.warnings.find((w) => w.id === 'mountain-53')!.text).toContain('Bergwochenende am 17.07.2027')
+    const { v: v2 } = view(data(), '2027-08-01')
+    expect(v2.warnings.find((w) => w.id === 'mountain-60')!.text).toContain(`Streckenbesichtigung ${CONFIG.race.name}`)
   })
 
-  it('vor dem Planstart: nächster Trainingstag', () => {
+  it('vor dem Planstart: nächster Trainingstag ist der Einstiegstag', () => {
     const d = data()
-    const { v, plan } = view(d, '2026-09-28')
+    const { v, plan } = view(d, '2026-10-25')
     expect(v.beforePlan).toBe(true)
-    expect(nextTrainingDay(plan, '2026-09-28')!.date).toBe('2026-10-03')
+    expect(nextTrainingDay(plan, '2026-10-25')!.date).toBe('2026-10-26')
+    expect(view(d, '2026-10-26').v.beforePlan).toBe(false)
+  })
+
+  it('Zielwechsel: Einträge eines eingerichteten Nutzers werden einmalig zurückgesetzt', () => {
+    expect(needsHistoryReset({ ...defaultSettings(), onboarded: true })).toBe(true)
+    expect(needsHistoryReset({ ...defaultSettings(), onboarded: true, planId: 'ehrwald-2027' })).toBe(true)
+    expect(needsHistoryReset({ ...defaultSettings(), onboarded: true, planId: CONFIG.race.id })).toBe(false)
+    expect(needsHistoryReset(defaultSettings())).toBe(false) // noch im Onboarding
+    expect(HISTORY_RESET_NOTICE).toContain('Arberland Classic Trail')
   })
 
   it('Kraftstand aus dem Onboarding-Test', () => {
@@ -85,7 +110,7 @@ describe('Tagesansicht', () => {
   })
 
   it('V-Schicht verändert den Plan sofort', () => {
-    const { v } = view(data({ overrides: [{ date: '2026-10-06', kind: 'V' }] }), '2026-10-06')
+    const { v } = view(data({ overrides: [{ date: '2026-10-31', kind: 'V' }] }), '2026-10-31')
     expect(v.items).toEqual([])
     expect(v.day!.removed.length).toBeGreaterThan(0)
   })
@@ -112,29 +137,29 @@ describe('Tagesansicht', () => {
     const base = data({}, {})
     const cal = buildCalendar(base.settings, [])
     const plan = buildPlan(base, cal, [])
-    // Der Lauf liegt an Tag 3 (04.10.) nach dem Tagschlaf
-    const run = plan.days.find((d) => d.date === '2026-10-04')!.sessions.find((s) => s.category === 'run')!
+    // Der Lauf liegt an Tag 3 (29.10.) nach dem Tagschlaf
+    const run = plan.days.find((d) => d.date === '2026-10-29')!.sessions.find((s) => s.category === 'run')!
     const workouts = [
-      { id: 'w-run', start: iso('2026-10-04', run.startMin! + 5), end: iso('2026-10-04', run.startMin! + 55), sportName: 'running', distanceM: 7200, strain: 9 },
-      { id: 'w-golf', start: iso('2026-10-05', 10 * 60), end: iso('2026-10-05', 11 * 60), sportName: 'golf' },
+      { id: 'w-run', start: iso('2026-10-29', run.startMin! + 5), end: iso('2026-10-29', run.startMin! + 55), sportName: 'running', distanceM: 7200, strain: 9 },
+      { id: 'w-golf', start: iso('2026-10-30', 10 * 60), end: iso('2026-10-30', 11 * 60), sportName: 'golf' },
     ]
     const d = data({ whoop: { ...EMPTY_WHOOP, status: { connected: true }, workouts } })
-    const a = workoutActions(d, plan, '2026-10-06')
+    const a = workoutActions(d, plan, '2026-10-31')
     expect(a.autoLogs).toHaveLength(1)
     expect(a.autoLogs[0]).toMatchObject({ sessionId: run.id, status: 'done', distanceKm: 7.2, whoopWorkoutId: 'w-run' })
     expect(a.suggestions.map((s) => s.workout.id)).toEqual(['w-golf'])
     expect(a.suggestions[0]!.candidates.length).toBeGreaterThan(0)
     // Eigener Eintrag vorhanden → nicht überschreiben
-    const own = data({ whoop: d.whoop, logs: [{ sessionId: run.id, date: '2026-10-04', status: 'done', feeling: 4 }] })
-    expect(workoutActions(own, plan, '2026-10-06').autoLogs).toEqual([])
+    const own = data({ whoop: d.whoop, logs: [{ sessionId: run.id, date: '2026-10-29', status: 'done', feeling: 4 }] })
+    expect(workoutActions(own, plan, '2026-10-31').autoLogs).toEqual([])
     // Bereits übernommen → nichts mehr zu tun
     const done = data({ whoop: d.whoop, logs: [a.autoLogs[0]!] })
-    expect(workoutActions(done, plan, '2026-10-06').autoLogs).toEqual([])
+    expect(workoutActions(done, plan, '2026-10-31').autoLogs).toEqual([])
     // Korrektur: ignorieren bzw. andere Einheit
     const ignored = data({ whoop: d.whoop, assignments: [{ workoutId: 'w-golf', sessionId: null, decidedAt: 'x' }] })
-    expect(workoutActions(ignored, plan, '2026-10-06').suggestions).toEqual([])
-    const long = plan.days.find((x) => x.date === '2026-10-05')!.sessions[0]!
+    expect(workoutActions(ignored, plan, '2026-10-31').suggestions).toEqual([])
+    const long = plan.days.find((x) => x.date === '2026-10-30')!.sessions[0]!
     const assigned = data({ whoop: d.whoop, assignments: [{ workoutId: 'w-golf', sessionId: long.id, decidedAt: 'x' }] })
-    expect(workoutActions(assigned, plan, '2026-10-06').autoLogs.map((l) => l.sessionId)).toContain(long.id)
+    expect(workoutActions(assigned, plan, '2026-10-31').autoLogs.map((l) => l.sessionId)).toContain(long.id)
   })
 })

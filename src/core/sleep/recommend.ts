@@ -9,6 +9,7 @@ import { latestWakeForWork } from './baseline'
 import { SLEEP_TIPS, type TipTag } from './tips'
 
 const S = CONFIG.sleep
+const R = CONFIG.race
 
 export interface SleepInput {
   cal: ShiftCalendar
@@ -40,10 +41,16 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
   const rec: SleepRecommendation = { date, notes }
   const todaySessions = sessionsOn(plan, date)
   const tomorrowSessions = sessionsOn(plan, addDays(date, 1))
-  const isRaceDay = date === CONFIG.race.date
-  const daysToRace = daysBetween(date, CONFIG.race.date)
+  const isRaceDay = date === R.date
+  const daysToRace = daysBetween(date, R.date)
   const racePrep = daysToRace >= 0 && daysToRace <= S.racePrepDays
   const nightRun = todaySessions.find((s) => s.type === 'night_run')
+  // Morgen fester Start (Rennen oder langer Lauf im Rennzeitplan): aufstehen wie am Renntag.
+  const tomorrowIsRace = daysToRace === 1
+  const fixedStart = tomorrowIsRace
+    ? R.startMin
+    : tomorrowSessions.filter((s) => s.fixedStart && s.startMin !== undefined).reduce((a, s) => Math.min(a, s.startMin!), Infinity)
+  const startWake = Number.isFinite(fixedStart) ? fixedStart - R.wakeBeforeStartMin : null
   let tag: TipTag = 'free'
 
   if (today.work) rec.departure = today.work.departure
@@ -55,8 +62,17 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
     tag = 'post_night'
   }
 
-  // Nap vor der Nachtschicht, vor einem Nachtlauf, vor dem Rennen
-  if (today.dayKind === 'pre_night' && today.work) {
+  // Renntag hat Vorrang. Nap nur bei einem späten Start (Arberland: 07:00, also ohne Nap).
+  if (isRaceDay) {
+    if (R.startMin >= R.napIfStartFrom) {
+      rec.nap = block(date, S.raceNapStart, S.raceNapStart + S.latencyMin + S.raceNapMin)
+      notes.push(`Renntag: Nap ${formatTime(rec.nap.start.minutes)}–${formatTime(rec.nap.end.minutes)} Uhr, Start um ${formatTime(R.startMin)} Uhr.`)
+    } else {
+      notes.push(`Renntag: ${formatTime(R.startMin - R.wakeBeforeStartMin)} Uhr aufstehen, frühstücken, Start um ${formatTime(R.startMin)} Uhr in ${R.location}.`)
+    }
+    tag = 'race'
+  } else if (today.dayKind === 'pre_night' && today.work) {
+    // Nap vor der Nachtschicht
     const latestWake = today.work.departure - S.napPrepMin
     const want = debt >= S.napLongDebtMin ? S.napMaxMin : S.napDefaultMin
     const dur = Math.max(S.napMinMin, Math.min(want, latestWake - S.napStart - S.latencyMin))
@@ -65,10 +81,6 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
       `Vorschlaf ${formatTime(S.napStart)}–${formatTime(rec.nap.end.minutes)} Uhr, spätestens ${formatTime(latestWake)} aufstehen, ${formatTime(today.work.departure)} losfahren.`,
     )
     tag = 'pre_night'
-  } else if (isRaceDay) {
-    rec.nap = block(date, S.raceNapStart, S.raceNapStart + S.latencyMin + S.raceNapMin)
-    notes.push(`Renntag: Nap ${formatTime(rec.nap.start.minutes)}–${formatTime(rec.nap.end.minutes)} Uhr, Start um ${formatTime(CONFIG.race.startMin)} Uhr.`)
-    tag = 'race'
   } else if (nightRun) {
     rec.nap = block(date, S.nightRunNapStart, S.nightRunNapStart + S.latencyMin + S.nightRunNapMin)
     notes.push('Vor dem Nachtlauf nachmittags vorschlafen.')
@@ -94,6 +106,15 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
       bed = (nightRun.startMin ?? CONFIG.windows.nightRunStart) + nightRun.durationMin + S.afterNightRunMin
       wake = bed + need + S.latencyMin
       notes.push('Nach dem Nachtlauf ausschlafen, Einheit am Folgetag erst am Nachmittag.')
+    } else if (startWake !== null) {
+      wake = Math.min(startWake, earlyWake ?? Infinity) + 1440
+      bed = Math.max(S.earliestBedtime, wake - need - S.latencyMin)
+      notes.push(
+        tomorrowIsRace
+          ? `Morgen ist Renntag: ${formatTime(wake)} Uhr aufstehen, Start um ${formatTime(R.startMin)} Uhr.`
+          : `Morgen langer Lauf im Rennzeitplan: ${formatTime(wake)} Uhr aufstehen wie am Renntag, Start ${formatTime(fixedStart)} Uhr.`,
+      )
+      tag = 'race'
     } else if (earlyWake !== null) {
       wake = earlyWake + 1440
       bed = Math.max(S.earliestBedtime, wake - need - S.latencyMin)
@@ -112,8 +133,8 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
     }
     if (racePrep && !nightRun) {
       bed = Math.min(bed, S.raceNightBedtime)
-      if (earlyWake === null) wake = Math.max(wake, bed + need + S.latencyMin)
-      notes.push('Rennvorbereitung: gute, regelmäßige Nächte vor dem Start um 23:00 Uhr.')
+      if (earlyWake === null && startWake === null) wake = Math.max(wake, bed + need + S.latencyMin)
+      notes.push(`Rennvorbereitung: regelmäßige, eher frühe Nächte vor dem Start um ${formatTime(R.startMin)} Uhr.`)
       tag = 'race'
     }
     rec.night = block(date, bed, wake)

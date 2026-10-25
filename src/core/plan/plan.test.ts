@@ -28,46 +28,73 @@ const day = (p: Plan, date: string): PlanDay => p.days.find((d) => d.date === da
 const types = (d: PlanDay) => d.sessions.map((s) => s.type)
 const microKm = (p: Plan, i: number) => p.microcycles.find((m) => m.index === i)!.plannedKm
 
-describe('Periodisierung (SPEC 5.1, 5.2)', () => {
-  it('52 Mikrozyklen vom 02.10.2026 bis 18.06.2027', () => {
+describe('Periodisierung (SPEC 5.1, 5.2, Zielwechsel Arberland)', () => {
+  it('66 Mikrozyklen vom Einstiegstag 26.10.2026 bis zum Rennen am 18.09.2027', () => {
     const micros = buildMicrocycles()
-    expect(micros).toHaveLength(52)
-    expect(micros[0]!.start).toBe('2026-10-02')
-    expect(micros.at(-1)!.end).toBe('2027-06-18')
+    expect(micros).toHaveLength(66)
+    expect(micros[0]!.start).toBe('2026-10-26')
+    expect(micros[0]!.end).toBe('2026-10-31')
+    expect(micros[1]!.start).toBe('2026-11-01')
+    expect(micros.at(-1)!.start).toBe('2027-09-17')
+    expect(micros.at(-1)!.end).toBe('2027-09-18')
   })
 
-  it('Phasengrenzen liegen auf Mesozyklus-Grenzen (2/3/2 + Taper)', () => {
+  it('Einstiegstag 26.10.2026 (Zyklustag 5) mit lockerem Lauf, Mikrozyklus 1 beginnt am 27.10. an Tag 1', () => {
+    const intro = day(plan, '2026-10-26')
+    expect(intro.shift.cycleDay).toBe(5)
+    expect(intro.microIndex).toBe(1)
+    expect(types(intro)).toEqual(['easy_run'])
+    expect(intro.sessions[0]!.durationMin).toBeLessThanOrEqual(40)
+    const first = day(plan, '2026-10-27')
+    expect(first.shift.cycleDay).toBe(1)
+    expect(first.microIndex).toBe(1)
+    expect(day(plan, '2026-11-01').shift.cycleDay).toBe(1)
+    expect(plan.days[0]!.date).toBe('2026-10-26')
+  })
+
+  it('Phasen anteilig verlängert: Grundlage 3, Aufbau 4, Rennspezifisch 3 Mesozyklen + Taper', () => {
     const mesos = buildMesocycles()
     expect(mesos.map((m) => [m.start, m.phase])).toEqual([
-      ['2026-10-02', 'base'],
-      ['2026-11-06', 'base'],
-      ['2026-12-11', 'build'],
-      ['2027-01-15', 'build'],
-      ['2027-02-19', 'build'],
-      ['2027-03-26', 'specific'],
-      ['2027-04-30', 'specific'],
-      ['2027-06-04', 'taper'],
+      ['2026-10-26', 'base'],
+      ['2026-11-26', 'base'],
+      ['2026-12-26', 'base'],
+      ['2027-01-25', 'build'],
+      ['2027-03-01', 'build'],
+      ['2027-04-05', 'build'],
+      ['2027-05-05', 'build'],
+      ['2027-06-04', 'specific'],
+      ['2027-07-04', 'specific'],
+      ['2027-08-03', 'specific'],
+      ['2027-09-02', 'taper'],
     ])
-    expect(mesos.at(-1)!.end).toBe('2027-06-18')
+    expect(mesos.at(-1)!.end).toBe('2027-09-18')
   })
 
-  it('Entlastung = letzter Mikrozyklus in Meso 1–6, nicht in Meso 7', () => {
+  it('Entlastung = letzter Mikrozyklus jedes Mesozyklus, nicht im letzten vor dem Taper', () => {
     const deloads = buildMicrocycles()
       .filter((m) => m.kind === 'deload')
       .map((m) => m.index)
-    expect(deloads).toEqual([7, 14, 21, 28, 35, 42])
-    expect(buildMicrocycles().find((m) => m.index === 49)!.kind).toBe('normal')
+    expect(deloads).toEqual([6, 12, 18, 25, 32, 38, 44, 50, 56])
+    expect(buildMicrocycles().find((m) => m.index === 62)!.kind).toBe('normal')
   })
 
-  it('Taper ab 04.06.2027 über 3 Mikrozyklen', () => {
+  it('Taper ab 02.09.2027: zwei Taper-Mikrozyklen, Rennwoche, Renntag', () => {
     const taper = buildMicrocycles().filter((m) => m.phase === 'taper')
-    expect(taper.map((m) => m.start)).toEqual(['2027-06-04', '2027-06-09', '2027-06-14'])
+    expect(taper.map((m) => [m.start, m.kind])).toEqual([
+      ['2027-09-02', 'taper1'],
+      ['2027-09-07', 'taper2'],
+      ['2027-09-12', 'race_week'],
+      ['2027-09-17', 'race_day'],
+    ])
   })
 
   it('findet den Mikrozyklus zu einem Datum', () => {
-    expect(microIndexOf('2026-10-02')).toBe(1)
-    expect(microIndexOf('2027-06-18')).toBe(52)
-    expect(microIndexOf('2026-10-01')).toBeUndefined()
+    expect(microIndexOf('2026-10-26')).toBe(1)
+    expect(microIndexOf('2026-10-31')).toBe(1)
+    expect(microIndexOf('2026-11-01')).toBe(2)
+    expect(microIndexOf('2027-09-18')).toBe(66)
+    expect(microIndexOf('2026-10-25')).toBeUndefined()
+    expect(microIndexOf('2027-09-19')).toBeUndefined()
   })
 })
 
@@ -83,13 +110,14 @@ describe('Umfang (SPEC 5.3, Trend-Regel mit Schlüsselspitzen)', () => {
     expect(weeklyEquivalentKm(plan.microcycles[0]!)).toBeGreaterThan(28)
     expect(weeklyEquivalentKm(plan.microcycles[0]!)).toBeLessThan(32)
     const p20 = generatePlan({ profile: { weeklyKmStart: 20 } })
-    expect(weeklyEquivalentKm(p20.microcycles[0]!)).toBeLessThan(22)
+    expect(weeklyEquivalentKm(p20.microcycles[0]!)).toBeLessThan(24) // inkl. 35 min Einstiegslauf
   })
 
   it('normale Mikrozyklen liegen nicht über dem Soll, Schlüsselspitzen höchstens 12 % über dem Grundniveau', () => {
+    const intro = day(plan, CONFIG.plan.startDate).sessions.reduce((a, s) => a + (s.distanceKm ?? 0), 0)
     for (const m of plan.microcycles) {
       if (m.phase === 'taper') continue
-      const limit = m.isKeyPeak ? m.levelKm * 1.12 : m.targetKm
+      const limit = (m.isKeyPeak ? m.levelKm * 1.12 : m.targetKm) + (m.index === 1 ? intro : 0) // Einstiegstag kommt dazu
       expect(m.plannedKm, `Mikrozyklus ${m.index}`).toBeLessThanOrEqual(limit + 1.0) // Rundung auf 0,5 km je Einheit
     }
   })
@@ -102,29 +130,39 @@ describe('Umfang (SPEC 5.3, Trend-Regel mit Schlüsselspitzen)', () => {
     }
   })
 
-  it('Spitzenwerte: ca. 70–80 km/Woche, längster Lauf 50 km, B2B 30 + 20 km', () => {
+  it('Spitzenwerte ans Rennen angepasst: ca. 60–66 km/Woche, längster Lauf 40 km, B2B 26 + 16 km', () => {
     const peak = Math.max(...plan.microcycles.map(weeklyEquivalentKm))
-    expect(peak).toBeGreaterThanOrEqual(70)
-    expect(peak).toBeLessThanOrEqual(82)
+    expect(peak).toBeGreaterThanOrEqual(60)
+    expect(peak).toBeLessThanOrEqual(67)
     const all = plan.days.flatMap((d) => d.sessions)
-    expect(Math.max(...all.filter((s) => s.type === 'long_run').map((s) => s.distanceKm!))).toBe(50)
-    expect(all.find((s) => s.type === 'b2b_1' && s.distanceKm === 30)).toBeDefined()
-    expect(all.find((s) => s.type === 'b2b_2' && s.distanceKm === 20)).toBeDefined()
+    const longest = all.filter((s) => s.type === 'long_run').sort((a, b) => b.distanceKm! - a.distanceKm!)[0]!
+    expect(longest.distanceKm).toBe(40)
+    expect(longest.date).toBe('2027-08-06') // 6 Wochen vor dem Rennen
+    expect(all.find((s) => s.type === 'b2b_1' && s.distanceKm === 26)).toBeDefined()
+    expect(all.find((s) => s.type === 'b2b_2' && s.distanceKm === 16)).toBeDefined()
   })
 
-  it('Aufbau enthält lange Läufe über 30 km', () => {
-    const buildLong = plan.days
-      .filter((d) => plan.microcycles[d.microIndex - 1]!.phase === 'build')
-      .flatMap((d) => d.sessions)
-      .filter((s) => s.type === 'long_run' && s.distanceKm! > 30)
-    expect(buildLong.length).toBeGreaterThanOrEqual(1)
+  it('lange Läufe über 30 km erst in der rennspezifischen Phase, im Aufbau bis ca. 25 km', () => {
+    const long = plan.days.flatMap((d) => d.sessions).filter((s) => s.type === 'long_run' && s.distanceKm! > 30)
+    expect(long.map((s) => s.microIndex)).toEqual([51, 57])
+    const buildMax = Math.max(
+      ...plan.days
+        .filter((d) => plan.microcycles[d.microIndex - 1]!.phase === 'build')
+        .flatMap((d) => d.sessions)
+        .filter((s) => s.type === 'long_run')
+        .map((s) => s.distanceKm!),
+    )
+    expect(buildMax).toBeGreaterThanOrEqual(24)
+    expect(buildMax).toBeLessThanOrEqual(28)
   })
 
-  it('Höhenmeter steigen von ca. 250 auf über 2.000 hm/Woche', () => {
+  it('Höhenmeter steigen von ca. 250 auf über 2.000 hm/Woche (Rennen: 2.514 hm)', () => {
     const first = plan.microcycles[0]!
     expect(Math.round((first.plannedElevationM * 7) / 5)).toBeLessThan(300)
-    const b2bPeak = plan.microcycles.find((m) => m.index === 46)!
-    expect((b2bPeak.plannedElevationM * 7) / 5).toBeGreaterThan(2000)
+    for (const i of [53, 59, 60]) {
+      const m = plan.microcycles.find((x) => x.index === i)!
+      expect((m.plannedElevationM * 7) / 5, `Mikrozyklus ${i}`).toBeGreaterThan(2000)
+    }
   })
 
   it('Laufband-Höhenmeter = Distanz × Steigung', () => {
@@ -145,41 +183,49 @@ describe('Umfang (SPEC 5.3, Trend-Regel mit Schlüsselspitzen)', () => {
     const sumWeeks = weeks.reduce((a, w) => a + w.plannedKm, 0)
     const sumMicros = plan.microcycles.reduce((a, m) => a + m.plannedKm, 0)
     expect(Math.abs(sumWeeks - sumMicros)).toBeLessThan(1)
-    expect(weeks[0]!.start).toBe('2026-09-28')
+    expect(weeks[0]!.start).toBe('2026-10-26')
   })
 })
 
-describe('Bergwochenenden und Nachtläufe', () => {
-  it('zwei Bergwochenenden (Meso 6 und 7), das letzte ca. 3 Wochen vor dem Rennen, Erinnerung 4 Wochen vorher', () => {
-    expect(plan.mountainWeekends.map((w) => w.days)).toEqual([
-      ['2027-04-18', '2027-04-19'],
-      ['2027-05-28', '2027-05-29'],
+describe('Bergwochenenden und lange Läufe im Rennzeitplan', () => {
+  it('zwei Bergwochenenden, das zweite ist die Streckenbesichtigung 4 Wochen vor dem Rennen, Erinnerung 4 Wochen vorher', () => {
+    expect(plan.mountainWeekends.map((w) => [w.days, w.courseRecce])).toEqual([
+      [['2027-07-17', '2027-07-18'], false],
+      [['2027-08-21', '2027-08-22'], true],
     ])
-    expect(plan.mountainWeekends[1]!.reminderDate).toBe('2027-04-30')
+    expect(plan.mountainWeekends[1]!.reminderDate).toBe('2027-07-24')
     expect(plan.mountainWeekends.every((w) => w.feasible)).toBe(true)
-    expect(types(day(plan, '2027-05-28'))).toContain('mountain_day')
+    expect(types(day(plan, '2027-07-17'))).toContain('mountain_day')
+    const recce = day(plan, '2027-08-21').sessions.find((s) => s.type === 'mountain_day')!
+    expect(recce.title).toContain('Streckenbesichtigung')
+    expect(recce.structure.main).toContain(CONFIG.race.name)
   })
 
-  it('Nachtläufe liegen auf Tag 4 und starten um 21:00', () => {
-    const nights = plan.days.filter((d) => d.sessions.some((s) => s.type === 'night_run'))
-    expect(nights.length).toBeGreaterThanOrEqual(4)
-    for (const d of nights) {
+  it('keine Nachtläufe mehr, stattdessen lange Läufe im Rennzeitplan an Tag 4 mit festem Start 07:00', () => {
+    const all = plan.days.flatMap((d) => d.sessions)
+    expect(all.some((s) => s.type === 'night_run')).toBe(false)
+    const early = plan.days.filter((d) => d.sessions.some((s) => s.fixedStart && s.type === 'long_run'))
+    expect(early.map((d) => d.date)).toEqual(['2027-06-12', '2027-06-27', '2027-07-22', '2027-08-11', '2027-08-26'])
+    for (const d of early) {
       expect(d.shift.cycleDay).toBe(4)
-      expect(d.sessions.find((s) => s.type === 'night_run')!.startMin).toBe(21 * 60)
+      const run = d.sessions[0]!
+      expect(run.startMin).toBe(CONFIG.race.startMin)
+      expect(run.title).toContain('Rennzeitplan')
+      expect(run.structure.main).toContain('04:30')
+      // weitere Einheiten des Tages folgen danach
+      for (const s of d.sessions.slice(1)) expect(s.startMin!).toBeGreaterThanOrEqual(run.startMin! + run.durationMin)
     }
   })
 
-  it('Tag 5 nach dem Nachtlauf beginnt am Nachmittag', () => {
-    const d = day(plan, '2027-04-04')
-    expect(d.sessions.every((s) => (s.startMin ?? 0) >= 15 * 60)).toBe(true)
-  })
-
-  it('V-Schicht nach dem Nachtlauf-Tag: Nachtlauf wird tagsüber gelaufen', () => {
-    const p = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2027-04-04', kind: 'V' }) })
-    const d = day(p, '2027-04-03')
+  it('Nachtlauf (nur noch als Typ vorhanden): bei Dienst am Folgetag wird er tagsüber gelaufen', () => {
+    const cal = withOverride(createShiftCalendar(), { date: '2026-10-31', kind: 'V' })
+    const ctx = { date: '2026-10-30', microIndex: 1, phase: 'specific' as const, slot: 'lauf' }
+    const d = placeDay(cal, '2026-10-30', 1, 'specific', [longRun('night_run', ctx, { km: 20 })])
     const run = d.sessions.find((s) => s.category === 'run')!
     expect(run.type).toBe('long_run')
     expect(run.origin?.convertedFrom).toBe('night_run')
+    const free = placeDay(createShiftCalendar(), '2026-10-30', 1, 'specific', [longRun('night_run', ctx, { km: 20 })])
+    expect(free.sessions[0]!.type).toBe('night_run')
   })
 })
 
@@ -259,7 +305,7 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
   })
 
   it('Einheiten an Tag 2 enden vor dem Nap (13:30)', () => {
-    for (const d of plan.days.filter((x) => x.shift.dayKind === 'pre_night')) {
+    for (const d of plan.days.filter((x) => x.shift.dayKind === 'pre_night' && !x.isRaceDay)) {
       for (const s of d.sessions) expect(s.startMin! + s.durationMin, d.date).toBeLessThanOrEqual(13 * 60 + 30)
     }
   })
@@ -280,8 +326,8 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
     for (let run = 0; run < 5; run++) {
       const overrides: ShiftOverride[] = []
       for (let i = 0; i < 40; i++) {
-        const micro = 1 + Math.floor(rnd() * 51)
-        const start = addDays('2026-10-02', (micro - 1) * 5)
+        const micro = 1 + Math.floor(rnd() * 65)
+        const start = addDays(CONFIG.plan.microStartDate, (micro - 1) * 5)
         const r = rnd()
         if (r < 0.5) overrides.push({ date: addDays(start, 4), kind: 'V' })
         else if (r < 0.7) overrides.push({ date: addDays(start, Math.floor(rnd() * 5)), kind: 'KRANK' })
@@ -290,9 +336,9 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
       }
       const p = generatePlan({ calendar: createShiftCalendar(overrides) })
       expect(checkPlanRules(p.days)).toEqual([])
-      // nie mehr als ohne Ausfälle (kein Nachholen)
+      // nie mehr als ohne Ausfälle (kein Nachholen); Mikrozyklus 1 mit Einstiegstag
       for (const m of p.microcycles) {
-        const limit = m.isKeyPeak ? m.levelKm * 1.12 : m.targetKm
+        const limit = (m.isKeyPeak ? m.levelKm * 1.12 : m.targetKm) + (m.index === 1 ? 6 : 0)
         if (m.phase !== 'taper') expect(m.plannedKm).toBeLessThanOrEqual(limit + 1.0)
       }
     }
@@ -301,30 +347,30 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
 
 describe('V-Schicht, Ausfälle und Verschieben (SPEC 4.1, 6.3, 11)', () => {
   it('kurzfristige V-Schicht: keine Einheit am V-Tag, Schlüsseleinheit einmal verschoben oder gestrichen', () => {
-    const cal = withOverride(createShiftCalendar(), { date: '2026-10-06', kind: 'V' })
+    const cal = withOverride(createShiftCalendar(), { date: '2026-10-31', kind: 'V' })
     const p = generatePlan({ calendar: cal })
-    const v = day(p, '2026-10-06')
+    const v = day(p, '2026-10-31')
     expect(v.sessions).toEqual([])
     const hills = v.removed.find((r) => r.session.type === 'treadmill_hills')!
     expect(hills.note).toContain('gestrichen')
     const cali = v.removed.find((r) => r.session.type === 'calisthenics_main')!
     expect(cali.reason).toBe('moved')
-    const target = day(p, '2026-10-10')
+    const target = day(p, '2026-11-04')
     const moved = target.sessions.find((s) => s.type === 'calisthenics_main')!
-    expect(moved.origin?.movedFrom).toBe('2026-10-06')
+    expect(moved.origin?.movedFrom).toBe('2026-10-31')
     expect(target.shift.cycleDay).toBe(4)
   })
 
   it('nie auf Tag 1 verschoben', () => {
-    const cal = withOverride(createShiftCalendar(), { date: '2026-10-06', kind: 'V' })
+    const cal = withOverride(createShiftCalendar(), { date: '2026-10-31', kind: 'V' })
     const p = generatePlan({ calendar: cal })
     for (const d of p.days.filter((x) => x.shift.cycleDay === 1)) expect(d.sessions).toEqual([])
   })
 
   it('Krankheit an Tag 4: langer Lauf rückt auf Tag 5 und ersetzt die schwächere Einheit, kein Nachholen', () => {
-    const cal = withOverride(createShiftCalendar(), { date: '2026-10-05', kind: 'KRANK' })
+    const cal = withOverride(createShiftCalendar(), { date: '2026-10-30', kind: 'KRANK' })
     const p = generatePlan({ calendar: cal })
-    const d5 = day(p, '2026-10-06')
+    const d5 = day(p, '2026-10-31')
     expect(types(d5)).toContain('long_run')
     expect(types(d5)).not.toContain('treadmill_hills')
     expect(microKm(p, 1)).toBeLessThanOrEqual(microKm(plan, 1))
@@ -332,52 +378,65 @@ describe('V-Schicht, Ausfälle und Verschieben (SPEC 4.1, 6.3, 11)', () => {
   })
 
   it('V-Schicht im B2B-Mikrozyklus: Tag 4 wird zum einzelnen langen Lauf', () => {
-    const cal = withOverride(createShiftCalendar(), { date: '2027-03-30', kind: 'V' })
+    const cal = withOverride(createShiftCalendar(), { date: '2027-06-23', kind: 'V' })
     const p = generatePlan({ calendar: cal })
-    const d4 = day(p, '2027-03-29')
+    const d4 = day(p, '2027-06-22')
     const run = d4.sessions.find((s) => s.category === 'run')!
     expect(run.type).toBe('long_run')
     expect(run.distanceKm).toBe(22)
-    expect(microKm(p, 36)).toBeLessThan(microKm(plan, 36))
+    expect(microKm(p, 48)).toBeLessThan(microKm(plan, 48))
     // der verlorene Tag 2 wird nicht in den nächsten Mikrozyklus gequetscht
-    expect(microKm(p, 37)).toBe(microKm(plan, 37))
+    expect(microKm(p, 49)).toBe(microKm(plan, 49))
   })
 
   it('ausgelassene Schlüsseleinheit wird höchstens einmal verschoben', () => {
-    const longId = day(plan, '2026-10-05').sessions.find((s) => s.type === 'long_run')!.id
-    const p1 = generatePlan({ logs: [{ sessionId: longId, date: '2026-10-05', status: 'skipped' }] })
-    const moved = day(p1, '2026-10-06').sessions.find((s) => s.type === 'long_run')!
-    expect(moved.origin?.movedFrom).toBe('2026-10-05')
+    const longId = day(plan, '2026-10-30').sessions.find((s) => s.type === 'long_run')!.id
+    const p1 = generatePlan({ logs: [{ sessionId: longId, date: '2026-10-30', status: 'skipped' }] })
+    const moved = day(p1, '2026-10-31').sessions.find((s) => s.type === 'long_run')!
+    expect(moved.origin?.movedFrom).toBe('2026-10-30')
     // die verschobene Einheit wird ebenfalls ausgelassen → kein zweites Verschieben
     const p2 = generatePlan({
       logs: [
-        { sessionId: longId, date: '2026-10-05', status: 'skipped' },
-        { sessionId: moved.id, date: '2026-10-06', status: 'skipped' },
+        { sessionId: longId, date: '2026-10-30', status: 'skipped' },
+        { sessionId: moved.id, date: '2026-10-31', status: 'skipped' },
       ],
     })
-    const later = p2.days.filter((d) => d.date > '2026-10-06').flatMap((d) => d.sessions)
-    expect(later.filter((s) => s.origin?.movedFrom === '2026-10-06')).toEqual([])
+    const later = p2.days.filter((d) => d.date > '2026-10-31').flatMap((d) => d.sessions)
+    expect(later.filter((s) => s.origin?.movedFrom === '2026-10-31')).toEqual([])
   })
 
   it('Urlaub macht Tag 1 frei, ohne zusätzlichen Umfang', () => {
-    const cal = withOverride(createShiftCalendar(), { date: '2026-10-07', kind: 'URLAUB' })
+    const cal = withOverride(createShiftCalendar(), { date: '2026-11-01', kind: 'URLAUB' })
     const p = generatePlan({ calendar: cal })
-    expect(day(p, '2026-10-07').sessions).toEqual([])
+    expect(day(p, '2026-11-01').sessions).toEqual([])
     expect(microKm(p, 2)).toBe(microKm(plan, 2))
   })
 })
 
 describe('Taper und Rennen', () => {
-  it('Renntag 18.06.2027 mit Start 23:00', () => {
-    const race = day(plan, '2027-06-18').sessions[0]!
+  it('Renntag Sa 18.09.2027 mit Start 07:00 in Bayerisch Eisenstein', () => {
+    const d = day(plan, '2027-09-18')
+    expect(d.isRaceDay).toBe(true)
+    const race = d.sessions[0]!
     expect(race.type).toBe('race')
-    expect(race.startMin).toBe(23 * 60)
-    expect(race.distanceKm).toBe(86)
+    expect(race.startMin).toBe(7 * 60)
+    expect(race.distanceKm).toBe(66)
+    expect(race.elevationM).toBe(2514)
+    expect(race.structure.main).toContain('Bayerisch Eisenstein')
+    expect(race.structure.main).toContain('Zielschluss 20:00')
+    expect(race.structure.warmup).toContain('04:30')
   })
 
   it('Rennen bleibt auch bei V-Schicht im Plan (Konflikt meldet das Rennmodul)', () => {
-    const p = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2027-06-18', kind: 'V' }) })
-    expect(types(day(p, '2027-06-18'))).toEqual(['race'])
+    const p = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2027-09-18', kind: 'V' }) })
+    expect(types(day(p, '2027-09-18'))).toEqual(['race'])
+  })
+
+  it('mit Urlaub am Vortag: optionales kurzes Auflockern am 17.09.', () => {
+    const p = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2027-09-17', kind: 'URLAUB' }) })
+    const eve = day(p, '2027-09-17').sessions
+    expect(eve.map((s) => [s.type, s.optional])).toEqual([['recovery_run', true]])
+    expect(eve[0]!.durationMin).toBe(CONFIG.volume.taperShares.raceDayEveMin)
   })
 
   it('Taper: Umfang deutlich runter, keine Schlaftag-Einheiten, kein schweres Bein', () => {
@@ -385,7 +444,7 @@ describe('Taper und Rennen', () => {
     const peak = Math.max(...plan.microcycles.map((m) => m.plannedKm))
     expect(t[0]!.plannedKm).toBeLessThan(peak * 0.65)
     expect(t[1]!.plannedKm).toBeLessThan(t[0]!.plannedKm)
-    const taperDays = plan.days.filter((d) => d.date >= '2027-06-04')
+    const taperDays = plan.days.filter((d) => d.date >= '2027-09-02')
     expect(taperDays.filter((d) => d.shift.dayKind === 'sleep_day').flatMap((d) => d.sessions)).toEqual([])
     expect(taperDays.flatMap((d) => d.sessions).some((s) => s.type === 'legs_heavy')).toBe(false)
     expect(taperDays.flatMap((d) => d.sessions).some((s) => s.type === 'threshold')).toBe(true) // Intensität in kleiner Dosis
@@ -405,8 +464,8 @@ describe('Einheiten-Inhalt (SPEC 9)', () => {
 
   it('ab dem Aufbau: Verpflegung und Ausrüstung bei langen Läufen', () => {
     const longs = plan.days.flatMap((d) => d.sessions).filter((s) => s.type === 'long_run')
-    expect(longs.filter((s) => s.date < '2026-12-11').every((s) => !s.fueling)).toBe(true)
-    expect(longs.filter((s) => s.date >= '2026-12-11' && s.date < '2027-06-04').every((s) => s.fueling && s.gearTest)).toBe(true)
+    expect(longs.filter((s) => s.date < '2027-01-25').every((s) => !s.fueling)).toBe(true)
+    expect(longs.filter((s) => s.date >= '2027-01-25' && s.date < '2027-09-02').every((s) => s.fueling && s.gearTest)).toBe(true)
   })
 
   it('mit Kraftstand werden Übungen mit Sätzen, Wiederholungen/Haltezeiten und Pausen eingesetzt', () => {
@@ -416,7 +475,7 @@ describe('Einheiten-Inhalt (SPEC 9)', () => {
       { onboarding: true },
     )
     const p = generatePlan({ strengthState: state })
-    const cali = day(p, '2026-10-06').sessions.find((s) => s.type === 'calisthenics_main')!
+    const cali = day(p, '2026-10-31').sessions.find((s) => s.type === 'calisthenics_main')!
     expect(cali.exercises!.length).toBeGreaterThan(3)
     expect(cali.exercises!.every((e) => e.sets > 0 && e.restSec > 0 && (e.reps !== undefined || e.holdSec !== undefined))).toBe(true)
   })

@@ -18,67 +18,98 @@ export const CONFIG = {
   // Rennen (SPEC 2)
   // ---------------------------------------------------------------------------
   race: {
-    name: 'Ehrwald Trail (Zugspitz Ultra Trail by UTMB)',
-    date: '2027-06-18' as LocalDate,
-    startMin: h(23),
-    cutoffHours: 22,
-    distanceKm: 86,
-    elevationGainM: 4295,
-    /** Urlaub mindestens für diese Tage (Start, Zielschluss, Folgenacht). */
-    vacationRequired: ['2027-06-18', '2027-06-19', '2027-06-20'] as LocalDate[],
-    /** Empfohlener Urlaub für ausgeruhten Taper und Anreise. */
-    vacationRecommendedFrom: '2027-06-14' as LocalDate,
-    vacationRecommendedTo: '2027-06-20' as LocalDate,
+    /** Zielwechsel nach Phase 7 (Nutzerwunsch, 25.10.2026): Arberland statt Ehrwald Trail. */
+    id: 'arberland-2027',
+    name: 'Arberland Classic Trail',
+    shortName: 'Arberland Classic Trail',
+    location: 'Bayerisch Eisenstein (Bayerischer Wald)',
+    /** Vorläufig: Termin 2027 noch nicht veröffentlicht (2026: Sa 19.09.), dritter Samstag im September. */
+    date: '2027-09-18' as LocalDate,
+    dateProvisional: true,
+    startMin: h(7),
+    /** Werte der Ausgabe 2026 (ITRA): 66,16 km, 2.514 hm, Zeitlimit 13 h. */
+    cutoffHours: 13,
+    distanceKm: 66,
+    elevationGainM: 2514,
+    /** Urlaub mindestens für diese Tage: Fr 17.09. Tagschicht (Anreise), Sa 18.09. Rennen + Nachtschicht. */
+    vacationRequired: ['2027-09-17', '2027-09-18'] as LocalDate[],
+    /** Empfohlener Urlaub für ausgeruhte Rennwoche und Anreise. */
+    vacationRecommendedFrom: '2027-09-12' as LocalDate,
+    vacationRecommendedTo: '2027-09-19' as LocalDate,
     /** Termine, ab denen erneut an den Urlaubsantrag erinnert wird (solange kein Urlaub eingetragen ist). */
-    vacationReminderDates: ['2026-10-02', '2026-11-01', '2026-12-01', '2027-01-15', '2027-03-01', '2027-04-15', '2027-05-15'] as LocalDate[],
+    vacationReminderDates: ['2026-10-26', '2026-12-01', '2027-02-01', '2027-04-01', '2027-06-01', '2027-07-15', '2027-08-15'] as LocalDate[],
+    /** Am Renntag so viele Minuten vor dem Start aufstehen (Frühstück, Anfahrt, Startnummer). */
+    wakeBeforeStartMin: 150,
+    /** Abendstart (ab dieser Uhrzeit) bekommt einen Nap am Renntag; Morgenstart nicht. */
+    napIfStartFrom: h(18),
   },
 
   // ---------------------------------------------------------------------------
   // Planzeitraum
   // ---------------------------------------------------------------------------
   plan: {
-    /** Planstart = Ankerdatum (Entscheidung Phase 1). */
-    startDate: '2026-10-02' as LocalDate,
-    endDate: '2027-06-18' as LocalDate,
+    /** Einstiegstag (Mo 26.10.2026, Zyklustag 5): lockerer Lauf, gehört zu Mikrozyklus 1 (Nutzerwunsch: „morgen Tag 1“). */
+    startDate: '2026-10-26' as LocalDate,
+    /** Erster regulärer Mikrozyklus beginnt an Zyklustag 1 (Schichtrhythmus mit Ankerdatum 02.10.2026). */
+    microStartDate: '2026-10-27' as LocalDate,
+    endDate: '2027-09-18' as LocalDate,
     microLengthDays: 5,
-    microsPerMeso: 7,
+    /** Lockerer Lauf am Einstiegstag (min). */
+    introRunMin: 35,
     /** Am Tag vor der Nachtschicht höchstens so viele (nicht-optionale) Einheiten (Entscheidung nach Phase 7). */
     maxSessionsPreNight: 1,
-    totalMicros: 52,
-    /** Phase je Mesozyklus 1–8 (Entscheidung Phase 1: 2/3/2 + Taper). */
-    phaseByMeso: ['base', 'base', 'build', 'build', 'build', 'specific', 'specific', 'taper'] as Phase[],
-    /** Entlastung = letzter Mikrozyklus in Meso 1–6. Meso 7 ohne Entlastung (Taper folgt). */
-    deloadMesos: [1, 2, 3, 4, 5, 6],
-    /** Mikrozyklen 50–52 (04.06.–18.06.2027) = Taper. */
-    taperMicros: { taper1: 50, taper2: 51, race_week: 52 },
-    /** Krafttest: Entlastungs-Mikrozyklus (Meso 1–6) bzw. letzter Mikrozyklus von Meso 7. */
-    strengthTestMicros: [7, 14, 21, 28, 35, 42, 49],
+    totalMicros: 66,
     /**
-     * Vorlagen der rennspezifischen Phase je Mikrozyklus (Meso 6: 36–41, Meso 7: 43–49).
-     * Schlüsselspitzen (Trend-Regel) wechseln sich mit Mikrozyklen auf Grundniveau ab.
-     * Bergwochenenden: Mikrozyklus 40 (18./19.04.2027) und 48 (28./29.05.2027, ca. 3 Wochen vor dem Rennen).
+     * Mesozyklen: Phase und Länge in Mikrozyklen. Alle Phasen anteilig verlängert (Zielwechsel):
+     * Grundlage 18, Aufbau 26, Rennspezifisch 18 Mikrozyklen, danach Taper (63–66).
+     */
+    mesos: [
+      { phase: 'base', micros: 6 },
+      { phase: 'base', micros: 6 },
+      { phase: 'base', micros: 6 },
+      { phase: 'build', micros: 7 },
+      { phase: 'build', micros: 7 },
+      { phase: 'build', micros: 6 },
+      { phase: 'build', micros: 6 },
+      { phase: 'specific', micros: 6 },
+      { phase: 'specific', micros: 6 },
+      { phase: 'specific', micros: 6 },
+      { phase: 'taper', micros: 4 },
+    ] as { phase: Phase; micros: number }[],
+    /** Entlastung = letzter Mikrozyklus in Meso 1–9. Meso 10 ohne Entlastung (Taper folgt). */
+    deloadMesos: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    /** Mikrozyklen 63–66 (02.09.–18.09.2027) = Taper, Rennwoche, Renntag (Rennen an Zyklustag 2). */
+    taperMicros: { taper1: 63, taper2: 64, race_week: 65, race_day: 66 },
+    /** Krafttest: in jedem Entlastungs-Mikrozyklus und im Abschluss-Mikrozyklus 62. */
+    strengthTestMicros: [6, 12, 18, 25, 32, 38, 44, 50, 56, 62],
+    /**
+     * Vorlagen der rennspezifischen Phase je Mikrozyklus (45–62, Entlastung 50/56).
+     * Schlüsselspitzen wechseln sich mit Mikrozyklen auf Grundniveau ab.
+     * Bergwochenenden: 53 (Sa/So 17./18.07.2027) und 60 (Sa/So 21./22.08.2027, Streckenbesichtigung, 4 Wochen vorher).
      */
     specificTemplates: {
-      36: 'specific_b2b',
-      37: 'specific_night',
-      38: 'specific_long',
-      39: 'specific_b2b',
-      40: 'specific_mountain',
-      41: 'specific_night',
-      43: 'specific_b2b',
-      44: 'specific_long',
-      45: 'specific_night',
-      46: 'specific_b2b',
-      47: 'specific_night',
-      48: 'specific_mountain',
-      49: 'specific_final',
+      45: 'specific_b2b',
+      46: 'specific_early',
+      47: 'specific_long',
+      48: 'specific_b2b',
+      49: 'specific_early',
+      51: 'specific_long',
+      52: 'specific_b2b',
+      53: 'specific_mountain',
+      54: 'specific_early',
+      55: 'specific_b2b',
+      57: 'specific_long',
+      58: 'specific_early',
+      59: 'specific_b2b',
+      60: 'specific_mountain',
+      61: 'specific_early',
+      62: 'specific_final',
     } as Record<number, string>,
-    /**
-     * Schlüsselspitzen: dürfen bis keyPeakMaxFactor über dem Grundniveau liegen.
-     * 31/33: erste lange Läufe über 30 km im Aufbau; 38/44: längster Lauf; 46: B2B-Spitze; 40/48: Berg.
-     */
-    keyPeakMicros: [31, 33, 38, 40, 44, 46, 48],
-    mountainMicros: [40, 48],
+    /** Schlüsselspitzen: 51 erster Lauf über 30 km, 53/60 Berg, 57 längster Lauf, 59 B2B-Spitze. */
+    keyPeakMicros: [51, 53, 57, 59, 60],
+    mountainMicros: [53, 60],
+    /** Das zweite Bergwochenende ist die Streckenbesichtigung. */
+    courseRecceMicro: 60,
     /** Erinnerung an das Bergwochenende so viele Tage vorher. */
     mountainReminderDaysBefore: 28,
   },
@@ -169,9 +200,10 @@ export const CONFIG = {
     /** Nap vor einem Nachtlauf. */
     nightRunNapStart: h(15),
     nightRunNapMin: 90,
-    /** Rennvorbereitung: letzte 14 Tage. */
+    /** Rennvorbereitung: letzte 14 Tage regelmäßig und spätestens um 22:00 ins Bett (Start 07:00). */
     racePrepDays: 14,
     raceNightBedtime: h(22),
+    /** Nap am Renntag, nur bei einem Abendstart (siehe `race.napIfStartFrom`). */
     raceNapStart: h(15),
     raceNapMin: 120,
     /** Toleranz für „Empfehlung umgesetzt“. */
@@ -222,20 +254,17 @@ export const CONFIG = {
   // Laufumfang (SPEC 5.3), Trend-Regel mit Schlüsselspitzen (Entscheidung Phase 2)
   // ---------------------------------------------------------------------------
   // BEGRÜNDUNG DER SPITZENWERTE
-  // Ziel ist ein Finish in 22 h, also ca. 3,9 km/h im Schnitt mit viel Gehen bergauf.
-  // Entscheidend sind Zeit auf den Beinen, Robustheit bergab und Nacht-Erfahrung,
-  // nicht Tempo. Verbreitete Empfehlungen für erste 80–100-km-Rennen liegen bei
-  // 60–90 km/Woche Spitze. Wir wählen ein Grundniveau von ca. 73 km/Woche
-  // (≈ 52 km pro 5-Tage-Mikrozyklus), weil:
-  //  - nur drei vollwertige Trainingstage pro 5 Tage zur Verfügung stehen (Tag 2, 4, 5),
+  // Ziel ist ein Finish im Zeitlimit von 13 h (ca. 66 km, 2.500 hm, Start 07:00 Uhr):
+  // ca. 5–6 km/h im Schnitt, bergauf gehen, bergab laufen. Entscheidend sind Zeit auf
+  // den Beinen und Robustheit bergab, nicht Tempo. Für 60–70-km-Rennen liegen verbreitete
+  // Empfehlungen bei 50–70 km/Woche Spitze. Wir wählen ein Grundniveau von ca. 62 km/Woche
+  // (≈ 44 km pro 5-Tage-Mikrozyklus), weil:
+  //  - nur drei vollwertige Trainingstage pro 5 Tage zur Verfügung stehen (Tag 3, 4, 5),
   //  - jede Nachtschicht Erholung kostet und V-Schichten Tage streichen,
-  //  - der Startumfang bei 20–40 km/Woche liegt und das Verletzungsrisiko bei
-  //    schnellerem Aufbau deutlich steigt.
-  // Schlüsselspitzen (längster Lauf 50 km, B2B 30 + 20 km, Bergwochenenden mit
-  // 6–8 h) liegen bis zu 12 % über dem Grundniveau (≈ 80 km/Woche). Direkt danach
-  // folgt ein Mikrozyklus auf Grundniveau. Höhenmeter: ca. 2.800 hm/Woche in der
-  // Spitze, überwiegend Laufband mit 10–15 % Steigung, Treppen und die zwei
-  // Bergwochenenden. Das reicht, um 4.295 hm im Rennen gehend zu bewältigen.
+  //  - der Startumfang bei 20–40 km/Woche liegt.
+  // Schlüsselspitzen (längster Lauf 40 km, B2B 30 + 18 km, zwei Bergwochenenden, eins als
+  // Streckenbesichtigung) liegen bis zu 12 % über dem Grundniveau. Höhenmeter: ca. 2.600 hm/Woche
+  // in der Spitze (Laufband mit 10–15 % Steigung, hügelige lange Läufe, Bergwochenenden).
   volume: {
     /** Max. Steigerung des Grundniveaus pro Mikrozyklus (1,10^(5/7) ≈ 1,07 ≙ 10 %/Woche). */
     maxGrowthPerMicro: 0.07,
@@ -244,51 +273,57 @@ export const CONFIG = {
     /** Entlastung: 35 % weniger (SPEC: 30–40 %). */
     deloadFactor: 0.65,
     /** Taper relativ zum Spitzen-Grundniveau. */
-    taperFactors: { taper1: 0.6, taper2: 0.45, race_week: 0.2 },
+    taperFactors: { taper1: 0.6, taper2: 0.45, race_week: 0.2, race_day: 0.05 },
     /** Höhenmeter im Taper relativ zur Spitze (kein hm-Schwerpunkt mehr). */
-    taperElevationFactors: { taper1: 0.15, taper2: 0.05, race_week: 0 },
+    taperElevationFactors: { taper1: 0.15, taper2: 0.05, race_week: 0, race_day: 0 },
     /**
      * Anker des Grundniveaus in km/Woche, dazwischen geometrisch interpoliert
      * (nur Nicht-Entlastungs-Mikrozyklen). `start` kommt aus dem Profil.
      */
     levelAnchorsWeekly: [
-      { micro: 13, km: 45 }, // Ende Grundlage
-      { micro: 34, km: 62 }, // Ende Aufbau
-      { micro: 46, km: 73 }, // Spitze rennspezifisch
+      { micro: 17, km: 40 }, // Ende Grundlage
+      { micro: 43, km: 55 }, // Ende Aufbau
+      { micro: 59, km: 62 }, // Spitze rennspezifisch
     ],
-    /** Mikrozyklus 49 (15–19 Tage vor dem Rennen) leicht unter Niveau. */
+    /** Mikrozyklus 62 (17–21 Tage vor dem Rennen) leicht unter Niveau. */
     finalMicroFactor: 0.85,
     /** Höhenmeter-Anker in hm/Woche (Start = Mikrozyklus 1). */
     elevationAnchorsWeekly: [
       { micro: 1, m: 250 },
-      { micro: 13, m: 700 },
-      { micro: 34, m: 1600 },
-      { micro: 46, m: 2800 },
+      { micro: 17, m: 600 },
+      { micro: 43, m: 1500 },
+      { micro: 59, m: 2600 },
     ],
     /** Langer Lauf (km) je Nicht-Entlastungs-Mikrozyklus, interpoliert. */
     longRunAnchors: [
       { micro: 1, km: 10 },
-      { micro: 13, km: 16 },
-      { micro: 34, km: 33 },
+      { micro: 17, km: 16 },
+      { micro: 43, km: 28 },
     ],
-    /** Rennspezifisch: Kilometer der Schlüsseleinheiten je Mikrozyklus. */
+    /**
+     * Rennspezifisch: Kilometer der Schlüsseleinheiten je Mikrozyklus.
+     * Spitzen-Mikrozyklen (57, 59, 60) liegen damit bei ca. 63–66 km/Woche.
+     */
     specificRuns: {
-      36: { b2b: [22, 14] },
-      37: { night: 25 },
-      38: { long: 40 },
-      39: { b2b: [25, 15] },
-      40: { mountain: [28, 15] },
-      41: { night: 26 },
-      43: { b2b: [26, 16] },
-      44: { long: 50 },
-      45: { night: 28 },
-      46: { b2b: [30, 20] },
-      47: { night: 26 },
-      48: { mountain: [32, 18] },
-      49: { long: 22 },
-    } as Record<number, { b2b?: [number, number]; night?: number; long?: number; mountain?: [number, number] }>,
-    /** Höhenmeter der Bergwochenenden [Tag 1, Tag 2]. */
-    mountainElevation: { 40: [1800, 900], 48: [2200, 1000] } as Record<number, [number, number]>,
+      45: { b2b: [18, 12] },
+      46: { early: 24 },
+      47: { long: 28 },
+      48: { b2b: [22, 14] },
+      49: { early: 28 },
+      51: { long: 32 },
+      52: { b2b: [24, 14] },
+      53: { mountain: [24, 12] },
+      54: { early: 30 },
+      55: { b2b: [26, 16] },
+      57: { long: 40 },
+      58: { early: 26 },
+      59: { b2b: [26, 16] },
+      60: { mountain: [28, 14] },
+      61: { early: 22 },
+      62: { long: 18 },
+    } as Record<number, { b2b?: [number, number]; early?: number; long?: number; mountain?: [number, number] }>,
+    /** Höhenmeter der Bergwochenenden [Tag 1, Tag 2]. 60 = Streckenbesichtigung Arberland. */
+    mountainElevation: { 53: [1400, 600], 60: [1500, 600] } as Record<number, [number, number]>,
     /** Mindest- und Höchstumfänge flexibler Einheiten (km), damit Einheiten sinnvoll bleiben. */
     minKm: { easy_run: 5, recovery_run: 4, treadmill_hills: 4 } as Partial<Record<SessionType, number>>,
     maxKm: { easy_run: 16, recovery_run: 8, treadmill_hills: 14 } as Partial<Record<SessionType, number>>,
@@ -303,8 +338,8 @@ export const CONFIG = {
       base: { day3: 0.62, day5: 0.38 },
       deload: { day3: 0.6, day5: 0.4 },
       final: { day3: 0.6, day5: 0.4 },
-      /** Nachtlauf-Zyklus: lockerer Lauf an Tag 3 und am Nachmittag nach dem Nachtlauf. */
-      night: { day3: 0.5, day5: 0.5 },
+      /** Zyklus mit langem Lauf im Rennzeitplan: lockerer Lauf an Tag 3, Höhenmeter-Einheit an Tag 5. */
+      early: { day3: 0.6, day5: 0.4 },
     },
     /** Eine verschobene Einheit wird höchstens auf diesen Anteil gekürzt, sonst gestrichen (kein Nachholen). */
     minMovedShare: 0.6,
@@ -321,7 +356,10 @@ export const CONFIG = {
     taperShares: {
       taper1: { day4: 0.5 },
       taper2: { day4: 0.45 },
-      race_week: { day2: 0.6, day4: 0.4 },
+      /** Rennwoche (12.–16.09.): locker mit Steigerungen an Tag 2 und 5, locker an Tag 4. */
+      race_week: { day2: 0.4, day4: 0.35, day5: 0.25 },
+      /** Fr 17.09. (Tag vor dem Rennen): kurzes Auflockern, optional. */
+      raceDayEveMin: 20,
     },
   },
 

@@ -2,7 +2,7 @@
 // Outbox vor und stößt die Synchronisation mit Supabase an.
 
 import type { ManualReadiness, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
-import { COLLECTIONS, READONLY } from './collections'
+import { COLLECTIONS, HISTORY_COLLECTIONS, READONLY, type Collection } from './collections'
 import type { IndexedDbRepository } from './indexedDb'
 import type { SyncEngine } from './sync'
 import type { AdjustmentDecision, AppSettings, BackupData, Repository, WorkoutAssignment } from './types'
@@ -152,9 +152,17 @@ export class SyncingRepository implements Repository {
     await this.engine.resetCursor() // WHOOP-Daten neu holen
     this.schedule()
   }
-  private async tombstoneAll() {
-    for (const c of COLLECTIONS) {
-      if (READONLY.has(c)) continue
+  /** Zielwechsel: alte Einträge lokal löschen und in der Cloud als gelöscht markieren. */
+  async resetHistory() {
+    await this.tombstone(HISTORY_COLLECTIONS)
+    await this.local.resetHistory()
+    this.schedule()
+  }
+  private tombstoneAll() {
+    return this.tombstone(COLLECTIONS.filter((c) => !READONLY.has(c)))
+  }
+  private async tombstone(collections: readonly Collection[]) {
+    for (const c of collections) {
       for (const [key] of await this.local.entries(c)) await this.engine.record(c, key, null)
     }
   }

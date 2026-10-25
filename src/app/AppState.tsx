@@ -7,7 +7,23 @@ import type { LocalDate, ManualReadiness, SessionLog, ShiftOverride, StrengthRes
 import { parseBackup } from '../data/backup'
 import { IndexedDbRepository } from '../data/indexedDb'
 import type { AppSettings, Repository } from '../data/types'
-import { buildCalendar, buildDayView, buildPatterns, buildPlan, currentDate, effectiveStrengthState, recoveryHistory, whoopActive, workoutActions, type AppData, type DayView, type WorkoutSuggestion } from './compute'
+import {
+  buildCalendar,
+  buildDayView,
+  buildPatterns,
+  buildPlan,
+  currentDate,
+  effectiveStrengthState,
+  HISTORY_RESET_NOTICE,
+  needsHistoryReset,
+  recoveryHistory,
+  whoopActive,
+  workoutActions,
+  type AppData,
+  type DayView,
+  type WorkoutSuggestion,
+} from './compute'
+import { CONFIG } from '../core/config'
 
 interface AppContextValue {
   data: AppData
@@ -36,6 +52,9 @@ interface AppContextValue {
   exportBackup: () => Promise<string>
   importBackup: (json: string) => Promise<string | null>
   resetAll: () => Promise<void>
+  /** Hinweis nach einem Zielwechsel (einmalig, bis er bestätigt wird). */
+  notice: string | null
+  dismissNotice: () => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -69,8 +88,19 @@ export function AppProvider({
   const repo = useMemo(() => injected ?? new IndexedDbRepository(), [injected])
   const [data, setData] = useState<AppData | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [notice, setNotice] = useState<string | null>(null)
 
-  const reload = useCallback(async () => setData(await loadAll(repo)), [repo])
+  const reload = useCallback(async () => {
+    let d = await loadAll(repo)
+    // Zielwechsel: alte Einträge einmalig löschen (lokal und in der Cloud)
+    if (needsHistoryReset(d.settings)) {
+      await repo.resetHistory()
+      await repo.saveSettings({ ...d.settings, planId: CONFIG.race.id })
+      d = await loadAll(repo)
+      setNotice(HISTORY_RESET_NOTICE)
+    }
+    setData(d)
+  }, [repo])
   useEffect(() => {
     void reload()
     // Datum aktuell halten (Mitternacht, Countdown)
@@ -145,8 +175,10 @@ export function AppProvider({
         return null
       },
       resetAll: () => run(() => repo.clearAll()),
+      notice,
+      dismissNotice: () => setNotice(null),
     }
-  }, [data, now, repo, reload])
+  }, [data, now, repo, reload, notice])
 
   // WHOOP: eindeutige Workouts automatisch als erledigt eintragen; Demo-Modus aus, sobald WHOOP liefert.
   useEffect(() => {

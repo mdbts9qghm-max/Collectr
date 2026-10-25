@@ -177,19 +177,22 @@ export function assignStartTimes(days: Map<LocalDate, PlanDay>): void {
     if (!w || day.sessions.length === 0) continue
     const night = day.sessions.filter((s) => s.type === 'night_run')
     for (const s of night) s.startMin = W.nightRunStart
+    // Feste Startzeit (langer Lauf im Rennzeitplan): bleibt, die übrigen Einheiten folgen danach.
+    const fixed = day.sessions.filter((s) => s.fixedStart && s.startMin !== undefined)
     const rest = day.sessions
-      .filter((s) => s.type !== 'night_run')
+      .filter((s) => s.type !== 'night_run' && !fixed.includes(s))
       .sort((a, b) => order(a) - order(b))
     const prev = days.get(addDays(day.date, -1))
     const afterNightRun = prev?.sessions.some((s) => s.type === 'night_run') ?? false
     const total = rest.reduce((a, s) => a + s.durationMin, 0) + Math.max(0, rest.length - 1) * W.transitionMin
     let t = afterNightRun ? Math.max(w.start, W.afternoonStart) : w.start + W.startOffsetMin
-    if (t + total > w.end) t = Math.max(w.start, w.end - total)
+    if (fixed.length) t = Math.max(...fixed.map((s) => s.startMin! + s.durationMin)) + W.transitionMin
+    else if (t + total > w.end) t = Math.max(w.start, w.end - total)
     for (const s of rest) {
       s.startMin = t
       t += s.durationMin + W.transitionMin
     }
-    day.sessions = [...rest, ...night]
+    day.sessions = [...fixed, ...rest, ...night]
   }
 }
 

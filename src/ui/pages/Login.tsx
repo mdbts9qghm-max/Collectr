@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CONFIG } from '../../core/config'
 import { Button, Card, Disclaimer, Field, Input } from '../components/common'
 
 export function Login({ onLogin }: { onLogin: (email: string, password: string) => Promise<string | null> }) {
@@ -10,7 +11,7 @@ export function Login({ onLogin }: { onLogin: (email: string, password: string) 
     <div className="mx-auto max-w-xl space-y-4 px-4 py-10">
       <div>
         <h1 className="text-2xl font-bold">Collectr</h1>
-        <p className="text-sm text-muted">Trainingsplan Ehrwald Trail 2027. Bitte anmelden.</p>
+        <p className="text-sm text-muted">Trainingsplan {CONFIG.race.name} {CONFIG.race.date.slice(0, 4)}. Bitte anmelden.</p>
       </div>
       <Card>
         <form

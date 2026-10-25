@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../../app/AppState'
 import { nextTrainingDay, whoopActive, type DayItem, type Warning } from '../../app/compute'
 import { PHASE_LABEL } from '../../core/plan'
-import { raceCountdown } from '../../core/race'
+import { raceCountdown, raceHeadline } from '../../core/race'
 import type { ReadinessResult } from '../../core/recovery'
 import { effectiveShift, shiftLabel } from '../../core/shift'
 import { berlinToInstant, formatDateDE, formatNumberDE, formatTime, weekdayLongDE } from '../../core/time'
@@ -30,6 +30,7 @@ export function Today() {
 
   return (
     <div className="space-y-4">
+      {app.notice && <WarningBanner w={{ id: 'notice', level: 'info', text: app.notice, ackable: true }} onAck={app.dismissNotice} />}
       {warnings.map((w) => (
         <WarningBanner key={w.id} w={w} onAck={() => app.updateSettings({ vacationReminderAck: today })} />
       ))}
@@ -98,7 +99,7 @@ export function Today() {
       <Card>
         <div className="flex items-center justify-between gap-3" data-testid="countdown">
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Ehrwald Trail · 18.06.2027, 23:00 Uhr</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">{raceHeadline()}</div>
             {v.micro && (
               <div className="mt-1 text-sm text-muted">
                 {PHASE_LABEL[v.micro.phase]} · Meso {v.micro.mesoIndex} · Mikro {v.micro.index}

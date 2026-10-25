@@ -44,6 +44,30 @@ describe('IndexedDB-Repository', () => {
     expect(parseBackup(JSON.stringify({ ...backup, version: 2 })).ok).toBe(false)
   })
 
+  it('Zielwechsel: alte Einträge werden gelöscht, Krafttests, Profil, Overrides und WHOOP bleiben', async () => {
+    const r = repo()
+    await r.saveSettings({ ...(await r.getSettings()), onboarded: true })
+    await r.putOverride({ date: '2027-09-17', kind: 'URLAUB' })
+    await r.putLog({ sessionId: 'a#lauf', date: '2026-10-03', status: 'done' })
+    await r.putManual({ date: '2026-10-03', sleepMin: 420, quality: 4, feeling: 3 })
+    await r.putDecision({ sessionId: 'a#lauf', date: '2026-10-03', rejected: true, decidedAt: 'x' })
+    await r.putAssignment({ workoutId: 'w1', sessionId: null, decidedAt: 'x' })
+    await r.saveChecklist({ urlaub: true })
+    const test = { date: '2026-10-01', maxPullups: 3, maxDips: 4, hollowHoldSec: 35, frontLever: { stage: 0, holdSec: 0 }, backLever: { stage: 0, holdSec: 0 } }
+    await r.putStrengthTest(test)
+    await r.applyRecord('whoop_sleeps', 's1', { id: 's1', start: 'a', end: 'b', nap: false })
+    await r.resetHistory()
+    expect(await r.listLogs()).toEqual([])
+    expect(await r.listManual()).toEqual([])
+    expect(await r.listDecisions()).toEqual([])
+    expect(await r.listAssignments()).toEqual([])
+    expect(await r.getChecklist()).toEqual({})
+    expect(await r.listStrengthTests()).toEqual([test])
+    expect(await r.listOverrides()).toEqual([{ date: '2027-09-17', kind: 'URLAUB' }])
+    expect((await r.getSettings()).onboarded).toBe(true)
+    expect((await r.listWhoop()).sleeps).toHaveLength(1)
+  })
+
   it('Zurücksetzen löscht alles', async () => {
     const r = repo()
     await r.putLog({ sessionId: 'x', date: '2026-10-03', status: 'skipped' })

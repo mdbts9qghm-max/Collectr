@@ -1,7 +1,7 @@
 // Lokale Speicherung in IndexedDB (bis Phase 4). Offline lesbar.
 
 import { openDB, type IDBPDatabase } from 'idb'
-import { LOCAL, type Collection, type SyncRecord } from './collections'
+import { HISTORY_COLLECTIONS, LOCAL, type Collection, type SyncRecord } from './collections'
 import type { ManualReadiness, SessionLog, ShiftOverride, StrengthState, StrengthTest } from '../core/types'
 import { defaultSettings } from './defaults'
 import type { WhoopCycle, WhoopRecovery, WhoopSleep, WhoopWorkout } from '../core/whoop'
@@ -223,6 +223,19 @@ export class IndexedDbRepository implements Repository {
     const db = await this.dbp
     const tx = db.transaction([...STORES], 'readwrite')
     await Promise.all(STORES.map((s) => tx.objectStore(s).clear()))
+    await tx.done
+  }
+
+  async resetHistory(): Promise<void> {
+    const db = await this.dbp
+    const stores = [...new Set(HISTORY_COLLECTIONS.map((c) => LOCAL[c].store))]
+    const tx = db.transaction(stores, 'readwrite')
+    await Promise.all(
+      HISTORY_COLLECTIONS.map((c) => {
+        const loc = LOCAL[c]
+        return loc.kvKey ? tx.objectStore(loc.store).delete(loc.kvKey) : tx.objectStore(loc.store).clear()
+      }),
+    )
     await tx.done
   }
 }

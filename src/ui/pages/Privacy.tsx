@@ -1,3 +1,4 @@
+import { CONFIG } from '../../core/config'
 import { Card, Disclaimer, H2 } from '../components/common'
 
 /** Datenschutzerklärung (auch als Privacy-Policy-URL für das WHOOP Developer Dashboard). */
@@ -8,7 +9,7 @@ export function Privacy() {
       <Card>
         <H2>Zweck</H2>
         <p>
-          Collectr ist eine private Trainings-App für eine einzelne Person (Vorbereitung auf den Ehrwald Trail 2027). Es gibt keine weiteren Nutzer, keine
+          Collectr ist eine private Trainings-App für eine einzelne Person (Vorbereitung auf den {CONFIG.race.name} {CONFIG.race.date.slice(0, 4)}). Es gibt keine weiteren Nutzer, keine
           Werbung und keine Weitergabe an Dritte.
         </p>
       </Card>

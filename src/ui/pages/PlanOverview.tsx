@@ -3,7 +3,8 @@ import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, 
 import { useApp } from '../../app/AppState'
 import { actualByDate, sumVolume } from '../../app/volumeView'
 import { calendarWeeks, PHASE_LABEL } from '../../core/plan'
-import { raceChecklist, raceConflict } from '../../core/race'
+import { CONFIG } from '../../core/config'
+import { raceChecklist, raceConflict, raceDateLong } from '../../core/race'
 import { addDays, formatDateDE, formatDayMonthDE, isoWeek } from '../../core/time'
 import { Card, Chip, Disclosure, H2, SegmentedButtons, SegmentedLinks } from '../components/common'
 
@@ -92,7 +93,7 @@ export function PlanOverview() {
               <li key={m.index} className={`rounded-xl p-3 ${active ? 'ring-2 ring-accent' : ''} bg-panel-2`}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
-                    {m.index === 8 ? 'Taper' : `Meso ${m.index}`} · {PHASE_LABEL[m.phase]}
+                    {m.phase === 'taper' ? PHASE_LABEL.taper : `Meso ${m.index} · ${PHASE_LABEL[m.phase]}`}
                   </span>
                   {active && <Chip tone="accent">aktuell</Chip>}
                 </div>
@@ -107,11 +108,13 @@ export function PlanOverview() {
         <div className="mt-3 space-y-1 text-xs text-muted">
           {plan.mountainWeekends.map((w) => (
             <p key={w.microIndex}>
-              ⛰ Bergwochenende {formatDateDE(w.days[0])}/{formatDateDE(w.days[1])}
+              ⛰ {w.courseRecce ? 'Streckenbesichtigung' : 'Bergwochenende'} {formatDateDE(w.days[0])}/{formatDateDE(w.days[1])}
               {!w.feasible && ' (durch Dienst blockiert)'}
             </p>
           ))}
-          <p>🏁 Rennen: Freitag, 18.06.2027, 23:00 Uhr (KW {isoWeek('2027-06-18').week})</p>
+          <p>
+            🏁 {CONFIG.race.name}: {raceDateLong()} (KW {isoWeek(CONFIG.race.date).week})
+          </p>
         </div>
       </Disclosure>
     </div>

@@ -1,5 +1,8 @@
 # SPEC: Trainings-App für den Ehrwald Trail 2027
 
+> **Zielwechsel am 25.10.2026:** Das Rennziel ist jetzt der **Arberland Classic Trail** (Bayerisch Eisenstein, Sa 18.09.2027 vorläufig, 07:00 Uhr, ca. 66 km, 2.514 hm, Zeitlimit 13 h).
+> Diese SPEC bleibt die Original-Vorgabe. Was sich durch den Wechsel ändert (Planzeitraum, Phasen, frühe lange Läufe statt Nachtläufen, Rennwoche, Schlaf), steht in `docs/PLANUNG.md` Abschnitt 8 und in `CLAUDE.md`.
+
 Diese Datei ist die vollständige Vorgabe für die App. Lies sie komplett, bevor du planst oder Code schreibst. Wenn etwas unklar oder widersprüchlich ist, frag nach, statt zu raten.
 
 ---

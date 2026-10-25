@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Trainings-App für den Ehrwald Trail 2027 (Schichtarbeit, Laufen, Calisthenics, WHOOP)",
+  "description": "Trainings-App für den Arberland Classic Trail 2027 (Schichtarbeit, Laufen, Calisthenics, WHOOP)",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

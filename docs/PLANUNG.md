@@ -3,6 +3,9 @@
 Stand: 28.09.2026. Grundlage ist `docs/SPEC.md`, die Entscheidungen des Nutzers stehen in `CLAUDE.md`.
 In diesem Dokument steht noch kein Code, nur die Beschreibung, wie die Logik gebaut wird.
 
+> **Zielwechsel (25.10.2026):** Abschnitte 1–7 beschreiben den ursprünglichen Plan für den Ehrwald Trail.
+> Was für den Arberland Classic Trail gilt, steht in **Abschnitt 8**.
+
 ---
 
 ## 1. Überblick
@@ -329,3 +332,61 @@ Alle Szenarien aus SPEC 11. Dazu gehören:
 ## 7. Nächste Schritte
 
 Nach dem OK zu diesem Dokument folgt **Phase 2 (Kernlogik)** im Plan-Modus: Projekt-Setup (Vite, TS, Vitest) und dann `src/core` Modul für Modul mit Tests. Es arbeitet mit Beispieldaten statt WHOOP.
+
+---
+
+## 8. Zielwechsel: Arberland Classic Trail 2027 (25.10.2026)
+
+| | Ehrwald Trail (alt) | Arberland Classic Trail (neu) |
+|---|---|---|
+| Ort | Ehrwald (Tirol) | Bayerisch Eisenstein (Bayerischer Wald) |
+| Termin | Fr 18.06.2027, 23:00 Uhr | **Sa 18.09.2027, 07:00 Uhr** (vorläufig, Termin 2027 noch nicht veröffentlicht) |
+| Strecke | 86 km, 4.295 hm, 22 h | ca. 66 km, 2.514 hm, **13 h** (Werte der Ausgabe 2026) |
+
+Alle Rennwerte stehen in `CONFIG.race` und lassen sich ändern, sobald der Veranstalter die Daten für 2027 veröffentlicht.
+
+### 8.1 Zeitplan
+
+- **Einstiegstag Mo 26.10.2026** (Zyklustag 5, frei): lockerer Lauf ca. 35 min, gehört zu Mikrozyklus 1. Der Schichtrhythmus bleibt (Ankerdatum 02.10.2026).
+- **Mikrozyklen 1–66** ab Di 27.10.2026 (`plan.microStartDate`), jeder beginnt an Tag 1 des Rhythmus.
+- **Mesozyklen anteilig verlängert** (`plan.mesos`): 6–7 Mikrozyklen statt starr 7, Entlastung jeweils im letzten, außer im letzten Mesozyklus vor dem Taper.
+
+| Phase | Meso | Mikro | Zeitraum |
+|---|---|---|---|
+| Grundlage | 1–3 (je 6) | 1–18 | 26.10.2026–24.01.2027 |
+| Aufbau | 4–7 (7, 7, 6, 6) | 19–44 | 25.01.–03.06.2027 |
+| Rennspezifisch | 8–10 (je 6, Meso 10 ohne Entlastung) | 45–62 | 04.06.–01.09.2027 |
+| Taper | 11 | 63–64, Rennwoche 65, Renntag 66 | 02.09.–18.09.2027 |
+
+Entlastungen: Mikro 6, 12, 18, 25, 32, 38, 44, 50, 56. Krafttests: 6, 12, 18, 25, 32, 38, 44, 50, 56, 62.
+
+### 8.2 Umfang
+
+- Trend-Regel unverändert (+7 % je Mikrozyklus, Schlüsselspitzen bis +12 %).
+- Anker km/Woche: 40 (Ende Grundlage, Mikro 17), 55 (Ende Aufbau, Mikro 43), 62 (Mikro 59). Spitzen-Mikrozyklen ca. 63–66 km/Woche.
+- Langer Lauf: 10 → 16 km (Ende Grundlage) → 28 km (Ende Aufbau). Rennspezifisch: erster Lauf über 30 km in Mikro 51 (32 km), **längster Lauf 40 km am 06.08.2027** (Mikro 57), B2B-Spitze 26 + 16 km (Mikro 59).
+- Höhenmeter: 250 → 600 → 1.500 → ca. 2.600 hm/Woche. Obergrenze im langen Lauf weiter 700 (Aufbau) bzw. 1.200 hm (rennspezifisch).
+
+### 8.3 Frühe lange Läufe statt Nachtläufen
+
+- Vorlage `specific_early` (Mikro 46, 49, 54, 58, 61): langer Lauf an Tag 4 mit **fester Startzeit 07:00** wie im Rennen (`PlannedSession.fixedStart`). Der Scheduler übernimmt feste Startzeiten, weitere Einheiten des Tages folgen danach.
+- Schlaf in der Nacht davor wie vor dem Rennen: **aufstehen 04:30** (2,5 h vor dem Start, `race.wakeBeforeStartMin`), ins Bett ca. 21:00.
+- Nachtläufe kommen im Plan nicht mehr vor. Der Typ `night_run` bleibt im Code (Scheduler, Schlaf, WHOOP-Zuordnung), falls er wieder gebraucht wird.
+
+### 8.4 Bergwochenenden
+
+- Mikro 53: **Sa/So 17./18.07.2027**, ca. 24 + 12 km mit 1.400 + 600 hm.
+- Mikro 60: **Sa/So 21./22.08.2027 = Streckenbesichtigung** auf der Arberland-Strecke (`plan.courseRecceMicro`), ca. 28 + 14 km mit 1.500 + 600 hm, 4 Wochen vor dem Rennen.
+- Erinnerung jeweils 4 Wochen vorher.
+
+### 8.5 Rennwoche, Urlaub, Schlaf
+
+- Der Renntag ist Zyklustag 2 (Fr 17.09. Tagschicht, Sa 18.09. Nachtschicht). Pflicht-Urlaub **17.–18.09.**, empfohlen **12.–19.09.** Die Warnung steht im Coach bei der Checkliste Rennwoche.
+- Mikro 63/64 Taper, 65 Rennwoche (lockere Läufe), 66: optional kurzes Auflockern am 17.09. (nur bei Urlaub), Rennen am 18.09.
+- Kein Nap am Renntag (Nap nur bei einem Start ab 18:00, `race.napIfStartFrom`). Vorabend: ins Bett 21:00, aufstehen 04:30. Die letzten 14 Tage spätestens 22:00 ins Bett.
+- Checkliste: Anreise Bayerisch Eisenstein, Pflichtausrüstung laut Veranstalter, Verpflegungsplan für 13 h, Schlafstrategie mit frühem Aufstehen, vorläufigen Termin prüfen.
+
+### 8.6 Alte Einträge
+
+- Einmalig beim ersten Öffnen nach dem Update (`settings.planId` ≠ `CONFIG.race.id`): `Repository.resetHistory()` löscht erledigte/ausgelassene Einheiten, manuelle Erholung, Anpassungs-Entscheidungen, Workout-Zuordnungen und die Checkliste, lokal und über Tombstones in der Cloud. Danach Hinweis auf „Heute“.
+- Krafttests, Kraftstufen, Profil, Schicht-Overrides und WHOOP-Daten bleiben. Neue Nutzer bekommen `planId` beim Onboarding.

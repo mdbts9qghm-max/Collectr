@@ -128,6 +128,7 @@ export function buildVolumes(micros: Microcycle[], profile: Pick<Profile, 'weekl
       case 'taper1':
       case 'taper2':
       case 'race_week':
+      case 'race_day':
         target = peakLevel * V.taperFactors[m.kind]
         cap = target
         elev = peakElevation * V.taperElevationFactors[m.kind]

@@ -4,7 +4,7 @@
 
 import { CONFIG, DEFAULT_PROFILE } from '../config'
 import { createShiftCalendar, effectiveShift, type ShiftCalendar } from '../shift'
-import { addDays, dateRange, isoWeek, isoWeekStart } from '../time'
+import { addDays, dateRange, daysBetween, isoWeek, isoWeekStart } from '../time'
 import type {
   LocalDate,
   MicrocyclePlan,
@@ -18,7 +18,7 @@ import type {
   StrengthState,
 } from '../types'
 import { composeMicro } from './compose'
-import { buildMesocycles, buildMicrocycles } from './periodization'
+import { buildMesocycles, buildMicrocycles, rhythmStart } from './periodization'
 import { assignStartTimes, enforceB2BIntegrity, enforceLegsRule, placeDay, tryMoveKeySession, type MoveContext } from './schedule'
 import { buildVolumes, microToWeekly } from './volume'
 
@@ -137,10 +137,16 @@ function round1(v: number): number {
 function mountainWeekends(cal: ShiftCalendar, micros: MicrocyclePlan[]): MountainWeekend[] {
   return (CONFIG.plan.mountainMicros as readonly number[]).map((i) => {
     const m = micros.find((x) => x.index === i)!
-    const d4 = addDays(m.start, 3)
-    const d5 = addDays(m.start, 4)
+    const d4 = addDays(rhythmStart(m.index), 3)
+    const d5 = addDays(rhythmStart(m.index), 4)
     const feasible = [d4, d5].every((d) => effectiveShift(cal, d).dayKind === 'free')
-    return { microIndex: i, days: [d4, d5], reminderDate: addDays(d4, -CONFIG.plan.mountainReminderDaysBefore), feasible }
+    return {
+      microIndex: i,
+      days: [d4, d5],
+      reminderDate: addDays(d4, -CONFIG.plan.mountainReminderDaysBefore),
+      feasible,
+      courseRecce: i === CONFIG.plan.courseRecceMicro,
+    }
   })
 }
 
@@ -174,8 +180,10 @@ export function calendarWeeks(plan: Plan): CalendarWeekSummary[] {
 }
 
 /** Wochen-Äquivalent eines Mikrozyklus (km × 7/5). */
-export function weeklyEquivalentKm(m: Pick<MicrocyclePlan, 'plannedKm'>): number {
-  return round1(microToWeekly(m.plannedKm))
+/** km/Woche-Äquivalent eines Mikrozyklus (Mikrozyklus 1 ist mit dem Einstiegstag 6 Tage lang). */
+export function weeklyEquivalentKm(m: Pick<MicrocyclePlan, 'plannedKm' | 'start' | 'end'>): number {
+  const days = daysBetween(m.start, m.end) + 1
+  return round1(microToWeekly(m.plannedKm) * (CONFIG.plan.microLengthDays / days))
 }
 
 export function planDay(plan: Plan, date: LocalDate): PlanDay | undefined {
