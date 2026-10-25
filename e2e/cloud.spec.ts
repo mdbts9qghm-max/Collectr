@@ -240,3 +240,70 @@ test('Erinnerungen: Push-Abo speichern, Erinnerungen hochladen, wieder abbestell
   await expect(toggle).not.toBeChecked()
   await expect.poll(() => store.deletes.some((d) => d.table === 'push_subscriptions' && d.query.includes('endpoint'))).toBe(true)
 })
+
+test('Zielwechsel mit Konto: alte Einträge einmal löschen, ohne Endlos-Neuladen', async ({ page }) => {
+  const store = await fakeSupabase(page, { password: 'richtig' })
+  await page.goto('/')
+  await page.getByLabel('E-Mail').fill('ich@example.com')
+  await page.getByLabel('Passwort').fill('richtig')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.getByRole('button', { name: 'Später machen' }).click()
+  await page.getByRole('button', { name: 'Plan starten' }).click()
+  await expect(page.getByTestId('sync-badge')).toContainText('Synchron', { timeout: 10_000 })
+
+  // Stand vor dem Update nachbilden: Einstellungen ohne planId, viele alte Einträge
+  // (auf der Datenschutzseite, dort läuft die App nicht)
+  await page.goto('/datenschutz')
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open('collectr')
+        req.onerror = () => reject(req.error)
+        req.onsuccess = () => {
+          const tx = req.result.transaction(['kv', 'logs', 'manual', 'decisions'], 'readwrite')
+          const kv = tx.objectStore('kv')
+          const get = kv.get('settings')
+          get.onsuccess = () => {
+            const { planId: _drop, ...old } = get.result as Record<string, unknown>
+            kv.put(old, 'settings')
+          }
+          kv.put({ urlaub: true, schuhe: true }, 'checklist')
+          for (let i = 0; i < 60; i++) {
+            const date = new Date(Date.UTC(2026, 9, 2 + (i % 20))).toISOString().slice(0, 10)
+            tx.objectStore('logs').put({ sessionId: `${date}#alt${i}`, date, status: 'done' })
+            tx.objectStore('decisions').put({ sessionId: `${date}#alt${i}`, date, rejected: true, decidedAt: 'x' })
+          }
+          for (let i = 0; i < 20; i++) {
+            const date = new Date(Date.UTC(2026, 9, 2 + i)).toISOString().slice(0, 10)
+            tx.objectStore('manual').put({ date, sleepMin: 420, quality: 3, feeling: 3 })
+          }
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error)
+        }
+      }),
+  )
+  let pulls = 0
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && r.url().includes('/rest/v1/session_logs')) pulls++
+  })
+  await page.goto('/')
+  const notice = page.getByTestId('warning-notice')
+  await expect(notice).toContainText('Neues Ziel: Arberland Classic Trail', { timeout: 10_000 })
+  await expect(page.getByTestId('sync-badge')).toContainText('Synchron', { timeout: 10_000 })
+  // Ruhe: in den nächsten Sekunden keine weiteren Abrufe mehr (kein Endlos-Neuladen)
+  await page.waitForTimeout(2000)
+  const settled = pulls
+  await page.waitForTimeout(3000)
+  expect(pulls).toBe(settled)
+  expect(pulls).toBeLessThanOrEqual(4)
+  // Tombstones für die alten Einträge sind in der Cloud angekommen
+  const tombstones = store.posts
+    .filter((p) => p.table === 'session_logs')
+    .flatMap((p) => (Array.isArray(p.body) ? p.body : [p.body]) as { deleted: boolean }[])
+    .filter((r) => r.deleted)
+  expect(tombstones.length).toBeGreaterThanOrEqual(60)
+  await notice.getByRole('button', { name: 'Verstanden' }).click()
+  await expect(notice).toHaveCount(0)
+})

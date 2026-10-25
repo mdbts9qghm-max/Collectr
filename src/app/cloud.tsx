@@ -2,7 +2,7 @@
 // Ohne VITE_SUPABASE_URL läuft die App nur lokal (Entwicklung, Tests).
 
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { IndexedDbRepository } from '../data/indexedDb'
 import { SupabaseRemote } from '../data/remote'
 import { SyncEngine, type SyncStatus } from '../data/sync'
@@ -125,6 +125,9 @@ export function CloudGate({ children }: { children: (repo: Repository, onRemoteC
     }
   }, [engine, userId, local, fetchWhoop, sb])
 
+  // Stabile Referenz: sonst würde jede Statusänderung des Syncs die App neu laden lassen.
+  const onRemoteChange = useCallback((fn: () => void) => (engine ? engine.onRemoteChange(fn) : () => undefined), [engine])
+
   if (!ready) return <div className="p-6 text-muted">Lade …</div>
   if (!sb) return <>{children(local)}</>
   if (!session) return <Login onLogin={async (email, password) => (await sb.auth.signInWithPassword({ email, password })).error?.message ?? null} />
@@ -162,5 +165,5 @@ export function CloudGate({ children }: { children: (repo: Repository, onRemoteC
       },
     },
   }
-  return <CloudContext.Provider value={value}>{children(repo, (fn) => engine!.onRemoteChange(fn))}</CloudContext.Provider>
+  return <CloudContext.Provider value={value}>{children(repo, onRemoteChange)}</CloudContext.Provider>
 }
