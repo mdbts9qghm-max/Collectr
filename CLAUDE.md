@@ -101,7 +101,8 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Vorlage `specific_early` (langer Lauf 07:00, `fixedStart`), `race_day`-Mikrozyklus, Streckenbesichtigung (`courseRecceMicro`)
   - Schlaf: 04:30 aufstehen vor Rennen und frühen langen Läufen, kein Nap am Renntag; Rennen-Texte aus `CONFIG.race` (`raceHeadline`, `raceFacts`, `raceDateLong`)
   - `resetHistory()` in IndexedDB und Sync, einmalig über `settings.planId`, Hinweis auf Heute
-  - Tests: 244 Vitest, 9 Playwright (inkl. Zielwechsel)
+  - Tests: 244 Vitest, 10 Playwright (inkl. Zielwechsel lokal und mit Konto)
+  - Fix: mit Konto lud die App nach dem Update endlos (jede Sync-Statusänderung startete das Löschen erneut). Jetzt nur ein Durchlauf (`resetHistoryOnce`) und stabile `onRemoteChange`-Referenz in `cloud.tsx`
 
 ## Phase 2 – Plan (freigegeben)
 

@@ -59,6 +59,26 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null)
 
+/** Laufendes Zurücksetzen beim Zielwechsel (nur ein Durchlauf gleichzeitig, auch bei parallelen Ladevorgängen). */
+let historyReset: Promise<boolean> | null = null
+
+/**
+ * Zielwechsel: alte Einträge einmalig löschen (lokal und in der Cloud). Prüft die Einstellungen frisch,
+ * damit ein paralleler Ladevorgang nicht ein zweites Mal löscht. Ergebnis: true, wenn gelöscht wurde.
+ */
+function resetHistoryOnce(repo: Repository): Promise<boolean> {
+  historyReset ??= (async () => {
+    const settings = await repo.getSettings()
+    if (!needsHistoryReset(settings)) return false
+    await repo.resetHistory()
+    await repo.saveSettings({ ...settings, planId: CONFIG.race.id })
+    return true
+  })().finally(() => {
+    historyReset = null
+  })
+  return historyReset
+}
+
 async function loadAll(repo: Repository): Promise<AppData> {
   const [settings, overrides, logs, manual, strengthTests, strengthState, checklist, decisions, assignments, whoop] = await Promise.all([
     repo.getSettings(),
@@ -92,12 +112,9 @@ export function AppProvider({
 
   const reload = useCallback(async () => {
     let d = await loadAll(repo)
-    // Zielwechsel: alte Einträge einmalig löschen (lokal und in der Cloud)
     if (needsHistoryReset(d.settings)) {
-      await repo.resetHistory()
-      await repo.saveSettings({ ...d.settings, planId: CONFIG.race.id })
+      if (await resetHistoryOnce(repo)) setNotice(HISTORY_RESET_NOTICE)
       d = await loadAll(repo)
-      setNotice(HISTORY_RESET_NOTICE)
     }
     setData(d)
   }, [repo])
