@@ -51,6 +51,7 @@ export const backupSchema = z.object({
     usePatterns: z.boolean().optional(),
     simulatedDate: date.nullable(),
     vacationReminderAck: date.optional(),
+    planId: z.string().optional(),
   }),
   overrides: z.array(
     z.object({

@@ -3,7 +3,7 @@
 
 import { CONFIG } from '../config'
 import { buildStrengthSession } from '../strength'
-import { formatNumberDE } from '../time'
+import { formatNumberDE, formatTime } from '../time'
 import type {
   Intensity,
   IntensityLevel,
@@ -89,7 +89,7 @@ export const TYPE_LABEL: Record<SessionType, string> = {
   strength_short: 'Kurzes Krafttraining',
   strength_test: 'Krafttest',
   mobility: 'Mobility',
-  race: 'Ehrwald Trail',
+  race: CONFIG.race.shortName,
 }
 
 const GOAL: Record<SessionType, string> = {
@@ -98,8 +98,8 @@ const GOAL: Record<SessionType, string> = {
   long_run: 'Ausdauer und Zeit auf den Beinen steigern.',
   b2b_1: 'Erster Tag des Back-to-backs: Umfang sammeln und Ermüdung für morgen aufbauen.',
   b2b_2: 'Auf müden Beinen laufen lernen, wie in der zweiten Hälfte des Rennens.',
-  night_run: 'Laufen in der Nacht mit Stirnlampe üben, wie beim Rennstart um 23:00 Uhr.',
-  mountain_day: 'Echte Höhenmeter bergauf und vor allem bergab im alpinen Gelände sammeln.',
+  night_run: 'Laufen in der Nacht mit Stirnlampe üben.',
+  mountain_day: 'Echte Höhenmeter bergauf und vor allem bergab im Gelände sammeln.',
   intervals_uphill: 'Bergauf-Kraftausdauer und maximale Sauerstoffaufnahme verbessern.',
   threshold: 'Die Schwelle anheben, damit das lange gleichmäßige Tempo leichter fällt.',
   treadmill_hills: 'Höhenmeter im Flachland ersetzen: steiles Gehen und Laufen bergauf.',
@@ -110,7 +110,7 @@ const GOAL: Record<SessionType, string> = {
   strength_short: 'Kraft im Taper mit minimalem Aufwand erhalten.',
   strength_test: 'Fortschritt messen und die nächsten Kraftstufen festlegen.',
   mobility: 'Beweglichkeit erhalten und die Regeneration unterstützen.',
-  race: 'Gesund und im Zeitlimit von 22 Stunden ins Ziel kommen.',
+  race: `Gesund und im Zeitlimit von ${CONFIG.race.cutoffHours} Stunden ins Ziel kommen.`,
 }
 
 function base(type: SessionType, ctx: SessionContext): Omit<PlannedSession, 'title' | 'durationMin' | 'structure'> {
@@ -188,6 +188,8 @@ export interface LongRunOptions {
   elevationM?: number
   part?: 1 | 2
   afternoon?: boolean
+  /** Langer Lauf im Rennzeitplan: fester Start wie im Rennen (Zielwechsel: statt Nachtlauf). */
+  early?: boolean
 }
 
 /** Langer Lauf, Back-to-back und Nachtlauf. Ab Aufbau mit Verpflegungstraining und Ausrüstungstest. */
@@ -205,8 +207,12 @@ export function longRun(type: 'long_run' | 'b2b_1' | 'b2b_2' | 'night_run', ctx:
       ? ' Ausrüstung testen: Stirnlampe, Ersatzakku, Rucksack, warme Schicht.'
       : ' Ausrüstung testen: Rucksack, Stöcke, Schuhe, Pflichtausrüstung.'
     : ''
-  const main =
-    type === 'night_run'
+  const early = o.early === true && type === 'long_run'
+  const startText = `${formatTime(CONFIG.race.startMin)} Uhr`
+  const wakeText = formatTime(CONFIG.race.startMin - CONFIG.race.wakeBeforeStartMin)
+  const main = early
+    ? `${km(d)} mit Start um ${startText} wie im Rennen: ${wakeText} aufstehen, Renn-Frühstück ca. 2 h vorher, Pacing wie am Renntag.`
+    : type === 'night_run'
       ? `${km(d)} locker in der Dunkelheit mit Stirnlampe (Start ca. 21:00 Uhr), bekannte, sichere Strecke.`
       : type === 'b2b_2'
         ? `${km(d)} locker auf müden Beinen${o.afternoon ? ', am Nachmittag' : ''}, Gehpausen bewusst einbauen.`
@@ -218,8 +224,9 @@ export function longRun(type: 'long_run' | 'b2b_1' | 'b2b_2' | 'night_run', ctx:
   }
   return {
     ...base(type, ctx),
-    goal: GOAL[type] + (fueling ? ' Verpflegung und Ausrüstung testen.' : ''),
-    title: `${TYPE_LABEL[type]} ${km(d)}`,
+    goal: (early ? 'Den Rennmorgen proben: früh aufstehen, Frühstück, Start und Verpflegung wie im Rennen.' : GOAL[type]) + (fueling ? ' Verpflegung und Ausrüstung testen.' : ''),
+    title: early ? `Langer Lauf im Rennzeitplan ${km(d)}` : `${TYPE_LABEL[type]} ${km(d)}`,
+    ...(early ? { startMin: CONFIG.race.startMin, fixedStart: true } : {}),
     durationMin: Math.round(d * pace + hmMin),
     distanceKm: d,
     elevationM: hm,
@@ -229,12 +236,16 @@ export function longRun(type: 'long_run' | 'b2b_1' | 'b2b_2' | 'night_run', ctx:
   }
 }
 
-export function mountainDay(ctx: SessionContext, o: { km: number; elevationM: number; day: 1 | 2 }): PlannedSession {
+export function mountainDay(ctx: SessionContext, o: { km: number; elevationM: number; day: 1 | 2; courseRecce?: boolean }): PlannedSession {
   const d = roundKm(o.km)
   const hours = d / PACE.mountainKmh + o.elevationM / PACE.mountainHmPerHour
+  const where = o.courseRecce
+    ? `auf der Strecke des ${CONFIG.race.name} rund um ${CONFIG.race.location.split(' (')[0]}: Abschnitte, Anstiege, Verpflegungsstellen und Untergrund kennenlernen`
+    : 'im Gelände (Mittelgebirge oder Alpen)'
   return {
     ...base('mountain_day', ctx),
-    title: `${TYPE_LABEL.mountain_day} ${o.day}/2: ${km(d)}, ${o.elevationM} hm`,
+    title: `${o.courseRecce ? 'Streckenbesichtigung' : TYPE_LABEL.mountain_day} ${o.day}/2: ${km(d)}, ${o.elevationM} hm`,
+    ...(o.courseRecce ? { goal: 'Die Rennstrecke kennenlernen und echte Höhenmeter bergauf und bergab sammeln.' } : {}),
     durationMin: Math.round(hours * 60),
     distanceKm: d,
     elevationM: o.elevationM,
@@ -242,7 +253,7 @@ export function mountainDay(ctx: SessionContext, o: { km: number; elevationM: nu
     gearTest: true,
     structure: {
       warmup: 'Ruhig loslaufen, bergauf von Anfang an gehen.',
-      main: `${km(d)} mit ${o.elevationM} hm im alpinen Gelände. Bergauf zügig gehen (mit Stöcken), bergab kontrolliert und locker laufen. 60–90 g KH pro Stunde, Pflichtausrüstung im Rucksack.${o.day === 2 ? ' Tag 2 auf müden Beinen, Fokus auf sauberes Bergablaufen.' : ''}`,
+      main: `${km(d)} mit ${o.elevationM} hm ${where}. Bergauf zügig gehen (mit Stöcken), bergab kontrolliert und locker laufen. 60–90 g KH pro Stunde, Pflichtausrüstung im Rucksack.${o.day === 2 ? ' Tag 2 auf müden Beinen, Fokus auf sauberes Bergablaufen.' : ''}`,
       cooldown: 'Auslaufen/gehen, Beine hochlegen, viel trinken und essen.',
     },
   }
@@ -419,11 +430,12 @@ export function raceSession(ctx: SessionContext): PlannedSession {
     distanceKm: R.distanceKm,
     elevationM: R.elevationGainM,
     startMin: R.startMin,
+    fixedStart: true,
     fueling: true,
     gearTest: false,
     structure: {
-      warmup: 'Nap am Nachmittag, leichte Mahlzeit ca. 3 h vor dem Start, Pflichtausrüstung prüfen.',
-      main: `Start 23:00 Uhr in Ehrwald. Bergauf konsequent gehen, bergab locker, 60–90 g KH pro Stunde. Zeitlimit ${R.cutoffHours} h (Zielschluss Samstag 21:00 Uhr).`,
+      warmup: `${formatTime(R.startMin - R.wakeBeforeStartMin)} Uhr aufstehen, Frühstück ca. 2–3 h vor dem Start, Pflichtausrüstung prüfen.`,
+      main: `Start ${formatTime(R.startMin)} Uhr in ${R.location}. Bergauf konsequent gehen, bergab locker, 60–90 g KH pro Stunde. Zeitlimit ${R.cutoffHours} h (Zielschluss ${formatTime(R.startMin + R.cutoffHours * 60)} Uhr).`,
       cooldown: 'Ankommen, essen, trinken, schlafen.',
     },
   }

@@ -30,7 +30,7 @@ export const SLEEP_TIPS: Record<TipTag, string[]> = {
   ],
   race: [
     'Die Nächte vor dem Rennen zählen mehr als die letzte. Nervosität in der letzten Nacht ist normal.',
-    'Am Renntag nachmittags hinlegen, auch Ruhen ohne Schlaf hilft.',
-    'Rennausrüstung am Vortag komplett packen, damit der Abend ruhig bleibt.',
+    'Vor einem frühen Start: zwei, drei Abende vorher schon früher ins Bett, dann fällt das frühe Aufstehen leichter.',
+    'Rennausrüstung und Frühstück am Vortag komplett vorbereiten, damit der Abend ruhig bleibt.',
   ],
 }

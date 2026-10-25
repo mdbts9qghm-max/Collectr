@@ -1,6 +1,7 @@
 // Kalender-Export (.ics, RFC 5545, SPEC 9.9): Trainingseinheiten, Schichten und Schlaf/Nap.
 // Zeiten in Europe/Berlin mit VTIMEZONE, stabile UIDs, Zeilen gefaltet.
 
+import { CONFIG } from '../config'
 import { effectiveShift, shiftLabel, type ShiftCalendar } from '../shift'
 import { recommendSleep } from '../sleep'
 import { addDays, compareDates, normalizeDateTime } from '../time'
@@ -149,7 +150,7 @@ export function buildIcs(plan: Plan, cal: ShiftCalendar, opts: IcsOptions): stri
       if (r.night) events.push({ uid: `nacht-${day.date}`, summary: 'Schlafen', ...(r.tip ? { description: r.tip } : {}), start: r.night.start, end: r.night.end, categories: 'Schlaf' })
     }
   }
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Collectr//Ehrwald Trail 2027//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Collectr Training', 'X-WR-TIMEZONE:Europe/Berlin', ...VTIMEZONE]
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//Collectr//${CONFIG.race.name} ${CONFIG.race.date.slice(0, 4)}//DE`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Collectr Training', 'X-WR-TIMEZONE:Europe/Berlin', ...VTIMEZONE]
   for (const e of events) lines.push(...eventLines(e, opts.now))
   lines.push('END:VCALENDAR')
   return lines.map(foldLine).join('\r\n') + '\r\n'

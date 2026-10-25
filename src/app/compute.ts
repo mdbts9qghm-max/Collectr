@@ -61,6 +61,17 @@ export function whoopActive(data: Pick<AppData, 'whoop'>): boolean {
   return data.whoop.status?.connected === true || data.whoop.sleeps.length > 0
 }
 
+/**
+ * Zielwechsel: Einträge eines eingerichteten Nutzers gehören zu einem anderen Rennziel und
+ * werden einmalig gelöscht (Entscheidung beim Wechsel auf den Arberland Classic Trail).
+ */
+export function needsHistoryReset(settings: AppSettings): boolean {
+  return settings.onboarded && settings.planId !== CONFIG.race.id
+}
+
+/** Hinweis nach dem einmaligen Löschen. */
+export const HISTORY_RESET_NOTICE = `Neues Ziel: ${CONFIG.race.name}. Der Plan startet neu, alte Einträge (erledigte Einheiten, manuelle Erholung, Anpassungen, Checkliste) wurden gelöscht. Krafttests, Kraftstufen, Schichtänderungen und WHOOP-Daten sind geblieben.`
+
 /** Heutiges Datum: simuliert oder echt (Europe/Berlin). */
 export function currentDate(settings: AppSettings, now: number): LocalDate {
   return settings.simulatedDate ?? berlinToday(now)
@@ -223,8 +234,8 @@ export function buildWarnings(data: AppData, cal: ShiftCalendar, plan: Plan, dat
         id: `mountain-${w.microIndex}`,
         level: w.feasible ? 'info' : 'warn',
         text: w.feasible
-          ? `Bergwochenende am ${formatDateDE(w.days[0])} und ${formatDateDE(w.days[1])}: Tage frei halten, Anreise und Unterkunft planen.`
-          : `Bergwochenende am ${formatDateDE(w.days[0])}/${formatDateDE(w.days[1])} ist durch Dienst blockiert. Bitte tauschen oder Urlaub eintragen, sonst gibt es Laufband-Ersatz.`,
+          ? `${w.courseRecce ? `Streckenbesichtigung ${CONFIG.race.name}` : 'Bergwochenende'} am ${formatDateDE(w.days[0])} und ${formatDateDE(w.days[1])}: Tage frei halten, Anreise und Unterkunft planen.`
+          : `${w.courseRecce ? 'Streckenbesichtigung' : 'Bergwochenende'} am ${formatDateDE(w.days[0])}/${formatDateDE(w.days[1])} ist durch Dienst blockiert. Bitte tauschen oder Urlaub eintragen, sonst gibt es Laufband-Ersatz.`,
       })
     }
   }

@@ -11,11 +11,13 @@ import {
   mobility,
   mountainDay,
   raceSession,
+  recoveryRun,
   strengthSession,
   threshold,
   treadmillHills,
   type SessionContext,
 } from './templates'
+import { rhythmStart } from './periodization'
 import type { MicroVolume } from './volume'
 
 const V = CONFIG.volume
@@ -97,7 +99,7 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
   const specific = V.specificRuns[micro.index] ?? {}
   const phase = micro.phase
   const ctxFor = (day: CycleDay, slot: string): SessionContext => ({
-    date: addDays(micro.start, day - 1),
+    date: addDays(rhythmStart(micro.index), day - 1),
     microIndex: micro.index,
     phase,
     slot,
@@ -112,8 +114,14 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
   const optionals: Extra[] = []
 
   // Nachtläufe bekommen keinen Höhenmeter-Block (sicheres, bekanntes Gelände in der Dunkelheit).
-  const addLong = (day: CycleDay, type: 'long_run' | 'b2b_1' | 'b2b_2' | 'night_run', km: number, afternoon = false) =>
-    fixed.push({ day, km, scalable: true, hmCapable: type !== 'night_run', make: (ctx, k, hm) => longRun(type, ctx, { km: k, elevationM: hm, afternoon }) })
+  const addLong = (day: CycleDay, type: 'long_run' | 'b2b_1' | 'b2b_2' | 'night_run', km: number, opt: { afternoon?: boolean; early?: boolean } = {}) =>
+    fixed.push({
+      day,
+      km,
+      scalable: true,
+      hmCapable: type !== 'night_run',
+      make: (ctx, k, hm) => longRun(type, ctx, { km: k, elevationM: hm, ...(opt.afternoon ? { afternoon: true } : {}), ...(opt.early ? { early: true } : {}) }),
+    })
   const addQuality = (day: CycleDay, type: 'threshold' | 'intervals_uphill', variant: 'normal' | 'short' = 'normal') => {
     const probe = type === 'threshold' ? threshold(ctxFor(day, 'lauf'), variant) : intervalsUphill(ctxFor(day, 'lauf'), variant)
     fixed.push({
@@ -164,10 +172,10 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
       optionalD3(false)
       break
     }
-    case 'specific_night':
-      // Keine Qualitätseinheit: Tag 2 hat nur Kraft, Tag 5 folgt direkt auf den Nachtlauf.
-      addLong(4, 'night_run', specific.night ?? 24)
-      flex.push({ day: 3, kind: 'easy', share: S.night.day3 }, { day: 5, kind: 'easy_afternoon', share: S.night.day5 })
+    case 'specific_early':
+      // Langer Lauf im Rennzeitplan (Start wie im Rennen), statt Nachtlauf (Zielwechsel).
+      addLong(4, 'long_run', specific.early ?? 24, { early: true })
+      flex.push({ day: 3, kind: 'easy', share: S.early.day3 }, { day: 5, kind: 'hills', share: S.early.day5 })
       extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_maintenance') })
       optionalD3(false)
       break
@@ -180,8 +188,9 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
     case 'specific_mountain': {
       const [a, b] = specific.mountain ?? [25, 15]
       const [ha, hb] = V.mountainElevation[micro.index] ?? [1500, 800]
-      fixed.push({ day: 4, km: a, scalable: false, hmCapable: false, fixedHm: ha, make: (ctx, k) => mountainDay(ctx, { km: k, elevationM: ha, day: 1 }) })
-      fixed.push({ day: 5, km: b, scalable: false, hmCapable: false, fixedHm: hb, make: (ctx, k) => mountainDay(ctx, { km: k, elevationM: hb, day: 2 }) })
+      const courseRecce = micro.index === CONFIG.plan.courseRecceMicro
+      fixed.push({ day: 4, km: a, scalable: false, hmCapable: false, fixedHm: ha, make: (ctx, k) => mountainDay(ctx, { km: k, elevationM: ha, day: 1, courseRecce }) })
+      fixed.push({ day: 5, km: b, scalable: false, hmCapable: false, fixedHm: hb, make: (ctx, k) => mountainDay(ctx, { km: k, elevationM: hb, day: 2, courseRecce }) })
       flex.push({ day: 3, kind: 'easy', share: 1 })
       extras.push({ day: 2, make: strength('calisthenics_maintenance') })
       optionalD3(false)
@@ -211,7 +220,13 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
       const s = V.taperShares.race_week
       addEasyFixed(2, target * s.day2, true)
       addEasyFixed(4, target * s.day4)
-      extras.push({ day: 5, make: (ctx) => raceSession({ ...ctx, slot: 'rennen' }) })
+      addEasyFixed(5, target * s.day5, true)
+      break
+    }
+    case 'race_day': {
+      // Rennen an Zyklustag 2 (Sa 18.09.2027), am Vortag optional kurz auflockern.
+      optionals.push({ day: 1, make: (ctx) => recoveryRun(ctx, V.taperShares.raceDayEveMin, true) })
+      extras.push({ day: 2, make: (ctx) => raceSession({ ...ctx, slot: 'rennen' }) })
       break
     }
   }
@@ -266,7 +281,15 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
     out.push({ cycleDay: f.day, session: s })
   }
   for (const e of extras) out.push({ cycleDay: e.day, session: e.make(ctxFor(e.day, sessionSlot(e.day, out))) })
-  if (m >= 1) for (const e of optionals) out.push({ cycleDay: e.day, session: e.make(ctxFor(e.day, sessionSlot(e.day, out))) })
+  if (m >= 1 || micro.template === 'race_day') for (const e of optionals) out.push({ cycleDay: e.day, session: e.make(ctxFor(e.day, sessionSlot(e.day, out))) })
+
+  // Einstiegstag vor dem ersten Rhythmus (Zielwechsel: Planstart „morgen“)
+  if (micro.index === 1 && CONFIG.plan.startDate < rhythmStart(1)) {
+    const ctx: SessionContext = { date: CONFIG.plan.startDate, microIndex: 1, phase, slot: 'lauf', progress: opts.progress }
+    const intro = easyRun(ctx, { km: CONFIG.plan.introRunMin / PACE.easy })
+    intro.goal = 'Einstieg in den neuen Plan: locker laufen, Körpergefühl sammeln.'
+    out.push({ cycleDay: 5, session: intro })
+  }
 
   // Nachmittags-Start für B2B Teil 2 nach einem Nachtlauf wird im Scheduler gesetzt.
   return out

@@ -1,6 +1,8 @@
-# Collectr – Trainings-App Ehrwald Trail 2027
+# Collectr – Trainings-App Arberland Classic Trail 2027
 
-Mobile-first PWA für die Vorbereitung auf den Ehrwald Trail (86 km, 4295 hm, Start 18.06.2027 23:00 Uhr) im 5-Tage-Schichtrhythmus (Tag, Nacht, Schlaftag, Frei, Frei/V). Laufen und Calisthenics werden nach Schichten und WHOOP-Erholung geplant und täglich angepasst.
+Mobile-first PWA für die Vorbereitung auf den Arberland Classic Trail (Bayerisch Eisenstein, ca. 66 km, 2.514 hm, Start Sa 18.09.2027 07:00 Uhr, Termin vorläufig) im 5-Tage-Schichtrhythmus (Tag, Nacht, Schlaftag, Frei, Frei/V). Laufen und Calisthenics werden nach Schichten und WHOOP-Erholung geplant und täglich angepasst.
+
+> **Zielwechsel (25.10.2026):** Ursprünglich war der Ehrwald Trail (18.06.2027) das Ziel. Was sich geändert hat, steht in [`docs/PLANUNG.md`](docs/PLANUNG.md) Abschnitt 8.
 
 > Der Plan ist eine automatische Empfehlung und ersetzt keine Beratung durch Trainer oder Arzt. Bei Schmerzen, Krankheit oder anhaltend schlechten Erholungswerten hat Pause Vorrang.
 
@@ -8,7 +10,7 @@ Verbindliche Vorgabe: [`docs/SPEC.md`](docs/SPEC.md). Architektur und Entscheidu
 
 ## Was die App kann
 
-- **Plan** vom 02.10.2026 bis zum Rennen: Mesozyklen, Mikrozyklen (5 Tage = ein Schichtzyklus), Entlastung, Taper, Bergwochenenden, Checkliste Rennwoche
+- **Plan** vom 26.10.2026 bis zum Rennen: Mesozyklen, Mikrozyklen (5 Tage = ein Schichtzyklus), Entlastung, Taper, lange Läufe im Rennzeitplan (Start 07:00), Bergwochenenden mit Streckenbesichtigung, Checkliste Rennwoche
 - **Schichten**: Rhythmus mit Ankerdatum, V-Schicht, Urlaub, Krank, Tausch, Überstunden, Fortbildung, **Dienstplan-Import (.ics)** mit Vorschau
 - **Heute**: angepasste Einheiten mit Begründung, Ampel, Schlafempfehlung, Losfahrzeit
 - **Erholung**: WHOOP (OAuth, Webhooks, 2× täglicher Abruf) oder manuelle Eingabe; Recovery, HRV, Ruhepuls, Schlaf mit Schichten als Hintergrund; gelernte Muster

@@ -47,7 +47,7 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(page.getByTestId('disclaimer')).toBeVisible()
 
   // --- Tag 2 im Aufbau simulieren, manuelle Erholung eintragen ---
-  await simulateDate(page, '2026-12-12')
+  await simulateDate(page, '2027-01-26')
   await expect(page.getByTestId('shift-info')).toContainText('Zyklustag 2 · Nachtschicht')
   await page.getByLabel('Schlafdauer in Stunden').fill('5,5')
   await page.getByRole('group', { name: /Schlafqualität/ }).getByRole('button', { name: '2' }).click()
@@ -75,12 +75,12 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await page.getByRole('link', { name: 'Coach', exact: true }).click()
   await expect(page).toHaveURL(/\/zyklus$/)
   await expect(page.getByTestId('volume').first()).toContainText('pro Rhythmus')
-  const d5 = page.getByTestId('day-2026-12-15')
+  const d5 = page.getByTestId('day-2027-01-29')
   await expect(d5).toContainText('Frei')
   await expect(d5).toContainText('Bergauf-Intervalle')
   // Tag 2 (vor der Nacht): nur eine Einheit
-  await expect(page.getByTestId('day-2026-12-12')).toContainText('Schweres Beintraining')
-  await expect(page.getByTestId('day-2026-12-12')).not.toContainText('Lauf')
+  await expect(page.getByTestId('day-2027-01-26')).toContainText('Schweres Beintraining')
+  await expect(page.getByTestId('day-2027-01-26')).not.toContainText('Lauf')
   await d5.click()
   await page.getByRole('dialog').getByRole('button', { name: 'V-Schicht' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Speichern', exact: true }).click()
@@ -91,7 +91,7 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await shot(page, '04-zyklus-v-schicht')
   await page.getByRole('button', { name: 'Kalenderwochen' }).click()
   await expect(page.getByTestId('volume').first()).toContainText('pro Woche')
-  await expect(page.getByTestId('day-2026-12-14')).toBeVisible()
+  await expect(page.getByTestId('day-2027-01-25')).toBeVisible()
 
   // --- Gesamtplan ---
   await page.getByRole('link', { name: 'Gesamtplan' }).click()
@@ -128,17 +128,17 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await noHorizontalScroll(page)
   await shot(page, '07-tracking')
 
-  // --- Einstellungen, Demo-Modus, Mai im rennspezifischen Block ---
+  // --- Einstellungen, Demo-Modus, Juli im rennspezifischen Block ---
   await page.getByRole('link', { name: 'Einstellungen' }).click()
   await openGroup(page, 'WHOOP & Erinnerungen')
   await page.getByLabel('Demo-Modus').check()
   await noHorizontalScroll(page)
   await shot(page, '08-einstellungen')
-  await simulateDate(page, '2027-05-14')
+  await simulateDate(page, '2027-07-14')
   await expect(page.getByTestId('traffic')).toContainText('%')
   await expect(page.getByTestId('disclaimer')).toBeVisible()
   await noHorizontalScroll(page)
-  await shot(page, '09-heute-demo-mai')
+  await shot(page, '09-heute-demo-juli')
 
   // --- Erholung (Phase 6): Diagramme mit Schicht-Hintergrund, Auswertungen, Tabelle ---
   await page.getByRole('link', { name: 'Schlaf & Erholung' }).click()

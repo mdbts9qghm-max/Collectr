@@ -312,15 +312,15 @@ describe('Vorausschau 6.3a', () => {
 describe('Mikrozyklus-Reduktion (SPEC 6.3, 11)', () => {
   it('mehrere rote Tage in Folge senken den nächsten Mikrozyklus', () => {
     const r = microcycleReduction([
-      { date: '2026-10-03', traffic: 'red' },
-      { date: '2026-10-04', traffic: 'red' },
-      { date: '2026-10-05', traffic: 'green' },
+      { date: '2026-10-28', traffic: 'red' },
+      { date: '2026-10-29', traffic: 'red' },
+      { date: '2026-10-30', traffic: 'green' },
     ])
     expect(r.factor).toBe(1 - CONFIG.recovery.microReduction.redStreakReduction)
     const micros = buildMicrocycles()
     const mods = microModifiersFromHistory(micros, [
-      { date: '2026-10-03', traffic: 'red' },
-      { date: '2026-10-04', traffic: 'red' },
+      { date: '2026-10-28', traffic: 'red' },
+      { date: '2026-10-29', traffic: 'red' },
     ])
     expect(mods).toEqual({ 2: 0.75 })
     const base = generatePlan()
@@ -338,12 +338,12 @@ describe('Mikrozyklus-Reduktion (SPEC 6.3, 11)', () => {
 describe('Nachhol-Vorschlag (SPEC 6.3)', () => {
   it('nur bei sehr guter Recovery und nur als Vorschlag, wenn die Regeln erfüllt sind', () => {
     const plan = generatePlan()
-    // Künstlich: langer Lauf an Tag 4 (05.10.) ist ausgefallen und wurde nicht verschoben.
-    const d4 = plan.days.find((d) => d.date === '2026-10-05')!
+    // Künstlich: langer Lauf an Tag 4 (30.10.) ist ausgefallen und wurde nicht verschoben.
+    const d4 = plan.days.find((d) => d.date === '2026-10-30')!
     const long = d4.sessions.find((s) => s.type === 'long_run')!
     d4.sessions = d4.sessions.filter((s) => s !== long)
     d4.removed.push({ session: long, reason: 'no_window', note: 'Krank.' })
-    const date = '2026-10-06' // Tag 5 mit Höhenmeter-Einheit
+    const date = '2026-10-31' // Tag 5 mit Höhenmeter-Einheit
     const great = assessReadiness({ date, today: whoopDay(date, 90) })
     const s = suggestCatchUp(plan, date, great)
     expect(s?.session.type).toBe('long_run')

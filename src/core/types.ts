@@ -113,7 +113,7 @@ export interface Profile {
 
 export type Phase = 'base' | 'build' | 'specific' | 'taper'
 
-export type MicroKind = 'normal' | 'deload' | 'taper1' | 'taper2' | 'race_week'
+export type MicroKind = 'normal' | 'deload' | 'taper1' | 'taper2' | 'race_week' | 'race_day'
 
 /** Art des Mikrozyklus-Inhalts (welche Vorlage verwendet wird). */
 export type MicroTemplate =
@@ -121,7 +121,7 @@ export type MicroTemplate =
   | 'build_a'
   | 'build_b'
   | 'specific_b2b'
-  | 'specific_night'
+  | 'specific_early'
   | 'specific_long'
   | 'specific_mountain'
   | 'specific_final'
@@ -129,6 +129,7 @@ export type MicroTemplate =
   | 'taper1'
   | 'taper2'
   | 'race_week'
+  | 'race_day'
 
 export interface Mesocycle {
   index: number
@@ -228,6 +229,8 @@ export interface PlannedSession {
   structure: SessionStructure
   /** Empfohlene Startzeit (Minuten). */
   startMin?: Minutes
+  /** Startzeit ist fest (z. B. langer Lauf im Rennzeitplan) und wird vom Scheduler nicht verschoben. */
+  fixedStart?: boolean
   /** Laufband-Anteil für die hm-Berechnung. */
   treadmill?: { inclinePct: number; inclineKm: number }
   /** Kraft: Übungen (werden beim Materialisieren aus dem Kraftstand gefüllt). */
@@ -286,6 +289,8 @@ export interface MountainWeekend {
   reminderDate: LocalDate
   /** Beide Tage frei? Sonst Ersatz. */
   feasible: boolean
+  /** Streckenbesichtigung auf der Rennstrecke. */
+  courseRecce: boolean
 }
 
 export interface Plan {

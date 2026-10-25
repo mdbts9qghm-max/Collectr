@@ -36,6 +36,9 @@ export const COLLECTIONS: Collection[] = [
   'whoop_workouts',
 ]
 
+/** Einträge, die an einen Plan gebunden sind und beim Zielwechsel gelöscht werden (`resetHistory`). */
+export const HISTORY_COLLECTIONS: Collection[] = ['session_logs', 'manual_readiness', 'adjustment_decisions', 'workout_assignments', 'checklist']
+
 /** Schlüsselspalte in Postgres. */
 export const KEY_COLUMN: Record<Collection, string> = {
   settings: 'key',

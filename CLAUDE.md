@@ -1,4 +1,4 @@
-# CLAUDE.md – Collectr (Trainings-App Ehrwald Trail 2027)
+# CLAUDE.md – Collectr (Trainings-App Arberland Classic Trail 2027)
 
 Verbindliche Vorgabe ist `docs/SPEC.md`. Architektur und Entscheidungen stehen in `docs/PLANUNG.md`.
 Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den Nutzer fragen, nicht raten.**
@@ -17,22 +17,25 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 - Secrets (WHOOP Client Secret, Tokens, Supabase Service Role Key) **nur serverseitig** (Edge Functions und Umgebungsvariablen), nie im Frontend oder im Repo.
 - Hinweis aus SPEC 13 muss im Footer und im Onboarding stehen.
 
-## Festgelegte Entscheidungen (Phase 1, mit dem Nutzer geklärt)
+## Festgelegte Entscheidungen (Phase 1, mit dem Nutzer geklärt; Zielwechsel 25.10.2026)
 
 | Thema | Entscheidung |
 |---|---|
-| Planstart | 02.10.2026 (Ankerdatum = Zyklustag 1). Der 01.10. hat keine Einheit. |
-| Phasen/Mesozyklen | Grundlage Meso 1–2, Aufbau Meso 3–5, Rennspezifisch Meso 6–7, Taper 04.06.–18.06.2027 (3 Mikrozyklen) |
-| Entlastung | 1 von 7 Mikrozyklen (jeweils der letzte), **außer Meso 7**, weil dort direkt der Taper folgt |
+| Rennen (Zielwechsel) | **Arberland Classic Trail**, Bayerisch Eisenstein, Sa 18.09.2027 (vorläufig), Start 07:00, ca. 66 km, 2.514 hm, Zeitlimit 13 h. Alles in `CONFIG.race`. Vorher: Ehrwald Trail 18.06.2027 |
+| Planstart | Einstiegstag Mo 26.10.2026 (lockerer Lauf), Mikrozyklus 1 ab Di 27.10.2026 = Tag 1. Schicht-Ankerdatum bleibt 02.10.2026 |
+| Phasen/Mesozyklen | alle anteilig verlängert: Grundlage Meso 1–3 (je 6), Aufbau Meso 4–7 (7, 7, 6, 6), Rennspezifisch Meso 8–10 (je 6), Taper 02.–18.09.2027 (2 Taper, Rennwoche, Renntag) |
+| Entlastung | jeweils der letzte Mikrozyklus eines Mesozyklus, **außer Meso 10**, weil dort direkt der Taper folgt |
 | Schweres Beintraining | vorrangig Tag 2. Tag 4 nur, wenn Tag 5 keinen langen Lauf und keine Qualitätseinheit hat |
-| Bergwochenenden | 2 (eins in Meso 6, eins in Meso 7, das letzte ca. 3–4 Wochen vor dem Rennen) |
-| Rennwoche ohne Urlaub | Schichtplan bleibt wie berechnet, deutliche Warnung, bis Urlaub eingetragen ist |
+| Bergwochenenden | 2: Sa/So 17./18.07.2027 und Sa/So 21./22.08.2027 = **Streckenbesichtigung Arberland** (4 Wochen vor dem Rennen) |
+| Umfang (Zielwechsel) | ans Rennen angepasst: Spitze ca. 62–66 km/Woche, längster Lauf 40 km (06.08.2027), B2B-Spitze 26 + 16 km |
+| Rennwoche ohne Urlaub | Schichtplan bleibt wie berechnet, Warnung im Coach (Checkliste), bis Urlaub eingetragen ist. Pflicht 17.–18.09., empfohlen 12.–19.09. |
+| Alte Einträge (Zielwechsel) | einmalig gelöscht (`resetHistory`, gesteuert über `settings.planId`). Krafttests, Kraftstufen, Profil, Overrides, WHOOP bleiben |
 | Losfahren | Arbeitsbeginn − 15 min Arbeitsweg, ohne Extra-Puffer (Tag 1: 06:30, Tag 2: 18:30, V: 07:30) |
 | App-Name | Collectr, im Hauptverzeichnis dieses Repos |
 | Git | am Phasenende automatisch committen und pushen, wenn Tests und Build grün sind |
-| Nachtlauf | Tag 4 nachts (Start ca. 21:00), Tag 5 ausschlafen, danach locker/Oberkörper oder B2B Teil 2 am Nachmittag |
+| Nachtlauf | ersetzt durch **frühe lange Läufe im Rennzeitplan**: Tag 4, fester Start 07:00 (`fixedStart`), Nacht davor 21:00–04:30 wie vor dem Rennen. Kein Nap am Renntag. Typ `night_run` bleibt im Code |
 | Vorausschau (6.3a) | nur ab Gelb. Bei Grün läuft die Einheit immer wie geplant |
-| Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (längster Lauf, B2B-Spitze, Berg, erste Läufe > 30 km) bis +12 % darüber |
+| Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (51, 53, 57, 59, 60: erster Lauf > 30 km, Berg, längster Lauf, B2B-Spitze) bis +12 % darüber |
 | Phase 3 | Manuelle Eingabe + Demo-Modus, Datum simulieren in den Einstellungen, einfache Einstellungen, IndexedDB |
 | Phase 4 | Login E-Mail + Passwort; offline lesen und eintragen, später synchronisieren; Zurücksetzen löscht auch in der Cloud |
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
@@ -93,6 +96,12 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Schlaf & Erholung: WHOOP heute, Abendroutine (`src/core/sleep/evening.ts`), Schlafplan 10 Tage, Knopf „Statistiken“, Auswertungen, Umsetzung
   - Calisthenics: Skill-Fortschrittsleiste, Stufen, Krafttests, Tracking (`/tracking` → `/kraft`)
   - Atemfrequenz aus WHOOP (`respiratoryRate` im Schlaf), braucht Neu-Deploy der Edge Functions
+- [x] **Zielwechsel: Arberland Classic Trail 2027** (Plan in `docs/PLANUNG.md` Abschnitt 8, SPEC bleibt Original mit Hinweis)
+  - 66 Mikrozyklen, Mesolängen in `plan.mesos`, Einstiegstag 26.10.2026, `rhythmStart(i)` für den Beginn des Rhythmus
+  - Vorlage `specific_early` (langer Lauf 07:00, `fixedStart`), `race_day`-Mikrozyklus, Streckenbesichtigung (`courseRecceMicro`)
+  - Schlaf: 04:30 aufstehen vor Rennen und frühen langen Läufen, kein Nap am Renntag; Rennen-Texte aus `CONFIG.race` (`raceHeadline`, `raceFacts`, `raceDateLong`)
+  - `resetHistory()` in IndexedDB und Sync, einmalig über `settings.planId`, Hinweis auf Heute
+  - Tests: 244 Vitest, 9 Playwright (inkl. Zielwechsel)
 
 ## Phase 2 – Plan (freigegeben)
 

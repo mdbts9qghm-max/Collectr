@@ -17,9 +17,9 @@ export default defineConfig({
       injectManifest: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Collectr – Ehrwald Trail 2027',
+        name: 'Collectr – Arberland Classic Trail 2027',
         short_name: 'Collectr',
-        description: 'Trainingsplan für den Ehrwald Trail 2027: Laufen, Calisthenics, Schichtarbeit und Erholung.',
+        description: 'Trainingsplan für den Arberland Classic Trail 2027: Laufen, Calisthenics, Schichtarbeit und Erholung.',
         lang: 'de',
         start_url: '/',
         scope: '/',

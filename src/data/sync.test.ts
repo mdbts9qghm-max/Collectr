@@ -16,6 +16,24 @@ function setup(remote = new MemoryRemote()) {
 }
 
 describe('Synchronisation mit Supabase (lokal zuerst)', () => {
+  it('Zielwechsel: alte Einträge werden auch in der Cloud gelöscht, Krafttests bleiben', async () => {
+    const { repo, engine, remote } = setup()
+    await repo.putLog({ sessionId: '2026-10-03#lauf', date: '2026-10-03', status: 'done' })
+    await repo.putManual({ date: '2026-10-03', sleepMin: 420, quality: 4, feeling: 4 })
+    await repo.saveChecklist({ urlaub: true })
+    await repo.putStrengthTest({ date: '2026-10-01', maxPullups: 3, maxDips: 4, hollowHoldSec: 35, frontLever: { stage: 0, holdSec: 0 }, backLever: { stage: 0, holdSec: 0 } })
+    await engine.sync()
+    expect(remote.rows.get('session_logs/2026-10-03#lauf')?.value).toBeTruthy()
+    await repo.resetHistory()
+    await engine.sync()
+    expect(remote.rows.get('session_logs/2026-10-03#lauf')?.value).toBeNull()
+    expect(remote.rows.get('manual_readiness/2026-10-03')?.value).toBeNull()
+    expect(remote.rows.get('checklist/checklist')?.value).toBeNull()
+    expect(remote.rows.get('strength_tests/2026-10-01')?.value).toBeTruthy()
+    expect(await repo.listLogs()).toEqual([])
+    expect(await repo.listStrengthTests()).toHaveLength(1)
+  })
+
   it('offline eingetragen, später hochgeladen', async () => {
     const { repo, engine, remote } = setup()
     remote.offline = true

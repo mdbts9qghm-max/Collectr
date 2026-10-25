@@ -54,6 +54,7 @@ export function eveningRoutine(rec: SleepRecommendation, today: EffectiveShift, 
       prepare.push(`${s.title}${at}: heute Abend kohlenhydratreich essen und genug trinken.`)
       if (s.fueling) prepare.push(`Verpflegung für unterwegs packen (wie im Rennen 60–90 g Kohlenhydrate pro Stunde) und die Ausrüstung testen: Rucksack, Stöcke, Schuhe.`)
       if (s.type === 'night_run') prepare.push('Stirnlampe und Ersatzakku laden, Warnweste und warme Schicht bereitlegen.')
+      if (s.fixedStart) prepare.push('Ablauf wie am Renntag proben: Frühstück vom Renntag vorbereiten, Wecker früh stellen, Startzeit einhalten.')
       if (s.distanceKm) prepare.push(`Route für ${formatNumberDE(s.distanceKm)} km${s.elevationM ? ` mit ${s.elevationM} hm` : ''} vorher festlegen.`)
     } else if (s.category === 'run') {
       prepare.push(`${s.title}${at}: Laufsachen und Schuhe bereitlegen.`)

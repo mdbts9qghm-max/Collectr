@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generatePlan } from '../plan'
+import { generatePlan, longRun } from '../plan'
 import { createShiftCalendar } from '../shift'
 import { berlinToInstant } from '../time'
 import { assignRecoveryDay, mainSleepFor, matchWorkouts, sportCategory, workoutToLog, type WhoopData, type WhoopSleep } from './index'
@@ -97,7 +97,7 @@ describe('Workouts → Einheiten', () => {
   })
 
   it('Lauf und Kraft an Tag 5 werden der passenden Einheit zugeordnet, Korrektur geht vor', () => {
-    const date = '2026-10-06'
+    const date = '2026-10-31'
     const day = plan.days.find((d) => d.date === date)!
     const run = day.sessions.find((s) => s.category === 'run')!
     const legs = day.sessions.find((s) => s.category === 'strength')!
@@ -117,14 +117,16 @@ describe('Workouts → Einheiten', () => {
   })
 
   it('Nachtlauf nach Mitternacht gehört zum Vortag', () => {
-    const date = '2027-04-03'
-    const night = plan.days.find((d) => d.date === date)!.sessions.find((s) => s.type === 'night_run')!
-    const m = matchWorkouts([{ id: 'n', start: iso('2027-04-04', h(0, 10)), end: iso('2027-04-04', h(1)), sportName: 'Running' }], plan.days)
+    // Der aktuelle Plan hat keine Nachtläufe mehr (Zielwechsel), der Typ bleibt erhalten.
+    const date = '2026-10-30'
+    const night = { ...longRun('night_run', { date, microIndex: 1, phase: 'specific', slot: 'nacht' }, { km: 15 }), startMin: h(21) }
+    const days = plan.days.map((d) => (d.date === date ? { ...d, sessions: [night] } : d))
+    const m = matchWorkouts([{ id: 'n', start: iso('2026-10-31', h(0, 10)), end: iso('2026-10-31', h(1)), sportName: 'Running' }], days)
     expect(m[0]!.sessionId).toBe(night.id)
   })
 
   it('ohne passende Einheit bleibt das Workout unzugeordnet', () => {
-    const m = matchWorkouts([{ id: 'x', start: iso('2026-10-02', h(18)), end: iso('2026-10-02', h(19)), sportName: 'Running' }], plan.days)
+    const m = matchWorkouts([{ id: 'x', start: iso('2026-10-27', h(18)), end: iso('2026-10-27', h(19)), sportName: 'Running' }], plan.days)
     expect(m[0]!.confidence).toBe('none')
   })
 })

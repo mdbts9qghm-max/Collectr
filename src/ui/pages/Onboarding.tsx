@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../../app/AppState'
 import { buildCalendar } from '../../app/compute'
 import { CONFIG } from '../../core/config'
-import { raceConflict } from '../../core/race'
+import { raceConflict, raceFacts } from '../../core/race'
 import { effectiveShift, shiftLabel } from '../../core/shift'
 import { addDays, compareDates, formatDateDE, formatTime, isValidDate, weekdayShortDE } from '../../core/time'
 import { Button, Card, Disclaimer, Field, H2, Input } from '../components/common'
@@ -20,13 +20,16 @@ export function Onboarding() {
   const previewStart = compareDates(app.today, CONFIG.plan.startDate) < 0 ? CONFIG.plan.startDate : app.today
   const conflict = raceConflict(cal)
 
-  const finish = () => app.updateSettings({ profile, anchorDate: anchor, onboarded: true })
+  const finish = () => app.updateSettings({ profile, anchorDate: anchor, onboarded: true, planId: CONFIG.race.id })
 
   return (
     <div className="mx-auto max-w-xl space-y-4 px-4 py-6" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
       <div>
         <h1 className="text-2xl font-bold">Willkommen bei Collectr</h1>
-        <p className="text-sm text-muted">Dein Plan für den Ehrwald Trail am 18.06.2027: 86 km, 4.295 hm, Start 23:00 Uhr, Zeitlimit 22 h.</p>
+        <p className="text-sm text-muted">
+          Dein Plan für den {CONFIG.race.name} am {formatDateDE(CONFIG.race.date)}
+          {CONFIG.race.dateProvisional && ' (Termin vorläufig)'}: {raceFacts()}.
+        </p>
       </div>
       <ol className="flex gap-1" aria-label="Schritte">
         {STEPS.map((s, i) => (

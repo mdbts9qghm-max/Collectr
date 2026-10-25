@@ -17,6 +17,11 @@ export interface AppSettings {
   simulatedDate: LocalDate | null
   /** Zuletzt bestätigte Urlaubs-Erinnerung. */
   vacationReminderAck?: LocalDate
+  /**
+   * Rennziel, für das die Einträge gelten (`CONFIG.race.id`). Weicht es ab (Zielwechsel),
+   * werden die alten Einträge einmalig gelöscht (`Repository.resetHistory`).
+   */
+  planId?: string
 }
 
 /** Anpassung abgelehnt → Originalplan ausgeführt (SPEC 6.4, wird protokolliert). */
@@ -91,4 +96,9 @@ export interface Repository {
   exportAll(now: Date): Promise<BackupData>
   importAll(b: BackupData): Promise<void>
   clearAll(): Promise<void>
+  /**
+   * Zielwechsel: löscht erledigte/ausgelassene Einheiten, manuelle Erholung, Anpassungs-Entscheidungen,
+   * Workout-Zuordnungen und die Checkliste. Profil, Schicht-Overrides, Krafttests, Kraftstufen und WHOOP-Daten bleiben.
+   */
+  resetHistory(): Promise<void>
 }
