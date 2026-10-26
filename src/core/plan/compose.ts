@@ -34,6 +34,8 @@ export interface ComposeOptions {
   /** Reduktionsfaktor aus der Erholung (1 = keine Reduktion). */
   modifier: number
   strengthState?: StrengthState
+  /** Tag des langen Laufs in Grundlage, Aufbau und Entlastung (Standard: `plan.longRunDay` der Phase). */
+  longRunDay?: 4 | 5
 }
 
 type FlexKind = 'easy' | 'easy_abc' | 'easy_strides' | 'hills' | 'easy_afternoon'
@@ -140,27 +142,29 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
   const S = V.flexShares
 
   // Tag 2 (vor der Nachtschicht) hat genau eine Einheit: die Krafteinheit. Der Lauf liegt an Tag 3
-  // nach dem Tagschlaf, Qualitätseinheiten an Tag 5.
+  // nach dem Tagschlaf. In Grundlage und Aufbau: Tag 4 Höhenmeter/Qualität + Calisthenics, Tag 5 langer Lauf.
+  const longDay: 4 | 5 = opts.longRunDay ?? CONFIG.plan.longRunDay[phase]
+  const otherDay: 4 | 5 = longDay === 5 ? 4 : 5
   switch (micro.template) {
     case 'base':
-      addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 3, kind: 'easy', share: S.base.day3 }, { day: 5, kind: 'hills', share: S.base.day5 })
-      extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_main') })
+      addLong(longDay, 'long_run', vol.longRunKm)
+      flex.push({ day: 3, kind: 'easy', share: S.base.day3 }, { day: otherDay, kind: 'hills', share: S.base.hills })
+      extras.push({ day: 2, make: strength('legs_heavy') }, { day: otherDay, make: strength('calisthenics_main') })
       optionalD3(true)
       break
     case 'build_a':
     case 'build_b':
-      addLong(4, 'long_run', vol.longRunKm)
-      addQuality(5, micro.template === 'build_a' ? 'intervals_uphill' : 'threshold')
+      addLong(longDay, 'long_run', vol.longRunKm)
+      addQuality(otherDay, micro.template === 'build_a' ? 'intervals_uphill' : 'threshold')
       flex.push({ day: 3, kind: 'easy', share: 1 })
-      extras.push({ day: 2, make: strength('legs_heavy') }, { day: 5, make: strength('calisthenics_main') })
+      extras.push({ day: 2, make: strength('legs_heavy') }, { day: otherDay, make: strength('calisthenics_main') })
       optionalD3(true)
       break
     case 'deload':
-      addLong(4, 'long_run', vol.longRunKm)
-      flex.push({ day: 3, kind: 'easy', share: S.deload.day3 }, { day: 5, kind: 'hills', share: S.deload.day5 })
+      addLong(longDay, 'long_run', vol.longRunKm)
+      flex.push({ day: 3, kind: 'easy', share: S.deload.day3 }, { day: otherDay, kind: 'hills', share: S.deload.hills })
       extras.push({ day: 2, make: strength(micro.hasStrengthTest ? 'strength_test' : 'calisthenics_maintenance') })
-      extras.push({ day: 5, make: (ctx) => mobility(ctx, 20, false) })
+      extras.push({ day: otherDay, make: (ctx) => mobility(ctx, 20, false) })
       optionalD3(false)
       break
     case 'specific_b2b': {

@@ -51,6 +51,18 @@ export function generatePlan(input: PlanInput = {}): Plan {
     return list.length <= 1 || pos < 0 ? 1 : pos / (list.length - 1)
   }
 
+  // Tag des langen Laufs: in Grundlage und Aufbau Tag 5. Ist Tag 5 nicht frei (V-Schicht, Urlaub, krank …),
+  // Tag 4 aber schon und dort noch nichts eingetragen, läuft der lange Lauf an Tag 4.
+  const loggedDates = new Set((input.logs ?? []).map((l) => l.date))
+  const isFree = (date: LocalDate) => effectiveShift(cal, date).dayKind === 'free'
+  const longRunDay = (index: number, phase: Phase): 4 | 5 => {
+    const preferred = CONFIG.plan.longRunDay[phase]
+    if (preferred === 4) return 4
+    const d4 = addDays(rhythmStart(index), 3)
+    const d5 = addDays(rhythmStart(index), 4)
+    return !isFree(d5) && isFree(d4) && !loggedDates.has(d4) ? 4 : 5
+  }
+
   // 1. Einheiten je Mikrozyklus zusammenstellen und auf Tage legen
   const days = new Map<LocalDate, PlanDay>()
   const lost: { session: PlannedSession; date: LocalDate }[] = []
@@ -58,6 +70,7 @@ export function generatePlan(input: PlanInput = {}): Plan {
     const intended = composeMicro(m, volByMicro.get(m.index)!, {
       progress: progressOf(m.index, m.phase),
       modifier: modifier(m.index),
+      longRunDay: longRunDay(m.index, m.phase),
       ...(input.strengthState ? { strengthState: input.strengthState } : {}),
     })
     const microDays: PlanDay[] = []

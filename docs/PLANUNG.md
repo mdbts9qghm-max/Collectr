@@ -390,3 +390,10 @@ Entlastungen: Mikro 6, 12, 18, 25, 32, 38, 44, 50, 56. Krafttests: 6, 12, 18, 25
 
 - Einmalig beim ersten Öffnen nach dem Update (`settings.planId` ≠ `CONFIG.race.id`): `Repository.resetHistory()` löscht erledigte/ausgelassene Einheiten, manuelle Erholung, Anpassungs-Entscheidungen, Workout-Zuordnungen und die Checkliste, lokal und über Tombstones in der Cloud. Danach Hinweis auf „Heute“.
 - Krafttests, Kraftstufen, Profil, Schicht-Overrides und WHOOP-Daten bleiben. Neue Nutzer bekommen `planId` beim Onboarding.
+
+### 8.7 Tag 4 und 5 in Grundlage und Aufbau (26.10.2026)
+
+- Tag 4: Höhenmeter-Einheit (Grundlage) bzw. Bergauf-Intervalle/Schwelle (Aufbau), danach Calisthenics-Hauptsession. In der Entlastung Mobility.
+- Tag 5: langer Lauf (`CONFIG.plan.longRunDay`: base/build 5, specific/taper 4).
+- Ist Tag 5 nicht frei (V-Schicht, Urlaub, krank) und Tag 4 frei und noch ohne Eintrag, läuft der lange Lauf an Tag 4, die Tag-4-Einheiten wandern auf Tag 5 und werden dort wie bisher verschoben oder gestrichen. Ist Tag 4 schon eingetragen, fällt der lange Lauf aus (kein Nachholen).
+- Die Vorausschau (2 Tage) sieht an Tag 2 die Qualität an Tag 4, an Tag 3 den langen Lauf an Tag 5.

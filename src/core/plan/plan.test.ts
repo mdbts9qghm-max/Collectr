@@ -269,12 +269,49 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
     for (const d of plan.days.filter((x) => x.shift.dayKind === 'pre_night')) {
       expect(d.sessions.filter((s) => !s.optional).length).toBeLessThanOrEqual(CONFIG.plan.maxSessionsPreNight)
     }
-    // In Grundlage und Aufbau ist das die Krafteinheit, Qualitätseinheiten liegen an Tag 5
+    // In Grundlage und Aufbau ist das die Krafteinheit, Qualitätseinheiten liegen im Aufbau an Tag 4, danach an Tag 5
     const build = plan.days.filter((d) => d.shift.dayKind === 'pre_night' && plan.microcycles[d.microIndex - 1]?.phase === 'build')
     expect(build.length).toBeGreaterThan(0)
     for (const d of build) expect(d.sessions.every((s) => s.category === 'strength')).toBe(true)
-    const quality = plan.days.flatMap((d) => d.sessions.filter((s) => s.type === 'threshold' || s.type === 'intervals_uphill').map(() => d.shift.cycleDay))
-    expect(new Set(quality)).toEqual(new Set([5]))
+    const quality = (phases: string[]) =>
+      new Set(
+        plan.days
+          .filter((d) => phases.includes(plan.microcycles[d.microIndex - 1]!.phase))
+          .flatMap((d) => d.sessions.filter((s) => s.type === 'threshold' || s.type === 'intervals_uphill').map(() => d.shift.cycleDay)),
+      )
+    expect(quality(['build'])).toEqual(new Set([4]))
+    expect(quality(['specific', 'taper'])).toEqual(new Set([5]))
+  })
+
+  it('Grundlage und Aufbau: Tag 4 Höhenmeter/Qualität + Calisthenics, Tag 5 langer Lauf (Nutzerwunsch)', () => {
+    for (const m of plan.microcycles.filter((x) => x.phase === 'base' || x.phase === 'build')) {
+      const d4 = plan.days.find((d) => d.microIndex === m.index && d.shift.cycleDay === 4 && d.date > CONFIG.plan.startDate)!
+      const d5 = plan.days.find((d) => d.microIndex === m.index && d.shift.cycleDay === 5 && d.date > CONFIG.plan.startDate)!
+      expect(types(d5), `Mikrozyklus ${m.index}`).toEqual(['long_run'])
+      if (m.kind === 'deload') expect(types(d4)).toEqual(['mobility'])
+      else {
+        expect(types(d4), `Mikrozyklus ${m.index}`).toContain('calisthenics_main')
+        expect(types(d4).some((t) => ['treadmill_hills', 'intervals_uphill', 'threshold'].includes(t))).toBe(true)
+        // Lauf zuerst, danach Calisthenics
+        const run = d4.sessions.find((s) => s.category === 'run')!
+        const cali = d4.sessions.find((s) => s.type === 'calisthenics_main')!
+        expect(cali.startMin!).toBeGreaterThan(run.startMin!)
+      }
+    }
+    // rennspezifisch wie bisher: langer Lauf an Tag 4
+    expect(types(day(plan, '2027-06-17'))).toEqual(['long_run'])
+  })
+
+  it('V-Schicht an Tag 5 (vorher bekannt): langer Lauf an Tag 4, ist Tag 4 schon eingetragen, fällt er aus', () => {
+    const cal = withOverride(createShiftCalendar(), { date: '2026-10-31', kind: 'V' })
+    const p = generatePlan({ calendar: cal })
+    expect(types(day(p, '2026-10-30'))).toEqual(['long_run'])
+    expect(day(p, '2026-10-31').sessions).toEqual([])
+    const hillsId = day(plan, '2026-10-30').sessions[0]!.id
+    const logged = generatePlan({ calendar: cal, logs: [{ sessionId: hillsId, date: '2026-10-30', status: 'done' }] })
+    expect(types(day(logged, '2026-10-30'))).toEqual(['treadmill_hills', 'calisthenics_main'])
+    expect(day(logged, '2026-10-31').removed.find((r) => r.session.type === 'long_run')!.note).toContain('gestrichen')
+    expect(microKm(logged, 2)).toBe(microKm(plan, 2)) // kein Nachholen
   })
 
   it('Tag 2: jeder Einheitentyp ist erlaubt, der ins Fenster passt (lange Läufe laut 5.3 nur Tag 4/5)', () => {
@@ -355,10 +392,10 @@ describe('V-Schicht, Ausfälle und Verschieben (SPEC 4.1, 6.3, 11)', () => {
     expect(hills.note).toContain('gestrichen')
     const cali = v.removed.find((r) => r.session.type === 'calisthenics_main')!
     expect(cali.reason).toBe('moved')
-    const target = day(p, '2026-11-04')
+    const target = day(p, '2026-11-05')
     const moved = target.sessions.find((s) => s.type === 'calisthenics_main')!
     expect(moved.origin?.movedFrom).toBe('2026-10-31')
-    expect(target.shift.cycleDay).toBe(4)
+    expect(target.shift.cycleDay).toBe(5)
   })
 
   it('nie auf Tag 1 verschoben', () => {
@@ -367,11 +404,11 @@ describe('V-Schicht, Ausfälle und Verschieben (SPEC 4.1, 6.3, 11)', () => {
     for (const d of p.days.filter((x) => x.shift.cycleDay === 1)) expect(d.sessions).toEqual([])
   })
 
-  it('Krankheit an Tag 4: langer Lauf rückt auf Tag 5 und ersetzt die schwächere Einheit, kein Nachholen', () => {
+  it('Krankheit an Tag 4: Calisthenics rückt auf Tag 5 zum langen Lauf, Höhenmeter entfallen, kein Nachholen', () => {
     const cal = withOverride(createShiftCalendar(), { date: '2026-10-30', kind: 'KRANK' })
     const p = generatePlan({ calendar: cal })
     const d5 = day(p, '2026-10-31')
-    expect(types(d5)).toContain('long_run')
+    expect(types(d5)).toEqual(['long_run', 'calisthenics_main'])
     expect(types(d5)).not.toContain('treadmill_hills')
     expect(microKm(p, 1)).toBeLessThanOrEqual(microKm(plan, 1))
     expect(microKm(p, 2)).toBe(microKm(plan, 2))
@@ -390,14 +427,14 @@ describe('V-Schicht, Ausfälle und Verschieben (SPEC 4.1, 6.3, 11)', () => {
   })
 
   it('ausgelassene Schlüsseleinheit wird höchstens einmal verschoben', () => {
-    const longId = day(plan, '2026-10-30').sessions.find((s) => s.type === 'long_run')!.id
-    const p1 = generatePlan({ logs: [{ sessionId: longId, date: '2026-10-30', status: 'skipped' }] })
-    const moved = day(p1, '2026-10-31').sessions.find((s) => s.type === 'long_run')!
+    const caliId = day(plan, '2026-10-30').sessions.find((s) => s.type === 'calisthenics_main')!.id
+    const p1 = generatePlan({ logs: [{ sessionId: caliId, date: '2026-10-30', status: 'skipped' }] })
+    const moved = day(p1, '2026-10-31').sessions.find((s) => s.type === 'calisthenics_main')!
     expect(moved.origin?.movedFrom).toBe('2026-10-30')
     // die verschobene Einheit wird ebenfalls ausgelassen → kein zweites Verschieben
     const p2 = generatePlan({
       logs: [
-        { sessionId: longId, date: '2026-10-30', status: 'skipped' },
+        { sessionId: caliId, date: '2026-10-30', status: 'skipped' },
         { sessionId: moved.id, date: '2026-10-31', status: 'skipped' },
       ],
     })
@@ -475,7 +512,7 @@ describe('Einheiten-Inhalt (SPEC 9)', () => {
       { onboarding: true },
     )
     const p = generatePlan({ strengthState: state })
-    const cali = day(p, '2026-10-31').sessions.find((s) => s.type === 'calisthenics_main')!
+    const cali = day(p, '2026-10-30').sessions.find((s) => s.type === 'calisthenics_main')!
     expect(cali.exercises!.length).toBeGreaterThan(3)
     expect(cali.exercises!.every((e) => e.sets > 0 && e.restSec > 0 && (e.reps !== undefined || e.holdSec !== undefined))).toBe(true)
   })

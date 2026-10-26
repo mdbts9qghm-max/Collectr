@@ -58,6 +58,12 @@ export const CONFIG = {
     introRunMin: 35,
     /** Am Tag vor der Nachtschicht höchstens so viele (nicht-optionale) Einheiten (Entscheidung nach Phase 7). */
     maxSessionsPreNight: 1,
+    /**
+     * Tag des langen Laufs je Phase (Nutzerwunsch 26.10.2026): in Grundlage und Aufbau an Tag 4 erst
+     * Höhenmeter- bzw. Qualitätseinheit und Calisthenics, an Tag 5 der lange Lauf. Ist Tag 5 nicht frei
+     * (z. B. V-Schicht) und Tag 4 noch ohne Eintrag, läuft der lange Lauf an Tag 4.
+     */
+    longRunDay: { base: 5, build: 5, specific: 4, taper: 4 } as Record<Phase, 4 | 5>,
     totalMicros: 66,
     /**
      * Mesozyklen: Phase und Länge in Mikrozyklen. Alle Phasen anteilig verlängert (Zielwechsel):
@@ -335,8 +341,9 @@ export const CONFIG = {
      * (Entscheidung nach Phase 7: „am Tag vor der Nacht schaffe ich nur eine Einheit“).
      */
     flexShares: {
-      base: { day3: 0.62, day5: 0.38 },
-      deload: { day3: 0.6, day5: 0.4 },
+      /** Lockerer Lauf an Tag 3, Höhenmeter-Einheit am Tag ohne langen Lauf (Tag 4, siehe `plan.longRunDay`). */
+      base: { day3: 0.62, hills: 0.38 },
+      deload: { day3: 0.6, hills: 0.4 },
       final: { day3: 0.6, day5: 0.4 },
       /** Zyklus mit langem Lauf im Rennzeitplan: lockerer Lauf an Tag 3, Höhenmeter-Einheit an Tag 5. */
       early: { day3: 0.6, day5: 0.4 },

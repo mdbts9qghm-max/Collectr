@@ -21,7 +21,7 @@ import {
   type UpcomingKey,
 } from './index'
 
-const DATE = '2026-12-12' // Tag 2 im Aufbau (vor der Nacht)
+const DATE = '2026-12-12' // Tag 2 in der Grundlage (vor der Nacht)
 const ctx: SessionContext = { date: DATE, microIndex: 15, phase: 'build', slot: 'lauf' }
 
 /** Eine Einheit je Typ (ohne Rennen). */
@@ -301,11 +301,17 @@ describe('Vorausschau 6.3a', () => {
 
   it('findet die kommenden Schlüsseleinheiten im Plan inkl. Nachtschicht dazwischen', () => {
     const plan = generatePlan()
-    const u = upcomingKeySessions(plan, DATE, createShiftCalendar())
-    const long = u.find((x) => x.session.type === 'long_run')!
-    expect(long.date).toBe('2026-12-14')
+    // Tag 2 im Aufbau: Qualität an Tag 4 übermorgen, mit Nachtschicht dazwischen
+    const u = upcomingKeySessions(plan, '2027-01-26', createShiftCalendar())
+    const quality = u.find((x) => x.session.type === 'intervals_uphill')!
+    expect(quality.date).toBe('2027-01-28')
+    expect(quality.daysAhead).toBe(2)
+    expect(quality.nightShiftBetween).toBe(true)
+    // Tag 3: langer Lauf an Tag 5 übermorgen, die Nachtschicht liegt schon zurück
+    const long = upcomingKeySessions(plan, '2027-01-27', createShiftCalendar()).find((x) => x.session.type === 'long_run')!
+    expect(long.date).toBe('2027-01-29')
     expect(long.daysAhead).toBe(2)
-    expect(long.nightShiftBetween).toBe(true)
+    expect(long.nightShiftBetween).toBe(false)
   })
 })
 
@@ -338,18 +344,18 @@ describe('Mikrozyklus-Reduktion (SPEC 6.3, 11)', () => {
 describe('Nachhol-Vorschlag (SPEC 6.3)', () => {
   it('nur bei sehr guter Recovery und nur als Vorschlag, wenn die Regeln erfüllt sind', () => {
     const plan = generatePlan()
-    // Künstlich: langer Lauf an Tag 4 (30.10.) ist ausgefallen und wurde nicht verschoben.
-    const d4 = plan.days.find((d) => d.date === '2026-10-30')!
+    // Künstlich: langer Lauf im Rennzeitplan an Tag 4 (27.06.2027) ist ausgefallen und wurde nicht verschoben.
+    const d4 = plan.days.find((d) => d.date === '2027-06-27')!
     const long = d4.sessions.find((s) => s.type === 'long_run')!
     d4.sessions = d4.sessions.filter((s) => s !== long)
     d4.removed.push({ session: long, reason: 'no_window', note: 'Krank.' })
-    const date = '2026-10-31' // Tag 5 mit Höhenmeter-Einheit
+    const date = '2027-06-28' // Tag 5 mit Höhenmeter-Einheit
     const great = assessReadiness({ date, today: whoopDay(date, 90) })
     const s = suggestCatchUp(plan, date, great)
     expect(s?.session.type).toBe('long_run')
     expect(s?.replaces.map((x) => x.type)).toEqual(['treadmill_hills'])
     expect(s?.text).toContain('Freiwillig')
     expect(suggestCatchUp(plan, date, assessReadiness({ date, today: whoopDay(date, 70) }))).toBeNull()
-    expect(suggestCatchUp(plan, '2026-12-19', great)).toBeNull() // Tag 4: langer Lauf ist wichtiger
+    expect(suggestCatchUp(plan, '2027-07-02', great)).toBeNull() // Tag 4 mit eigenem langen Lauf
   })
 })

@@ -30,11 +30,13 @@ describe('Gelernte Muster (SPEC 6.4)', () => {
 
   it('lange Läufe: Folgetag gegen Tage gleicher Art', () => {
     const days = sampleRecoveryDays(cal, { start: '2026-10-02', days: 60 }).map((d) =>
-      // Tag 5 nach einem langen Lauf an Tag 4 künstlich schlechter
-      (Date.parse(d.date) / 86_400_000 - Date.parse('2026-10-02') / 86_400_000) % 5 === 4 ? { ...d, recoveryScore: (d.recoveryScore ?? 60) - 12 } : d,
+      // Tag 1 nach einem langen Lauf an Tag 5 künstlich schlechter (lange Läufe ab 31.10.)
+      d.date > '2026-10-31' && (Date.parse(d.date) / 86_400_000 - Date.parse('2026-10-02') / 86_400_000) % 5 === 0
+        ? { ...d, recoveryScore: (d.recoveryScore ?? 60) - 12 }
+        : d,
     )
     const logs = plan.days
-      .filter((d) => d.date < '2026-12-01' && d.shift.cycleDay === 4)
+      .filter((d) => d.date < '2026-12-01' && d.shift.cycleDay === 5)
       .flatMap((d) => d.sessions.filter((s) => s.type === 'long_run').map((s) => ({ sessionId: s.id, date: d.date, status: 'done' as const })))
     const p = learnPatterns({ cal, days, logs, sessionsById })
     const long = p.effects.find((e) => e.key === 'long_run')!
