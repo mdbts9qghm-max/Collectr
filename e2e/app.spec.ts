@@ -75,9 +75,13 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await page.getByRole('link', { name: 'Coach', exact: true }).click()
   await expect(page).toHaveURL(/\/zyklus$/)
   await expect(page.getByTestId('volume').first()).toContainText('pro Rhythmus')
+  // Grundlage/Aufbau: Tag 4 Qualität + Calisthenics, Tag 5 langer Lauf
+  const d4 = page.getByTestId('day-2027-01-28')
   const d5 = page.getByTestId('day-2027-01-29')
+  await expect(d4).toContainText('Bergauf-Intervalle')
+  await expect(d4).toContainText('Calisthenics-Hauptsession')
   await expect(d5).toContainText('Frei')
-  await expect(d5).toContainText('Bergauf-Intervalle')
+  await expect(d5).toContainText('Langer Lauf')
   // Tag 2 (vor der Nacht): nur eine Einheit
   await expect(page.getByTestId('day-2027-01-26')).toContainText('Schweres Beintraining')
   await expect(page.getByTestId('day-2027-01-26')).not.toContainText('Lauf')
@@ -87,6 +91,8 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(d5).toContainText('V-Schicht')
   await expect(d5).not.toContainText('Ruhetag · optional')
   await expect(d5).toContainText(/gestrichen|Verschoben/)
+  // V-Schicht an Tag 5: der lange Lauf rückt auf Tag 4
+  await expect(d4).toContainText('Langer Lauf')
   await noHorizontalScroll(page)
   await shot(page, '04-zyklus-v-schicht')
   await page.getByRole('button', { name: 'Kalenderwochen' }).click()

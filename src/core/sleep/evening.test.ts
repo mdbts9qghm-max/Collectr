@@ -24,7 +24,7 @@ describe('Abendroutine', () => {
   })
 
   it('vor dem langen Lauf: Kohlenhydrate, Route; vor der Nachtschicht: ausschlafen', () => {
-    const r = routine('2026-10-29') // Tag 3, morgen langer Lauf
+    const r = routine('2026-10-30') // Tag 4, morgen langer Lauf (Tag 5)
     expect(r.prepare.join(' ')).toMatch(/Langer Lauf .*kohlenhydratreich/)
     expect(r.prepare.join(' ')).toContain('Route für')
     const beforeNight = routine('2026-11-01') // Tag 1, morgen Nachtschicht

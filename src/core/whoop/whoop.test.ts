@@ -96,8 +96,8 @@ describe('Workouts → Einheiten', () => {
     expect(sportCategory('Golf')).toBeUndefined()
   })
 
-  it('Lauf und Kraft an Tag 5 werden der passenden Einheit zugeordnet, Korrektur geht vor', () => {
-    const date = '2026-10-31'
+  it('Lauf und Kraft an Tag 4 werden der passenden Einheit zugeordnet, Korrektur geht vor', () => {
+    const date = '2026-10-30'
     const day = plan.days.find((d) => d.date === date)!
     const run = day.sessions.find((s) => s.category === 'run')!
     const legs = day.sessions.find((s) => s.category === 'strength')!

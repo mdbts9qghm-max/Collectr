@@ -26,6 +26,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Phasen/Mesozyklen | alle anteilig verlängert: Grundlage Meso 1–3 (je 6), Aufbau Meso 4–7 (7, 7, 6, 6), Rennspezifisch Meso 8–10 (je 6), Taper 02.–18.09.2027 (2 Taper, Rennwoche, Renntag) |
 | Entlastung | jeweils der letzte Mikrozyklus eines Mesozyklus, **außer Meso 10**, weil dort direkt der Taper folgt |
 | Schweres Beintraining | vorrangig Tag 2. Tag 4 nur, wenn Tag 5 keinen langen Lauf und keine Qualitätseinheit hat |
+| Tag 4/5 in Grundlage und Aufbau | (Nutzerwunsch 26.10.2026) Tag 4: Höhenmeter- bzw. Qualitätseinheit, danach Calisthenics. Tag 5: langer Lauf (`plan.longRunDay`). Ist Tag 5 nicht frei (V, Urlaub, krank) und Tag 4 noch ohne Eintrag, läuft der lange Lauf an Tag 4. Rennspezifisch und Taper unverändert (langer Lauf Tag 4) |
 | Bergwochenenden | 2: Sa/So 17./18.07.2027 und Sa/So 21./22.08.2027 = **Streckenbesichtigung Arberland** (4 Wochen vor dem Rennen) |
 | Umfang (Zielwechsel) | ans Rennen angepasst: Spitze ca. 62–66 km/Woche, längster Lauf 40 km (06.08.2027), B2B-Spitze 26 + 16 km |
 | Rennwoche ohne Urlaub | Schichtplan bleibt wie berechnet, Warnung im Coach (Checkliste), bis Urlaub eingetragen ist. Pflicht 17.–18.09., empfohlen 12.–19.09. |
@@ -41,7 +42,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
 | Phase 6 | Push-Erinnerungen erst in Phase 7; gelernte Muster anzeigen, Nutzung per Schalter (Standard aus) |
 | Phase 7 | Push 30 min vor Zubettgehen/Nap; .ics mit Einheiten, Schichten, Schlaf/Nap; Dienstplan-Import mit Vorschau und Bestätigung |
-| Tag 2 (vor der Nacht) | Nur **eine** Einheit (die Krafteinheit). Lauf an Tag 3 nach dem Tagschlaf (locker, ab 15:00), Qualität an Tag 5, im Taper bleibt Tag 3 frei. Höhenmeter über hügeligere lange Läufe (Obergrenze Aufbau 700, Rennspezifisch 1.200 hm). Freie Tage dürfen 2 Einheiten haben |
+| Tag 2 (vor der Nacht) | Nur **eine** Einheit (die Krafteinheit). Lauf an Tag 3 nach dem Tagschlaf (locker, ab 15:00), Qualität an Tag 4 (Aufbau) bzw. Tag 5 (Taper), im Taper bleibt Tag 3 frei. Höhenmeter über hügeligere lange Läufe (Obergrenze Aufbau 700, Rennspezifisch 1.200 hm). Freie Tage dürfen 2 Einheiten haben |
 | Konten | Vercel vorhanden. Supabase und WHOOP Developer werden in Phase 4/5 mit Anleitung angelegt |
 
 ## Befehle (ab Phase 2)
@@ -103,6 +104,9 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - `resetHistory()` in IndexedDB und Sync, einmalig über `settings.planId`, Hinweis auf Heute
   - Tests: 244 Vitest, 10 Playwright (inkl. Zielwechsel lokal und mit Konto)
   - Fix: mit Konto lud die App nach dem Update endlos (jede Sync-Statusänderung startete das Löschen erneut). Jetzt nur ein Durchlauf (`resetHistoryOnce`) und stabile `onRemoteChange`-Referenz in `cloud.tsx`
+- [x] **Tag 4/5 getauscht in Grundlage und Aufbau** (Nutzerwunsch): Tag 4 Höhenmeter/Qualität + Calisthenics, Tag 5 langer Lauf
+  - `plan.longRunDay` je Phase, `ComposeOptions.longRunDay`; `generatePlan` legt den langen Lauf auf Tag 4, wenn Tag 5 nicht frei ist und Tag 4 noch keinen Eintrag hat
+  - Tests: 246 Vitest, 10 Playwright
 
 ## Phase 2 – Plan (freigegeben)
 
