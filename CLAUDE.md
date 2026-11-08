@@ -27,6 +27,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Entlastung | jeweils der letzte Mikrozyklus eines Mesozyklus (4, 8, 14, 20, 25), **außer Meso 6**, weil dort direkt der Taper folgt |
 | Schweres Beintraining | vorrangig Tag 2. Tag 4 nur, wenn Tag 5 keinen langen Lauf und keine Qualitätseinheit hat |
 | Tag 4/5 in Grundlage und Aufbau | (Nutzerwunsch 26.10.2026) Tag 4: Höhenmeter- bzw. Qualitätseinheit, danach Calisthenics. Tag 5: langer Lauf (`plan.longRunDay`). Ist Tag 5 nicht frei (V, Urlaub, krank) und Tag 4 noch ohne Eintrag, läuft der lange Lauf an Tag 4. Rennspezifisch und Taper unverändert (langer Lauf Tag 4) |
+| V-Schicht (Nutzerwunsch 08.11.2026) | An V-Tagen plant der Plan **eine lockere Einheit nach dem Dienst** (Fenster 20:45–21:45, max. 60 min, `windows.vShiftMaxMin`). Die wichtigste Einheit des Tages bleibt als lockere Variante (Lauf → lockerer Lauf, Kraft → Calisthenics-Erhaltung), lange Läufe nie am V-Tag, alles Übrige wird wie bisher verschoben oder gestrichen. Bettzeit mind. 45 min nach dem Training. Tagschicht weiter ohne Training |
 | Bergwochenenden | 1: **Streckenbesichtigung** Fr/Sa 19./20.03.2027 (4 Wochen vor dem Rennen) |
 | Umfang (Zielwechsel) | ans Rennen angepasst: Spitze ca. 52–57 km/Woche, längster Lauf 32 km (14.03.2027), B2B-Spitze 22 + 14 km |
 | Rennwoche ohne Urlaub | Schichtplan bleibt wie berechnet, Warnung im Coach (Checkliste), bis Urlaub eingetragen ist. Renntag = Zyklustag 3. Pflicht 15.–16.04. (T, N), empfohlen ab 10.04. |
@@ -112,6 +113,8 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Rennen an Zyklustag 3 (`race_day` berechnet den Tag aus dem Datum), `raceConflict` prüft auch den Renntag
   - Start 08:30: Rennzeitplan-Läufe und Vorabend mit 06:00 aufstehen; alte Einträge einmalig gelöscht (`race.id`)
   - Tests: 246 Vitest, 10 Playwright
+- [x] **V-Schicht mit lockerer Einheit** (Nutzerwunsch): `trainingWindow` gibt für V ein Fenster nach dem Dienst (`afterWork`), `placeDay` behält die wichtigste Einheit als `toLightVariant`, Schlaf: `sleep.afterTrainingBeforeBedMin`
+  - Tests: 247 Vitest, 10 Playwright
 
 ## Phase 2 – Plan (freigegeben)
 

@@ -15,11 +15,16 @@ export interface WindowOptions {
   napStart?: Minutes
 }
 
-/** Trainingsfenster oder null (kein Training: Tagdienst, V, krank, Nacht auf Nacht). */
+/** Trainingsfenster oder null (kein Training: Tagdienst, krank, Nacht auf Nacht). V-Schicht: kurzes Fenster nach dem Dienst. */
 export function trainingWindow(cal: ShiftCalendar, date: LocalDate, opts: WindowOptions = {}): TrainingWindow | null {
   const s = effectiveShift(cal, date)
   switch (s.dayKind) {
-    case 'work':
+    case 'work': {
+      // V-Schicht (Nutzerwunsch): eine lockere Einheit nach dem Dienst. Tagschicht und Fortbildung: kein Training.
+      if (s.code !== 'V' || !s.work) return null
+      const start = s.work.homeArrival + W.vShiftAfterHomeMin
+      return { start, end: start + W.vShiftMaxMin, easyOnly: true, nightRunAllowed: false, afterWork: true }
+    }
     case 'sick':
     case 'night_to_night':
       return null

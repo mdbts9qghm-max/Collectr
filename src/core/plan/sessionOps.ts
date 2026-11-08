@@ -10,6 +10,8 @@ import { roundKm } from './volume'
 export const RUN_LONG_TYPES: ReadonlySet<SessionType> = new Set(['long_run', 'b2b_1', 'b2b_2', 'night_run', 'mountain_day'])
 export const QUALITY_TYPES: ReadonlySet<SessionType> = new Set(['threshold', 'intervals_uphill'])
 export const EASY_ONLY_TYPES: ReadonlySet<SessionType> = new Set(['recovery_run', 'easy_run', 'skill_light', 'mobility'])
+/** Nach der V-Schicht erlaubt: lockere Einheiten und Calisthenics-Erhaltung. */
+export const V_SHIFT_TYPES: ReadonlySet<SessionType> = new Set([...EASY_ONLY_TYPES, 'calisthenics_maintenance'])
 
 export const priorityOf = (s: Pick<PlannedSession, 'type'>): number => CONFIG.sessions.priority[s.type]
 
@@ -98,6 +100,17 @@ export function toStrengthVariant(s: PlannedSession, phase: Phase, type: Session
     ...(s.startMin !== undefined ? { startMin: s.startMin } : {}),
     origin: { ...(s.origin ?? {}), convertedFrom: s.type, ...(note ? { note } : {}) },
   }
+}
+
+/**
+ * Lockere Variante für den Abend nach der V-Schicht, höchstens `maxMin` lang:
+ * Lauf → lockerer Lauf, Kraft → Calisthenics-Erhaltung, lockere Einheiten bleiben (ggf. gekürzt).
+ */
+export function toLightVariant(s: PlannedSession, phase: Phase, maxMin: number, note: string): PlannedSession {
+  const fit = (x: PlannedSession) => (x.durationMin > maxMin ? scaleSession(x, maxMin / x.durationMin) : x)
+  if (V_SHIFT_TYPES.has(s.type)) return fit(s)
+  const light = s.category === 'run' ? toEasyRun(s, phase, maxMin) : toStrengthVariant(s, phase, 'calisthenics_maintenance')
+  return { ...fit(light), origin: { ...(light.origin ?? {}), convertedFrom: s.type, note } }
 }
 
 /** Technik-Variante (schwere Sätze → technische Sätze), leicht gekürzt. */

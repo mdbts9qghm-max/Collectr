@@ -436,3 +436,10 @@ Entlastungen: Mikro 6, 12, 18, 25, 32, 38, 44, 50, 56. Krafttests: 6, 12, 18, 25
 - Mikrozyklus 33: das Rennen liegt auf dem Zyklustag des Renndatums (`compose.ts`, `race_day`), optionales Auflockern am Tag davor.
 - Schlaf: aufstehen 06:00 vor Rennen und langen Läufen im Rennzeitplan, ins Bett ca. 21:15 (inkl. 30 min extra vor Schlüsseleinheiten). Kein Nap am Renntag.
 - Alte Einträge werden über `race.id = 'soul-trail-2027'` einmalig gelöscht (`resetHistoryOnce`).
+
+### 9.4 V-Schicht mit lockerer Einheit (08.11.2026)
+
+- Nutzerwunsch: Trägt man eine V-Schicht ein, darf der Plan an diesem Tag Calisthenics oder einen Lauf einplanen.
+- `trainingWindow`: V-Schicht → Fenster ab Ankunft zu Hause + 30 min für höchstens 60 min (Standard 20:45–21:45), `afterWork: true`. Tagschicht und Fortbildung bleiben ohne Training.
+- `placeDay`: genau eine Einheit, die wichtigste nach `sessions.priority` (ohne lange Lauftypen), als lockere Variante (`toLightVariant`): Lauf → lockerer Lauf ≤ 60 min, Kraft → Calisthenics-Erhaltung. Die übrigen Einheiten fallen weg und werden als Schlüsseleinheiten wie bisher verschoben oder gestrichen. Der V-Tag nimmt selbst keine verschobenen Einheiten an.
+- Schlaf: nach einem Training am Abend frühestens 45 min später ins Bett (`sleep.afterTrainingBeforeBedMin`).

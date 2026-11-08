@@ -111,7 +111,7 @@ describe('Tagesansicht', () => {
 
   it('V-Schicht verändert den Plan sofort', () => {
     const { v } = view(data({ overrides: [{ date: '2026-11-15', kind: 'V' }] }), '2026-11-15')
-    expect(v.items).toEqual([])
+    expect(v.items.map((i) => i.session.type)).toEqual(['easy_run']) // eine lockere Einheit nach dem Dienst
     expect(v.day!.removed.length).toBeGreaterThan(0)
   })
 

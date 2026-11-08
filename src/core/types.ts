@@ -59,7 +59,7 @@ export interface WorkTimes extends ShiftTimes {
 
 /**
  * Planungskategorie eines Tages, abgeleitet aus der tatsächlichen Schicht und der Vortagsschicht.
- * - work: Tagdienst (T, V, Fortbildung) → kein Training
+ * - work: Tagdienst (T, V, Fortbildung) → kein Training, nach der V-Schicht eine lockere Einheit
  * - pre_night: Nachtschicht am Abend → Training vormittags vor dem Nap
  * - night_to_night: Nachtschicht nach Nachtschicht → kein Training
  * - sleep_day: frei nach einer Nachtschicht → Training erst nachmittags und nur locker
@@ -88,6 +88,8 @@ export interface TrainingWindow {
   easyOnly: boolean
   /** Nachtlauf erlaubt (freier Tag, Folgetag ebenfalls frei). */
   nightRunAllowed: boolean
+  /** V-Schicht: höchstens eine lockere Einheit nach dem Dienst. */
+  afterWork?: boolean
 }
 
 // ---------------------------------------------------------------------------

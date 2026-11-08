@@ -5,7 +5,7 @@ import { CONFIG } from '../config'
 import { effectiveShift, fitsWindow, trainingWindow, type ShiftCalendar } from '../shift'
 import { addDays, daysBetween, formatDateDE } from '../time'
 import type { LocalDate, Phase, PlanDay, PlannedSession, RemovedSession } from '../types'
-import { EASY_ONLY_TYPES, isLongOrQuality, priorityOf, relocate, scaleSession, toLongRun, toStrengthVariant } from './sessionOps'
+import { EASY_ONLY_TYPES, isLongOrQuality, priorityOf, relocate, scaleSession, toLightVariant, toLongRun, toStrengthVariant, V_SHIFT_TYPES } from './sessionOps'
 
 const W = CONFIG.windows
 const DAY45: ReadonlySet<string> = new Set(CONFIG.sessions.day45Only)
@@ -38,6 +38,17 @@ export function placeDay(cal: ShiftCalendar, date: LocalDate, microIndex: number
   if (!w) {
     for (const s of [...list]) drop(s, 'no_window', 'Kein Trainingsfenster (Dienst, krank oder Nacht auf Nacht).')
     day.sessions = list
+    return day
+  }
+  // V-Schicht (Nutzerwunsch): höchstens eine lockere Einheit nach dem Dienst. Die wichtigste Einheit des Tages
+  // bleibt als lockere Variante, lange Läufe und alles Übrige werden wie bisher verschoben oder gestrichen.
+  if (w.afterWork) {
+    const note = 'V-Schicht: nur eine lockere Einheit nach dem Dienst.'
+    const pick = list
+      .filter((s) => !s.optional && !DAY45.has(s.type))
+      .sort((a, b) => priorityOf(b) - priorityOf(a))[0]
+    for (const s of [...list]) if (s !== pick) drop(s, 'no_window', note)
+    day.sessions = pick ? [toLightVariant(pick, phase, w.end - w.start, note)] : []
     return day
   }
   if (w.easyOnly) {
@@ -185,7 +196,7 @@ export function assignStartTimes(days: Map<LocalDate, PlanDay>): void {
     const prev = days.get(addDays(day.date, -1))
     const afterNightRun = prev?.sessions.some((s) => s.type === 'night_run') ?? false
     const total = rest.reduce((a, s) => a + s.durationMin, 0) + Math.max(0, rest.length - 1) * W.transitionMin
-    let t = afterNightRun ? Math.max(w.start, W.afternoonStart) : w.start + W.startOffsetMin
+    let t = afterNightRun ? Math.max(w.start, W.afternoonStart) : w.afterWork ? w.start : w.start + W.startOffsetMin
     if (fixed.length) t = Math.max(...fixed.map((s) => s.startMin! + s.durationMin)) + W.transitionMin
     else if (t + total > w.end) t = Math.max(w.start, w.end - total)
     for (const s of rest) {
@@ -216,7 +227,9 @@ export function checkPlanRules(days: PlanDay[]): RuleViolation[] {
   for (const d of days) {
     if (d.isRaceDay) continue
     if (!d.window && d.sessions.length > 0) out.push({ date: d.date, rule: 'no_training_day', message: 'Einheit an einem Tag ohne Trainingsfenster.' })
-    if (d.window?.easyOnly && d.sessions.some((s) => !EASY_ONLY_TYPES.has(s.type))) out.push({ date: d.date, rule: 'easy_only', message: 'Harte Einheit am Schlaftag.' })
+    if (d.window?.easyOnly && d.sessions.some((s) => !(d.window!.afterWork ? V_SHIFT_TYPES : EASY_ONLY_TYPES).has(s.type)))
+      out.push({ date: d.date, rule: 'easy_only', message: d.window.afterWork ? 'Harte Einheit nach der V-Schicht.' : 'Harte Einheit am Schlaftag.' })
+    if (d.window?.afterWork && d.sessions.length > 1) out.push({ date: d.date, rule: 'window', message: 'Nach der V-Schicht nur eine Einheit.' })
     if (d.window && !fitsWindow(d.window, d.sessions)) out.push({ date: d.date, rule: 'window', message: 'Einheiten passen nicht ins Fenster.' })
     if (d.sessions.some((s) => DAY45.has(s.type)) && d.shift.cycleDay !== 4 && d.shift.cycleDay !== 5)
       out.push({ date: d.date, rule: 'day45', message: 'Langer Lauf nicht an Tag 4/5.' })

@@ -157,6 +157,13 @@ export const CONFIG = {
     dayShiftOptionalMobilityMin: 10,
     /** Zweiter Teil eines Back-to-backs nach einem Nachtlauf: nachmittags. */
     afternoonStart: h(15),
+    /**
+     * V-Schicht (Nutzerwunsch 08.11.2026): eine lockere Einheit nach dem Dienst, Beginn so viele
+     * Minuten nach der Ankunft zu Hause (Umziehen, kleiner Snack) …
+     */
+    vShiftAfterHomeMin: 30,
+    /** … und höchstens so lang (lockerer Lauf oder Calisthenics-Erhaltung). */
+    vShiftMaxMin: 60,
   },
 
   // ---------------------------------------------------------------------------
@@ -196,6 +203,8 @@ export const CONFIG = {
     maxDebtPayoffPerNightMin: 60,
     /** Nachtlauf: nach dem Lauf bis zum Zubettgehen (Duschen, Essen). */
     afterNightRunMin: 60,
+    /** Training am Abend (z. B. nach der V-Schicht): mindestens so viel Abstand bis zum Zubettgehen. */
+    afterTrainingBeforeBedMin: 45,
     /** Nap vor einem Nachtlauf. */
     nightRunNapStart: h(15),
     nightRunNapMin: 90,
