@@ -91,8 +91,9 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await expect(d5).toContainText('V-Schicht')
   await expect(d5).not.toContainText('Ruhetag · optional')
   await expect(d5).toContainText(/gestrichen|Verschoben/)
-  // V-Schicht an Tag 5: der lange Lauf rückt auf Tag 4
+  // V-Schicht an Tag 5: der lange Lauf rückt auf Tag 4, nach dem Dienst eine lockere Einheit
   await expect(d4).toContainText('Langer Lauf')
+  await expect(d5).toContainText('Lockerer Lauf')
   await noHorizontalScroll(page)
   await shot(page, '04-zyklus-v-schicht')
   await page.getByRole('button', { name: 'Kalenderwochen' }).click()

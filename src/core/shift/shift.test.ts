@@ -83,13 +83,18 @@ describe('Arbeitszeiten und Losfahren (SPEC 4.1, 4.2)', () => {
 })
 
 describe('Overrides (SPEC 4.1)', () => {
-  it('V-Schicht auf Tag 5: Arbeitstag 07:45, kein Training', () => {
+  it('V-Schicht auf Tag 5: Arbeitstag 07:45, danach 60 min Fenster für eine lockere Einheit (Nutzerwunsch)', () => {
     const c = withOverride(cal, { date: '2026-10-06', kind: 'V' })
     const s = effectiveShift(c, '2026-10-06')
     expect(s.code).toBe('V')
     expect(formatTime(s.work!.actualStart)).toBe('07:45')
     expect(formatTime(s.work!.departure)).toBe('07:30')
-    expect(trainingWindow(c, '2026-10-06')).toBeNull()
+    const w = trainingWindow(c, '2026-10-06')!
+    // Dienstende 20:00 + 15 min Heimweg + 30 min → 20:45–21:45
+    expect([formatTime(w.start), formatTime(w.end)]).toEqual(['20:45', '21:45'])
+    expect(w).toMatchObject({ easyOnly: true, afterWork: true, nightRunAllowed: false })
+    // Tagschicht bleibt ohne Training
+    expect(trainingWindow(cal, '2026-10-02')).toBeNull()
   })
 
   it('Urlaub zählt als frei', () => {

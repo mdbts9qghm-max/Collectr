@@ -137,6 +137,12 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
       notes.push(`Rennvorbereitung: regelmäßige, eher frühe Nächte vor dem Start um ${formatTime(R.startMin)} Uhr.`)
       tag = 'race'
     }
+    // Training am Abend (z. B. nach der V-Schicht): mit Abstand ins Bett, notfalls etwas weniger Schlaf.
+    const lastEnd = todaySessions.reduce((a, s) => (s.startMin !== undefined ? Math.max(a, s.startMin + s.durationMin) : a), -Infinity)
+    if (!nightRun && bed < lastEnd + S.afterTrainingBeforeBedMin) {
+      bed = lastEnd + S.afterTrainingBeforeBedMin
+      notes.push(`Training am Abend: frühestens ${formatTime(bed)} Uhr ins Bett, vorher essen und runterkommen.`)
+    }
     rec.night = block(date, bed, wake)
   } else if (today.code === 'N') {
     notes.push('Heute Nacht Dienst: der Hauptschlaf folgt morgen nach der Schicht.')

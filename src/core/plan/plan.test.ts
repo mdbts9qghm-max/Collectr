@@ -309,7 +309,7 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
     const cal = withOverride(createShiftCalendar(), { date: '2026-11-15', kind: 'V' })
     const p = generatePlan({ calendar: cal })
     expect(types(day(p, '2026-11-14'))).toEqual(['long_run'])
-    expect(day(p, '2026-11-15').sessions).toEqual([])
+    expect(types(day(p, '2026-11-15'))).toEqual(['easy_run']) // lockere Einheit nach dem Dienst
     const hillsId = day(plan, '2026-11-14').sessions[0]!.id
     const logged = generatePlan({ calendar: cal, logs: [{ sessionId: hillsId, date: '2026-11-14', status: 'done' }] })
     expect(types(day(logged, '2026-11-14'))).toEqual(['treadmill_hills', 'calisthenics_main'])
@@ -386,19 +386,39 @@ describe('Harte Regeln (SPEC 4.3, 5.3, 5.5, 11)', () => {
 })
 
 describe('V-Schicht, Ausfälle und Verschieben (SPEC 4.1, 6.3, 11)', () => {
-  it('kurzfristige V-Schicht: keine Einheit am V-Tag, Schlüsseleinheit einmal verschoben oder gestrichen', () => {
+  it('V-Schicht: die wichtigste Einheit bleibt als lockere Variante nach dem Dienst, die andere wird verschoben', () => {
     const cal = withOverride(createShiftCalendar(), { date: '2026-11-15', kind: 'V' })
     const p = generatePlan({ calendar: cal })
     const v = day(p, '2026-11-15')
-    expect(v.sessions).toEqual([])
-    const hills = v.removed.find((r) => r.session.type === 'treadmill_hills')!
-    expect(hills.note).toContain('gestrichen')
+    // Höhenmeter-Einheit (Priorität vor Calisthenics) → lockerer Lauf, höchstens 60 min, Start 20:45
+    expect(v.sessions).toHaveLength(1)
+    const light = v.sessions[0]!
+    expect(light.type).toBe('easy_run')
+    expect(light.origin?.convertedFrom).toBe('treadmill_hills')
+    expect(light.durationMin).toBeLessThanOrEqual(CONFIG.windows.vShiftMaxMin)
+    expect(light.startMin).toBe(20 * 60 + 45)
     const cali = v.removed.find((r) => r.session.type === 'calisthenics_main')!
     expect(cali.reason).toBe('moved')
     const target = day(p, '2026-11-20')
     const moved = target.sessions.find((s) => s.type === 'calisthenics_main')!
     expect(moved.origin?.movedFrom).toBe('2026-11-15')
     expect(target.shift.cycleDay).toBe(5)
+  })
+
+  it('V-Schicht: Calisthenics wird zur Erhaltung, harte Läufe zum lockeren Lauf, lange Läufe nie am V-Tag', () => {
+    // Aufbau Tag 4: Bergauf-Intervalle + Calisthenics → V: lockerer Lauf ≤ 60 min
+    const q = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2027-01-28', kind: 'V' }) })
+    expect(day(q, '2027-01-28').sessions.map((s) => [s.type, s.origin?.convertedFrom])).toEqual([['easy_run', 'intervals_uphill']])
+    expect(day(q, '2027-01-28').sessions[0]!.durationMin).toBeLessThanOrEqual(60)
+    // Kraft als wichtigste Einheit (Tag 2 schweres Beintraining, per Tausch V-Schicht) → Calisthenics-Erhaltung
+    const k = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2026-11-12', kind: 'TAUSCH', swapTo: 'V' }) })
+    expect(day(k, '2026-11-12').sessions.map((s) => [s.type, s.origin?.convertedFrom])).toEqual([['calisthenics_maintenance', 'legs_heavy']])
+    // Rennspezifisch Tag 4 nur langer Lauf → V-Tag bleibt leer, der lange Lauf rückt auf Tag 5
+    const l = generatePlan({ calendar: withOverride(createShiftCalendar(), { date: '2027-02-27', kind: 'V' }) })
+    expect(day(l, '2027-02-27').sessions).toEqual([])
+    expect(day(l, '2027-02-28').sessions.find((s) => s.type === 'long_run')!.origin?.movedFrom).toBe('2027-02-27')
+    // Tagschicht bleibt ohne Training
+    expect(plan.days.filter((d) => d.shift.code === 'T').every((d) => d.sessions.length === 0 || d.isRaceDay)).toBe(true)
   })
 
   it('nie auf Tag 1 verschoben', () => {
