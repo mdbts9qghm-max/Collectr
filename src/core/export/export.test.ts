@@ -12,7 +12,7 @@ function events(ics: string) {
 }
 
 describe('Kalender-Export (.ics)', () => {
-  const ics = buildIcs(plan, cal, { ...base, from: '2026-10-27', to: '2026-10-31' })
+  const ics = buildIcs(plan, cal, { ...base, from: '2026-11-11', to: '2026-11-15' })
 
   it('Aufbau nach RFC 5545 mit Zeitzone Europe/Berlin und CRLF', () => {
     expect(ics.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n')).toBe(true)
@@ -24,36 +24,36 @@ describe('Kalender-Export (.ics)', () => {
 
   it('Schichten mit Dienstzeiten, Nachtschicht endet am Folgetag', () => {
     const ev = events(ics)
-    const t = ev.find((e) => e.includes('UID:schicht-2026-10-27@collectr'))!
-    expect(t).toContain('DTSTART;TZID=Europe/Berlin:20261027T070000')
-    expect(t).toContain('DTEND;TZID=Europe/Berlin:20261027T190000')
+    const t = ev.find((e) => e.includes('UID:schicht-2026-11-11@collectr'))!
+    expect(t).toContain('DTSTART;TZID=Europe/Berlin:20261111T070000')
+    expect(t).toContain('DTEND;TZID=Europe/Berlin:20261111T190000')
     expect(t).toContain('SUMMARY:Tagschicht (Beginn 06:45)')
-    const n = ev.find((e) => e.includes('UID:schicht-2026-10-28@collectr'))!
-    expect(n).toContain('DTEND;TZID=Europe/Berlin:20261029T070000')
-    expect(ev.some((e) => e.includes('UID:schicht-2026-10-29@'))).toBe(false) // Schlaftag
+    const n = ev.find((e) => e.includes('UID:schicht-2026-11-12@collectr'))!
+    expect(n).toContain('DTEND;TZID=Europe/Berlin:20261113T070000')
+    expect(ev.some((e) => e.includes('UID:schicht-2026-11-13@'))).toBe(false) // Schlaftag
   })
 
   it('Einheiten mit Startzeit, Dauer und Beschreibung', () => {
-    const day = plan.days.find((d) => d.date === '2026-10-28')!
+    const day = plan.days.find((d) => d.date === '2026-11-12')!
     const s = day.sessions[0]!
     const ev = events(ics).find((e) => e.includes(`UID:einheit-${s.id}@collectr`))!
     expect(ev).toContain(`SUMMARY:${escapeText(s.title)}`)
     expect(ev).toContain('DESCRIPTION:')
     expect(ev).toContain('CATEGORIES:Training')
     const start = s.startMin!
-    expect(ev).toContain(`DTSTART;TZID=Europe/Berlin:20261028T${String(Math.floor(start / 60)).padStart(2, '0')}${String(start % 60).padStart(2, '0')}00`)
+    expect(ev).toContain(`DTSTART;TZID=Europe/Berlin:20261112T${String(Math.floor(start / 60)).padStart(2, '0')}${String(start % 60).padStart(2, '0')}00`)
   })
 
   it('Schlaf: Nap vor der Nachtschicht, Tagschlaf danach, keine Nacht in der Dienstnacht', () => {
     const ev = events(ics)
-    expect(ev.some((e) => e.includes('UID:nap-2026-10-28@'))).toBe(true)
-    expect(ev.some((e) => e.includes('UID:tagschlaf-2026-10-29@'))).toBe(true)
-    expect(ev.some((e) => e.includes('UID:nacht-2026-10-28@'))).toBe(false)
-    expect(ev.some((e) => e.includes('UID:nacht-2026-10-27@'))).toBe(true)
+    expect(ev.some((e) => e.includes('UID:nap-2026-11-12@'))).toBe(true)
+    expect(ev.some((e) => e.includes('UID:tagschlaf-2026-11-13@'))).toBe(true)
+    expect(ev.some((e) => e.includes('UID:nacht-2026-11-12@'))).toBe(false)
+    expect(ev.some((e) => e.includes('UID:nacht-2026-11-11@'))).toBe(true)
   })
 
   it('Auswahl: nur Schichten', () => {
-    const only = buildIcs(plan, cal, { ...base, sessions: false, sleep: false, from: '2026-10-27', to: '2026-10-31' })
+    const only = buildIcs(plan, cal, { ...base, sessions: false, sleep: false, from: '2026-11-11', to: '2026-11-15' })
     const ev = events(only)
     expect(ev.every((e) => e.includes('UID:schicht-'))).toBe(true)
     expect(ev.length).toBe(2) // 02.10. Tagschicht, 03.10. Nachtschicht

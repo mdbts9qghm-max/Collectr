@@ -9,7 +9,7 @@ import type { LocalDate, ShiftCode } from '../types'
 
 const R = CONFIG.race
 
-/** Rennen in Kurzform für die Oberfläche: „Arberland Classic Trail · 18.09.2027, 07:00 Uhr“. */
+/** Rennen in Kurzform für die Oberfläche: „Soul Trail · 17.04.2027, 08:30 Uhr“. */
 export function raceHeadline(): string {
   return `${R.shortName} · ${formatDateDE(R.date)}, ${formatTime(R.startMin)} Uhr`
 }
@@ -32,9 +32,10 @@ export interface RaceConflict {
   message: string
 }
 
-/** Prüft die Pflicht-Urlaubstage (Anreise und Renntag) gegen den Schichtplan. */
+/** Prüft die Pflicht-Urlaubstage und den Renntag selbst (z. B. V-Schicht) gegen den Schichtplan. */
 export function raceConflict(cal: ShiftCalendar): RaceConflict {
-  const days = R.vacationRequired.map((date) => {
+  const checked = [...new Set([...R.vacationRequired, R.date])].sort()
+  const days = checked.map((date) => {
     const s = effectiveShift(cal, date)
     return { date, code: s.code, label: shiftLabel(s.code), isWork: s.isWork }
   })
@@ -74,11 +75,11 @@ export function raceChecklist(): ChecklistItem[] {
   const wake = formatTime(R.startMin - R.wakeBeforeStartMin)
   return [
     { id: 'urlaub', group: 'Organisation', text: `Urlaub ${vacation} beantragt und im Plan eingetragen` },
-    { id: 'termin', group: 'Organisation', text: `Renntermin und Anmeldung beim Veranstalter prüfen${R.dateProvisional ? ' (Termin ist noch vorläufig)' : ''}` },
+    { id: 'termin', group: 'Organisation', text: `Anmeldung, Startort und Höhenmeter beim Veranstalter prüfen${R.dateProvisional ? ' (Termin ist noch vorläufig)' : ''}` },
     { id: 'anreise', group: 'Anreise', text: `Anreise nach ${R.location} planen, Unterkunft buchen, Startnummernausgabe prüfen` },
     { id: 'pflicht', group: 'Ausrüstung', text: 'Pflichtausrüstung laut Veranstalter vollständig (Jacke, Rettungsdecke, Handy, Becher …)' },
     { id: 'schuhe', group: 'Ausrüstung', text: 'Eingelaufene Schuhe, Stöcke, Rucksack aus den langen Läufen' },
-    { id: 'wetter', group: 'Ausrüstung', text: 'Wetterbericht prüfen, Regenjacke und warme Schicht für den Morgen einpacken' },
+    { id: 'wetter', group: 'Ausrüstung', text: 'Wetterbericht prüfen (im Frühjahr Matsch oder Schnee in höheren Lagen), Regenjacke und warme Schicht einpacken' },
     { id: 'verpflegung', group: 'Verpflegung', text: 'Verpflegungsplan: 60–90 g Kohlenhydrate pro Stunde, im Training getestet' },
     { id: 'drop', group: 'Verpflegung', text: `Verpflegungsstellen und Streckenprofil kennen, Zeitplan für das Zeitlimit von ${R.cutoffHours} h` },
     { id: 'schlaf', group: 'Schlaf', text: `Schlafstrategie: in den Tagen vorher früh ins Bett, am Renntag ${wake} Uhr aufstehen (Start ${start} Uhr)` },

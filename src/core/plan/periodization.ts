@@ -1,5 +1,5 @@
 // Periodisierung (SPEC 5.1, 5.2): Mikrozyklus = 5-Tage-Schichtrhythmus,
-// Mesozyklus = 6–7 Mikrozyklen (Zielwechsel Arberland: alle Phasen anteilig verlängert).
+// Mesozyklus = 4–6 Mikrozyklen (Längen in `plan.mesos`, bei jedem Zielwechsel anteilig neu verteilt).
 // Der Einstiegstag vor dem ersten Mikrozyklus gehört zu Mikrozyklus 1.
 
 import { CONFIG } from '../config'

@@ -63,7 +63,7 @@ export function whoopActive(data: Pick<AppData, 'whoop'>): boolean {
 
 /**
  * Zielwechsel: Einträge eines eingerichteten Nutzers gehören zu einem anderen Rennziel und
- * werden einmalig gelöscht (Entscheidung beim Wechsel auf den Arberland Classic Trail).
+ * werden einmalig gelöscht (Entscheidung bei jedem Zielwechsel, zuletzt auf den Soul Trail).
  */
 export function needsHistoryReset(settings: AppSettings): boolean {
   return settings.onboarded && settings.planId !== CONFIG.race.id

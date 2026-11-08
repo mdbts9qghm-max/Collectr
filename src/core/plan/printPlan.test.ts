@@ -25,6 +25,6 @@ describe('Gesamtplan (Ausgabe)', () => {
       ].join('  ')
     })
     if (process.env.PRINT_PLAN) console.log('\n' + rows.join('\n'))
-    expect(rows).toHaveLength(66)
+    expect(rows).toHaveLength(33)
   })
 })

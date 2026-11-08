@@ -62,7 +62,7 @@ export function recommendSleep(input: SleepInput): SleepRecommendation {
     tag = 'post_night'
   }
 
-  // Renntag hat Vorrang. Nap nur bei einem späten Start (Arberland: 07:00, also ohne Nap).
+  // Renntag hat Vorrang. Nap nur bei einem späten Start (Soul Trail: 08:30, also ohne Nap).
   if (isRaceDay) {
     if (R.startMin >= R.napIfStartFrom) {
       rec.nap = block(date, S.raceNapStart, S.raceNapStart + S.latencyMin + S.raceNapMin)

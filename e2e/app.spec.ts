@@ -134,17 +134,17 @@ test('Onboarding, Heute, Zyklus, Plan, Kraft, Tracking, Einstellungen', async ({
   await noHorizontalScroll(page)
   await shot(page, '07-tracking')
 
-  // --- Einstellungen, Demo-Modus, Juli im rennspezifischen Block ---
+  // --- Einstellungen, Demo-Modus, März im rennspezifischen Block ---
   await page.getByRole('link', { name: 'Einstellungen' }).click()
   await openGroup(page, 'WHOOP & Erinnerungen')
   await page.getByLabel('Demo-Modus').check()
   await noHorizontalScroll(page)
   await shot(page, '08-einstellungen')
-  await simulateDate(page, '2027-07-14')
+  await simulateDate(page, '2027-03-03')
   await expect(page.getByTestId('traffic')).toContainText('%')
   await expect(page.getByTestId('disclaimer')).toBeVisible()
   await noHorizontalScroll(page)
-  await shot(page, '09-heute-demo-juli')
+  await shot(page, '09-heute-demo-maerz')
 
   // --- Erholung (Phase 6): Diagramme mit Schicht-Hintergrund, Auswertungen, Tabelle ---
   await page.getByRole('link', { name: 'Schlaf & Erholung' }).click()

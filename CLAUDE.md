@@ -1,4 +1,4 @@
-# CLAUDE.md – Collectr (Trainings-App Arberland Classic Trail 2027)
+# CLAUDE.md – Collectr (Trainings-App Soul Trail 2027)
 
 Verbindliche Vorgabe ist `docs/SPEC.md`. Architektur und Entscheidungen stehen in `docs/PLANUNG.md`.
 Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den Nutzer fragen, nicht raten.**
@@ -17,26 +17,26 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 - Secrets (WHOOP Client Secret, Tokens, Supabase Service Role Key) **nur serverseitig** (Edge Functions und Umgebungsvariablen), nie im Frontend oder im Repo.
 - Hinweis aus SPEC 13 muss im Footer und im Onboarding stehen.
 
-## Festgelegte Entscheidungen (Phase 1, mit dem Nutzer geklärt; Zielwechsel 25.10.2026)
+## Festgelegte Entscheidungen (Phase 1, mit dem Nutzer geklärt; Zielwechsel 25.10. und 08.11.2026)
 
 | Thema | Entscheidung |
 |---|---|
-| Rennen (Zielwechsel) | **Arberland Classic Trail**, Bayerisch Eisenstein, Sa 18.09.2027 (vorläufig), Start 07:00, ca. 66 km, 2.514 hm, Zeitlimit 13 h. Alles in `CONFIG.race`. Vorher: Ehrwald Trail 18.06.2027 |
-| Planstart | Einstiegstag Mo 26.10.2026 (lockerer Lauf), Mikrozyklus 1 ab Di 27.10.2026 = Tag 1. Schicht-Ankerdatum bleibt 02.10.2026 |
-| Phasen/Mesozyklen | alle anteilig verlängert: Grundlage Meso 1–3 (je 6), Aufbau Meso 4–7 (7, 7, 6, 6), Rennspezifisch Meso 8–10 (je 6), Taper 02.–18.09.2027 (2 Taper, Rennwoche, Renntag) |
-| Entlastung | jeweils der letzte Mikrozyklus eines Mesozyklus, **außer Meso 10**, weil dort direkt der Taper folgt |
+| Rennen (Zielwechsel 08.11.2026) | **Soul Trail** (SOUL Trailrunning Season Opening), Deggendorf, **Sa 17.04.2027, Start 08:30**, 55 km, 2.000 hm, Zeitlimit 11 h. Alles in `CONFIG.race`. Vorher: Arberland Classic Trail 18.09.2027, davor Ehrwald Trail 18.06.2027 |
+| Planstart | Neustart Mo 09.11.2026 (Zyklustag 4): Mikrozyklus 1 = 09./10.11., Rhythmus ab Mi 11.11. Schicht-Ankerdatum bleibt 02.10.2026. Alte Einträge einmalig gelöscht |
+| Phasen/Mesozyklen | anteilig: Grundlage Meso 1–2 (je 4), Aufbau Meso 3–4 (je 6), Rennspezifisch Meso 5–6 (5, 4), Taper 31.03.–17.04.2027 (2 Taper, Rennwoche, Renntag) |
+| Entlastung | jeweils der letzte Mikrozyklus eines Mesozyklus (4, 8, 14, 20, 25), **außer Meso 6**, weil dort direkt der Taper folgt |
 | Schweres Beintraining | vorrangig Tag 2. Tag 4 nur, wenn Tag 5 keinen langen Lauf und keine Qualitätseinheit hat |
 | Tag 4/5 in Grundlage und Aufbau | (Nutzerwunsch 26.10.2026) Tag 4: Höhenmeter- bzw. Qualitätseinheit, danach Calisthenics. Tag 5: langer Lauf (`plan.longRunDay`). Ist Tag 5 nicht frei (V, Urlaub, krank) und Tag 4 noch ohne Eintrag, läuft der lange Lauf an Tag 4. Rennspezifisch und Taper unverändert (langer Lauf Tag 4) |
-| Bergwochenenden | 2: Sa/So 17./18.07.2027 und Sa/So 21./22.08.2027 = **Streckenbesichtigung Arberland** (4 Wochen vor dem Rennen) |
-| Umfang (Zielwechsel) | ans Rennen angepasst: Spitze ca. 62–66 km/Woche, längster Lauf 40 km (06.08.2027), B2B-Spitze 26 + 16 km |
-| Rennwoche ohne Urlaub | Schichtplan bleibt wie berechnet, Warnung im Coach (Checkliste), bis Urlaub eingetragen ist. Pflicht 17.–18.09., empfohlen 12.–19.09. |
+| Bergwochenenden | 1: **Streckenbesichtigung** Fr/Sa 19./20.03.2027 (4 Wochen vor dem Rennen) |
+| Umfang (Zielwechsel) | ans Rennen angepasst: Spitze ca. 52–57 km/Woche, längster Lauf 32 km (14.03.2027), B2B-Spitze 22 + 14 km |
+| Rennwoche ohne Urlaub | Schichtplan bleibt wie berechnet, Warnung im Coach (Checkliste), bis Urlaub eingetragen ist. Renntag = Zyklustag 3. Pflicht 15.–16.04. (T, N), empfohlen ab 10.04. |
 | Alte Einträge (Zielwechsel) | einmalig gelöscht (`resetHistory`, gesteuert über `settings.planId`). Krafttests, Kraftstufen, Profil, Overrides, WHOOP bleiben |
 | Losfahren | Arbeitsbeginn − 15 min Arbeitsweg, ohne Extra-Puffer (Tag 1: 06:30, Tag 2: 18:30, V: 07:30) |
 | App-Name | Collectr, im Hauptverzeichnis dieses Repos |
 | Git | am Phasenende automatisch committen und pushen, wenn Tests und Build grün sind |
-| Nachtlauf | ersetzt durch **frühe lange Läufe im Rennzeitplan**: Tag 4, fester Start 07:00 (`fixedStart`), Nacht davor 21:00–04:30 wie vor dem Rennen. Kein Nap am Renntag. Typ `night_run` bleibt im Code |
+| Nachtlauf | ersetzt durch **lange Läufe im Rennzeitplan**: Tag 4, fester Start wie im Rennen (08:30, `fixedStart`), davor 06:00 aufstehen wie am Renntag. Kein Nap am Renntag. Typ `night_run` bleibt im Code |
 | Vorausschau (6.3a) | nur ab Gelb. Bei Grün läuft die Einheit immer wie geplant |
-| Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (51, 53, 57, 59, 60: erster Lauf > 30 km, Berg, längster Lauf, B2B-Spitze) bis +12 % darüber |
+| Umfangsspitzen | Trend-Regel: Grundniveau max. +7 %/Mikrozyklus. Schlüssel-Mikrozyklen (26, 27, 28: längster Lauf, Streckenbesichtigung, B2B-Spitze) bis +12 % darüber |
 | Phase 3 | Manuelle Eingabe + Demo-Modus, Datum simulieren in den Einstellungen, einfache Einstellungen, IndexedDB |
 | Phase 4 | Login E-Mail + Passwort; offline lesen und eintragen, später synchronisieren; Zurücksetzen löscht auch in der Cloud |
 | Phase 5 | Eindeutige Workouts automatisch, Rest bestätigen; Abruf beim Öffnen + manuell (täglicher Abruf/Webhooks in Phase 6) |
@@ -106,6 +106,11 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Fix: mit Konto lud die App nach dem Update endlos (jede Sync-Statusänderung startete das Löschen erneut). Jetzt nur ein Durchlauf (`resetHistoryOnce`) und stabile `onRemoteChange`-Referenz in `cloud.tsx`
 - [x] **Tag 4/5 getauscht in Grundlage und Aufbau** (Nutzerwunsch): Tag 4 Höhenmeter/Qualität + Calisthenics, Tag 5 langer Lauf
   - `plan.longRunDay` je Phase, `ComposeOptions.longRunDay`; `generatePlan` legt den langen Lauf auf Tag 4, wenn Tag 5 nicht frei ist und Tag 4 noch keinen Eintrag hat
+  - Tests: 246 Vitest, 10 Playwright
+- [x] **Zielwechsel: Soul Trail 2027** (Neustart 09.11.2026, Plan in `docs/PLANUNG.md` Abschnitt 9)
+  - 33 Mikrozyklen, `startDate` 09.11. (Tag 4) mit Rhythmus ab 06.11., Tage vor dem Start werden nicht eingeplant
+  - Rennen an Zyklustag 3 (`race_day` berechnet den Tag aus dem Datum), `raceConflict` prüft auch den Renntag
+  - Start 08:30: Rennzeitplan-Läufe und Vorabend mit 06:00 aufstehen; alte Einträge einmalig gelöscht (`race.id`)
   - Tests: 246 Vitest, 10 Playwright
 
 ## Phase 2 – Plan (freigegeben)

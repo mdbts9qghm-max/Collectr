@@ -1,8 +1,8 @@
-# Collectr – Trainings-App Arberland Classic Trail 2027
+# Collectr – Trainings-App Soul Trail 2027
 
-Mobile-first PWA für die Vorbereitung auf den Arberland Classic Trail (Bayerisch Eisenstein, ca. 66 km, 2.514 hm, Start Sa 18.09.2027 07:00 Uhr, Termin vorläufig) im 5-Tage-Schichtrhythmus (Tag, Nacht, Schlaftag, Frei, Frei/V). Laufen und Calisthenics werden nach Schichten und WHOOP-Erholung geplant und täglich angepasst.
+Mobile-first PWA für die Vorbereitung auf den Soul Trail beim SOUL Trailrunning Season Opening (Deggendorf, Bayerischer Wald, 55 km, 2.000 hm, Start Sa 17.04.2027 08:30 Uhr, Zeitlimit 11 h) im 5-Tage-Schichtrhythmus (Tag, Nacht, Schlaftag, Frei, Frei/V). Laufen und Calisthenics werden nach Schichten und WHOOP-Erholung geplant und täglich angepasst.
 
-> **Zielwechsel (25.10.2026):** Ursprünglich war der Ehrwald Trail (18.06.2027) das Ziel. Was sich geändert hat, steht in [`docs/PLANUNG.md`](docs/PLANUNG.md) Abschnitt 8.
+> **Zielwechsel:** Ursprünglich war der Ehrwald Trail (18.06.2027) das Ziel, ab 25.10.2026 der Arberland Classic Trail (18.09.2027), seit 08.11.2026 der Soul Trail. Was sich geändert hat, steht in [`docs/PLANUNG.md`](docs/PLANUNG.md) Abschnitt 8 und 9.
 
 > Der Plan ist eine automatische Empfehlung und ersetzt keine Beratung durch Trainer oder Arzt. Bei Schmerzen, Krankheit oder anhaltend schlechten Erholungswerten hat Pause Vorrang.
 
@@ -10,7 +10,7 @@ Verbindliche Vorgabe: [`docs/SPEC.md`](docs/SPEC.md). Architektur und Entscheidu
 
 ## Was die App kann
 
-- **Plan** vom 26.10.2026 bis zum Rennen: Mesozyklen, Mikrozyklen (5 Tage = ein Schichtzyklus), Entlastung, Taper, lange Läufe im Rennzeitplan (Start 07:00), Bergwochenenden mit Streckenbesichtigung, Checkliste Rennwoche
+- **Plan** vom 09.11.2026 bis zum Rennen: Mesozyklen, Mikrozyklen (5 Tage = ein Schichtzyklus), Entlastung, Taper, lange Läufe im Rennzeitplan (Start 08:30), Streckenbesichtigung, Checkliste Rennwoche
 - **Schichten**: Rhythmus mit Ankerdatum, V-Schicht, Urlaub, Krank, Tausch, Überstunden, Fortbildung, **Dienstplan-Import (.ics)** mit Vorschau
 - **Heute**: angepasste Einheiten mit Begründung, Ampel, Schlafempfehlung, Losfahrzeit
 - **Erholung**: WHOOP (OAuth, Webhooks, 2× täglicher Abruf) oder manuelle Eingabe; Recovery, HRV, Ruhepuls, Schlaf mit Schichten als Hintergrund; gelernte Muster

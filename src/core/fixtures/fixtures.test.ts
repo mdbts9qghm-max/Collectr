@@ -29,8 +29,12 @@ describe('Beispieldaten statt WHOOP', () => {
     expect(microcycleReduction(statuses.filter((s) => s.date >= '2026-10-22' && s.date <= '2026-10-26')).factor).toBeLessThan(1)
     const gap = addDays(DEFAULT_SAMPLE.start, 33)
     expect(days.find((d) => d.date === gap)).toBeUndefined()
+    // Lücke an einem Trainingstag im Plan (Tag 4, 14.11.2026)
+    const withGap = sampleRecoveryDays(cal, { ...DEFAULT_SAMPLE, missingDays: [43] })
+    const planGap = addDays(DEFAULT_SAMPLE.start, 43)
+    expect(withGap.find((d) => d.date === planGap)).toBeUndefined()
     const plan = generatePlan()
-    const s = plan.days.find((d) => d.date === gap)!.sessions[0]
-    if (s) expect(adjustSession(s, { readiness: assessReadiness({ date: gap, history: days }), dayKind: 'free', phase: 'base' }).action).toBe('needs_input')
+    const s = plan.days.find((d) => d.date === planGap)!.sessions[0]!
+    expect(adjustSession(s, { readiness: assessReadiness({ date: planGap, history: withGap }), dayKind: 'free', phase: 'base' }).action).toBe('needs_input')
   })
 })

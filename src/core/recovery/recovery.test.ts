@@ -318,20 +318,20 @@ describe('Vorausschau 6.3a', () => {
 describe('Mikrozyklus-Reduktion (SPEC 6.3, 11)', () => {
   it('mehrere rote Tage in Folge senken den nächsten Mikrozyklus', () => {
     const r = microcycleReduction([
-      { date: '2026-10-28', traffic: 'red' },
-      { date: '2026-10-29', traffic: 'red' },
-      { date: '2026-10-30', traffic: 'green' },
+      { date: '2026-11-12', traffic: 'red' },
+      { date: '2026-11-13', traffic: 'red' },
+      { date: '2026-11-14', traffic: 'green' },
     ])
     expect(r.factor).toBe(1 - CONFIG.recovery.microReduction.redStreakReduction)
     const micros = buildMicrocycles()
     const mods = microModifiersFromHistory(micros, [
-      { date: '2026-10-28', traffic: 'red' },
-      { date: '2026-10-29', traffic: 'red' },
+      { date: '2026-11-12', traffic: 'red' },
+      { date: '2026-11-13', traffic: 'red' },
     ])
-    expect(mods).toEqual({ 2: 0.75 })
+    expect(mods).toEqual({ 3: 0.75 })
     const base = generatePlan()
     const reduced = generatePlan({ microModifiers: mods })
-    expect(reduced.microcycles[1]!.plannedKm).toBeLessThan(base.microcycles[1]!.plannedKm)
+    expect(reduced.microcycles[2]!.plannedKm).toBeLessThan(base.microcycles[2]!.plannedKm)
   })
 
   it('gelb/rote Serie und Schlafdefizit', () => {
@@ -344,18 +344,18 @@ describe('Mikrozyklus-Reduktion (SPEC 6.3, 11)', () => {
 describe('Nachhol-Vorschlag (SPEC 6.3)', () => {
   it('nur bei sehr guter Recovery und nur als Vorschlag, wenn die Regeln erfüllt sind', () => {
     const plan = generatePlan()
-    // Künstlich: langer Lauf im Rennzeitplan an Tag 4 (27.06.2027) ist ausgefallen und wurde nicht verschoben.
-    const d4 = plan.days.find((d) => d.date === '2027-06-27')!
+    // Künstlich: langer Lauf im Rennzeitplan an Tag 4 (22.02.2027) ist ausgefallen und wurde nicht verschoben.
+    const d4 = plan.days.find((d) => d.date === '2027-02-22')!
     const long = d4.sessions.find((s) => s.type === 'long_run')!
     d4.sessions = d4.sessions.filter((s) => s !== long)
     d4.removed.push({ session: long, reason: 'no_window', note: 'Krank.' })
-    const date = '2027-06-28' // Tag 5 mit Höhenmeter-Einheit
+    const date = '2027-02-23' // Tag 5 mit Höhenmeter-Einheit
     const great = assessReadiness({ date, today: whoopDay(date, 90) })
     const s = suggestCatchUp(plan, date, great)
     expect(s?.session.type).toBe('long_run')
     expect(s?.replaces.map((x) => x.type)).toEqual(['treadmill_hills'])
     expect(s?.text).toContain('Freiwillig')
     expect(suggestCatchUp(plan, date, assessReadiness({ date, today: whoopDay(date, 70) }))).toBeNull()
-    expect(suggestCatchUp(plan, '2027-07-02', great)).toBeNull() // Tag 4 mit eigenem langen Lauf
+    expect(suggestCatchUp(plan, '2027-02-27', great)).toBeNull() // Tag 4 mit eigenem langen Lauf
   })
 })

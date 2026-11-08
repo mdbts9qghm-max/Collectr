@@ -2,7 +2,7 @@
 // Kilometer und Höhenmeter (noch ohne Schichtprüfung, das macht schedule.ts).
 
 import { CONFIG } from '../config'
-import { addDays } from '../time'
+import { addDays, daysBetween } from '../time'
 import type { CycleDay, Microcycle, PlannedSession, SessionType, StrengthState } from '../types'
 import {
   easyRun,
@@ -228,9 +228,10 @@ export function composeMicro(micro: Microcycle, vol: MicroVolume, opts: ComposeO
       break
     }
     case 'race_day': {
-      // Rennen an Zyklustag 2 (Sa 18.09.2027), am Vortag optional kurz auflockern.
-      optionals.push({ day: 1, make: (ctx) => recoveryRun(ctx, V.taperShares.raceDayEveMin, true) })
-      extras.push({ day: 2, make: (ctx) => raceSession({ ...ctx, slot: 'rennen' }) })
+      // Rennen an dem Zyklustag, auf den das Datum fällt (Soul Trail: Tag 3), am Vortag optional kurz auflockern.
+      const raceDay = (daysBetween(rhythmStart(micro.index), CONFIG.race.date) + 1) as CycleDay
+      if (raceDay > 1) optionals.push({ day: (raceDay - 1) as CycleDay, make: (ctx) => recoveryRun(ctx, V.taperShares.raceDayEveMin, true) })
+      extras.push({ day: raceDay, make: (ctx) => raceSession({ ...ctx, slot: 'rennen' }) })
       break
     }
   }
