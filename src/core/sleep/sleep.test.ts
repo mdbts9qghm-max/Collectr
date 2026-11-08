@@ -47,42 +47,44 @@ describe('Schlafempfehlungen (SPEC 6.3b, 11)', () => {
   })
 
   it('Nacht nach der Tagschicht: Ausschlafen erlaubt, spätestens vor dem Training', () => {
-    const r = recommendSleep({ cal, date: '2026-10-27', plan })
-    expect(r.night!.end.date).toBe('2026-10-28')
+    const r = recommendSleep({ cal, date: '2026-11-11', plan })
+    expect(r.night!.end.date).toBe('2026-11-12')
     expect(r.night!.end.minutes).toBeGreaterThanOrEqual(7 * 60)
     expect(r.night!.end.minutes).toBeLessThanOrEqual(8 * 60 + 30)
     expect(formatTime(r.departure!)).toBe('06:30')
   })
 
   it('vor Schlüsseleinheiten früher ins Bett', () => {
-    const beforeLong = recommendSleep({ cal, date: '2026-10-29', plan }) // morgen langer Lauf
-    const withoutPlan = recommendSleep({ cal, date: '2026-10-29' })
+    const beforeLong = recommendSleep({ cal, date: '2026-11-13', plan }) // morgen langer Lauf
+    const withoutPlan = recommendSleep({ cal, date: '2026-11-13' })
     expect(beforeLong.night!.start.minutes).toBeLessThan(withoutPlan.night!.start.minutes)
   })
 
-  it('vor dem langen Lauf im Rennzeitplan: 04:30 aufstehen wie am Renntag, früh ins Bett', () => {
-    const r = recommendSleep({ cal, date: '2027-06-11', plan }) // Tag 3, morgen Start 07:00
+  it('vor dem langen Lauf im Rennzeitplan: 06:00 aufstehen wie am Renntag, früh ins Bett', () => {
+    const r = recommendSleep({ cal, date: '2027-02-21', plan }) // Tag 3, morgen Start 08:30
     expect(r.daySleep).toBeDefined()
-    expect(r.night!.end).toEqual({ date: '2027-06-12', minutes: 4 * 60 + 30 })
-    expect(formatTime(r.night!.start.minutes)).toBe('21:00')
+    expect(r.night!.end).toEqual({ date: '2027-02-22', minutes: 6 * 60 })
+    expect(formatTime(r.night!.start.minutes)).toBe('21:15') // 30 min extra vor Schlüsseleinheit
     expect(r.notes.join(' ')).toContain('Rennzeitplan')
     // ohne Plan (kein fester Start morgen) normaler Rhythmus
-    expect(recommendSleep({ cal, date: '2027-06-11' }).night!.end.minutes).toBeGreaterThan(6 * 60)
+    expect(recommendSleep({ cal, date: '2027-02-21' }).night!.end.minutes).toBeGreaterThan(6 * 60)
   })
 
-  it('Rennvorbereitung: frühe Nächte, Renntag mit Start 07:00 ohne Nap', () => {
-    const prep = recommendSleep({ cal, date: '2027-09-10', plan })
+  it('Rennvorbereitung: frühe Nächte, Renntag mit Start 08:30 ohne Nap', () => {
+    const prep = recommendSleep({ cal, date: '2027-04-13', plan })
     expect(prep.night!.start.minutes).toBeLessThanOrEqual(22 * 60)
     expect(prep.notes.join(' ')).toContain('Rennvorbereitung')
-    const eve = recommendSleep({ cal: withOverride(cal, { date: '2027-09-17', kind: 'URLAUB' }), date: '2027-09-17', plan })
-    expect(formatTime(eve.night!.start.minutes)).toBe('21:00')
-    expect(eve.night!.end).toEqual({ date: '2027-09-18', minutes: 4 * 60 + 30 })
+    const vac = withOverride(cal, { date: '2027-04-16', kind: 'URLAUB' })
+    const eve = recommendSleep({ cal: vac, date: '2027-04-16', plan })
+    expect(formatTime(eve.night!.start.minutes)).toBe('21:15')
+    expect(eve.night!.end).toEqual({ date: '2027-04-17', minutes: 6 * 60 })
     expect(eve.notes.join(' ')).toContain('Morgen ist Renntag')
-    const race = recommendSleep({ cal: withOverride(cal, { date: '2027-09-18', kind: 'URLAUB' }), date: '2027-09-18', plan })
+    const race = recommendSleep({ cal: vac, date: '2027-04-17', plan })
     expect(race.nap).toBeUndefined()
+    expect(race.daySleep).toBeUndefined() // mit Urlaub am 16.04. kein Schlaftag
     expect(race.night).toBeUndefined()
-    expect(race.notes.join(' ')).toContain('04:30 Uhr aufstehen')
-    expect(race.notes.join(' ')).toContain('07:00')
+    expect(race.notes.join(' ')).toContain('06:00 Uhr aufstehen')
+    expect(race.notes.join(' ')).toContain('08:30')
   })
 
   it('Tipps wechseln von Tag zu Tag', () => {

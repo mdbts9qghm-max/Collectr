@@ -3,8 +3,8 @@
 Stand: 28.09.2026. Grundlage ist `docs/SPEC.md`, die Entscheidungen des Nutzers stehen in `CLAUDE.md`.
 In diesem Dokument steht noch kein Code, nur die Beschreibung, wie die Logik gebaut wird.
 
-> **Zielwechsel (25.10.2026):** Abschnitte 1–7 beschreiben den ursprünglichen Plan für den Ehrwald Trail.
-> Was für den Arberland Classic Trail gilt, steht in **Abschnitt 8**.
+> **Zielwechsel:** Abschnitte 1–7 beschreiben den ursprünglichen Plan für den Ehrwald Trail, Abschnitt 8 den Arberland Classic Trail (25.10.2026).
+> Was jetzt für den **Soul Trail** gilt, steht in **Abschnitt 9**. Die Mechanismen aus Abschnitt 8 (frühe lange Läufe, `fixedStart`, `resetHistory`, Tag 4/5) gelten weiter.
 
 ---
 
@@ -397,3 +397,42 @@ Entlastungen: Mikro 6, 12, 18, 25, 32, 38, 44, 50, 56. Krafttests: 6, 12, 18, 25
 - Tag 5: langer Lauf (`CONFIG.plan.longRunDay`: base/build 5, specific/taper 4).
 - Ist Tag 5 nicht frei (V-Schicht, Urlaub, krank) und Tag 4 frei und noch ohne Eintrag, läuft der lange Lauf an Tag 4, die Tag-4-Einheiten wandern auf Tag 5 und werden dort wie bisher verschoben oder gestrichen. Ist Tag 4 schon eingetragen, fällt der lange Lauf aus (kein Nachholen).
 - Die Vorausschau (2 Tage) sieht an Tag 2 die Qualität an Tag 4, an Tag 3 den langen Lauf an Tag 5.
+
+---
+
+## 9. Zielwechsel: Soul Trail 2027 (08.11.2026)
+
+| | |
+|---|---|
+| Rennen | Soul Trail, SOUL Trailrunning Season Opening |
+| Ort | Deggendorf, Bayerischer Wald (laut Rennkalendern Rusel bei Deggendorf; Startort beim Veranstalter prüfen) |
+| Termin | **Sa 17.04.2027, 08:30 Uhr** |
+| Strecke | 55 km, 2.000 hm (Veranstalterseite laut Nutzer; die Streckenliste nennt 2.200 hm) |
+| Zeitlimit | 11 h (Zielschluss 19:30) |
+
+### 9.1 Zeitplan
+
+- **Neustart Mo 09.11.2026** (Zyklustag 4). Mikrozyklus 1 = 09./10.11. (Tag 4 Höhenmeter + Calisthenics, Tag 5 langer Lauf 10,5 km). Rhythmus von Mikrozyklus 1 ab 06.11. (`plan.microStartDate`), Tage vor `startDate` werden nicht eingeplant.
+- 33 Mikrozyklen, Phasen anteilig wie beim Arberland-Plan:
+
+| Phase | Meso | Mikro | Zeitraum | Entlastung |
+|---|---|---|---|---|
+| Grundlage | 1–2 (je 4) | 1–8 | 09.11.–15.12.2026 | 4, 8 |
+| Aufbau | 3–4 (je 6) | 9–20 | 16.12.2026–13.02.2027 | 14, 20 |
+| Rennspezifisch | 5 (5), 6 (4) | 21–29 | 14.02.–30.03.2027 | 25 |
+| Taper | 7 | 30–33 | 31.03.–17.04.2027 | – |
+
+- Krafttests: 4, 8, 14, 20, 25, 29.
+- Rennspezifisch: 21 B2B 16 + 10, 22 Rennzeitplan 22 km (22.02.), 23 langer Lauf 26, 24 Rennzeitplan 24 km (04.03.), 26 **längster Lauf 32 km (14.03.)**, 27 **Streckenbesichtigung Fr/Sa 19./20.03.** (24 + 10 km, 1.300 + 600 hm), 28 **B2B-Spitze 22 + 14 km**, 29 Abschluss 18 km + Krafttest.
+
+### 9.2 Umfang
+
+- Anker km/Woche: 38 (Mikro 7), 48 (Mikro 19), 52 (Mikro 28). Spitzen-Mikrozyklen ca. 52–57 km/Woche.
+- Langer Lauf: 10,5 → 14 → 22 km, danach 26 / 32 km. Höhenmeter: 280 → 500 → 1.100 → 1.800 hm/Woche.
+
+### 9.3 Rennen, Urlaub, Schlaf
+
+- **Der Renntag ist Zyklustag 3** (Schlaftag nach der Nachtschicht). Pflicht-Urlaub **Do 15.04. (T) und Fr 16.04. (N)**, empfohlen zusätzlich 10./11.04. Mit Urlaub am 16.04. macht der Schichtkalender den 17.04. zum freien Tag. `raceConflict` prüft außerdem den Renntag selbst (z. B. V-Schicht).
+- Mikrozyklus 33: das Rennen liegt auf dem Zyklustag des Renndatums (`compose.ts`, `race_day`), optionales Auflockern am Tag davor.
+- Schlaf: aufstehen 06:00 vor Rennen und langen Läufen im Rennzeitplan, ins Bett ca. 21:15 (inkl. 30 min extra vor Schlüsseleinheiten). Kein Nap am Renntag.
+- Alte Einträge werden über `race.id = 'soul-trail-2027'` einmalig gelöscht (`resetHistoryOnce`).

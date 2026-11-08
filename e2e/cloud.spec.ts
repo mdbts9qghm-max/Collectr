@@ -27,15 +27,15 @@ function whoopRows(): Record<string, Record<string, unknown>[]> {
   return {
     whoop_status: [{ key: 'whoop', data: { connected: true, connectedAt: now, lastSyncAt: now, counts: { recoveries: 1, sleeps: 2, workouts: 2 } }, deleted: false, updated_at: now }],
     whoop_sleeps: [
-      row('s-night', { id: 's-night', start: berlin('2026-10-27', '22:30'), end: berlin('2026-10-28', '07:15'), nap: false, asleepMin: 480 }),
-      row('s-day', { id: 's-day', start: berlin('2026-10-29', '08:05'), end: berlin('2026-10-29', '14:00'), nap: false, asleepMin: 330 }),
+      row('s-night', { id: 's-night', start: berlin('2026-11-11', '22:30'), end: berlin('2026-11-12', '07:15'), nap: false, asleepMin: 480 }),
+      row('s-day', { id: 's-day', start: berlin('2026-11-13', '08:05'), end: berlin('2026-11-13', '14:00'), nap: false, asleepMin: 330 }),
     ],
     whoop_recoveries: [row('1', { cycleId: 1, sleepId: 's-night', score: 78 }), row('2', { cycleId: 2, sleepId: 's-day', score: 41, hrvMs: 50, restingHr: 57 })],
     whoop_cycles: [],
     whoop_workouts: [
       // Lauf am Schlaftag nachmittags (Tag 2 hat seit der Planänderung nur Kraft)
-      row('w-run', { id: 'w-run', start: berlin('2026-10-29', '15:35'), end: berlin('2026-10-29', '16:20'), sportName: 'running', distanceM: 7200, strain: 9.4 }),
-      row('w-golf', { id: 'w-golf', start: berlin('2026-10-28', '16:00'), end: berlin('2026-10-28', '17:00'), sportName: 'golf' }),
+      row('w-run', { id: 'w-run', start: berlin('2026-11-13', '15:35'), end: berlin('2026-11-13', '16:20'), sportName: 'running', distanceM: 7200, strain: 9.4 }),
+      row('w-golf', { id: 'w-golf', start: berlin('2026-11-12', '16:00'), end: berlin('2026-11-12', '17:00'), sportName: 'golf' }),
     ],
   }
 }
@@ -123,7 +123,7 @@ test('Login mit E-Mail und Passwort, Erst-Umzug und Synchronisation', async ({ p
   await expect(page.getByText('Angemeldet als ich@example.com')).toBeVisible()
   const before = store.posts.length
   await openGroup(page, 'Erweitert')
-  await page.getByLabel('Simuliertes Datum').fill('2026-10-28')
+  await page.getByLabel('Simuliertes Datum').fill('2026-11-12')
   await page.getByRole('button', { name: 'Setzen', exact: true }).click()
   await page.getByRole('link', { name: 'Heute' }).click()
 
@@ -158,7 +158,7 @@ test('WHOOP verbinden, abrufen, Recovery nach der Nachtschicht, Workout automati
   // Schlaftag nach der Nachtschicht simulieren und WHOOP verbinden
   await page.getByRole('link', { name: 'Einstellungen' }).click()
   await openGroup(page, 'Erweitert')
-  await page.getByLabel('Simuliertes Datum').fill('2026-10-29')
+  await page.getByLabel('Simuliertes Datum').fill('2026-11-13')
   await page.getByRole('button', { name: 'Setzen', exact: true }).click()
   await openGroup(page, 'WHOOP & Erinnerungen')
   await page.getByRole('button', { name: 'Mit WHOOP verbinden' }).click()
@@ -290,7 +290,7 @@ test('Zielwechsel mit Konto: alte Einträge einmal löschen, ohne Endlos-Neulade
   })
   await page.goto('/')
   const notice = page.getByTestId('warning-notice')
-  await expect(notice).toContainText('Neues Ziel: Arberland Classic Trail', { timeout: 10_000 })
+  await expect(notice).toContainText('Neues Ziel: Soul Trail', { timeout: 10_000 })
   await expect(page.getByTestId('sync-badge')).toContainText('Synchron', { timeout: 10_000 })
   // Ruhe: in den nächsten Sekunden keine weiteren Abrufe mehr (kein Endlos-Neuladen)
   await page.waitForTimeout(2000)

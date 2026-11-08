@@ -41,7 +41,7 @@ test('installierbar: Manifest, Icons und Service Worker', async ({ page, request
 
 test('Heute ist offline lesbar (neu laden ohne Netz)', async ({ page, context }) => {
   await onboard(page)
-  await simulateDate(page, '2026-10-28')
+  await simulateDate(page, '2026-11-12')
   await page.getByRole('link', { name: 'Heute' }).click()
   await expect(page.getByTestId('today-item').first()).toBeVisible()
   await page.evaluate(async () => {
@@ -56,7 +56,7 @@ test('Heute ist offline lesbar (neu laden ohne Netz)', async ({ page, context })
   await expect(page.getByTestId('today-item').first()).toBeVisible()
   await page.screenshot({ path: 'docs/screenshots/16-offline.png' })
   await page.getByRole('link', { name: 'Coach', exact: true }).click()
-  await expect(page.getByTestId('day-2026-10-27')).toBeVisible()
+  await expect(page.getByTestId('day-2026-11-11')).toBeVisible()
   await page.goto('/plan')
   await expect(page.getByRole('link', { name: 'Gesamtplan' })).toBeVisible()
   await context.setOffline(false)
@@ -64,44 +64,44 @@ test('Heute ist offline lesbar (neu laden ohne Netz)', async ({ page, context })
 
 test('Kalender-Export (.ics) enthält Einheiten, Schichten und Schlaf', async ({ page }) => {
   await onboard(page)
-  await simulateDate(page, '2026-10-27')
+  await simulateDate(page, '2026-11-11')
   await openGroup(page, 'Kalender & Backup')
   const card = page.getByTestId('calendar-export')
-  await expect(card).toContainText('27.10.2026 bis 23.11.2026')
+  await expect(card).toContainText('11.11.2026 bis 08.12.2026')
   const [download] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: 'Kalenderdatei herunterladen' }).click()])
-  expect(download.suggestedFilename()).toBe('collectr-2026-10-27-bis-2026-11-23.ics')
+  expect(download.suggestedFilename()).toBe('collectr-2026-11-11-bis-2026-12-08.ics')
   const ics = readFileSync((await download.path())!, 'utf8')
   expect(ics).toContain('BEGIN:VCALENDAR')
   expect(ics).toContain('TZID:Europe/Berlin')
-  expect(ics).toContain('UID:schicht-2026-10-27@collectr')
-  expect(ics).toContain('UID:nap-2026-10-28@collectr')
-  expect(ics).toMatch(/UID:einheit-2026-10-28/)
+  expect(ics).toContain('UID:schicht-2026-11-11@collectr')
+  expect(ics).toContain('UID:nap-2026-11-12@collectr')
+  expect(ics).toMatch(/UID:einheit-2026-11-12/)
   await page.screenshot({ path: 'docs/screenshots/14-export.png' })
 })
 
 test('Dienstplan-Import: Vorschau, Auswahl, Übernahme als V-Schicht', async ({ page }) => {
   await onboard(page)
-  await simulateDate(page, '2026-10-27')
+  await simulateDate(page, '2026-11-11')
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'BEGIN:VEVENT',
-    'DTSTART;TZID=Europe/Berlin:20261027T070000',
-    'DTEND;TZID=Europe/Berlin:20261027T190000',
+    'DTSTART;TZID=Europe/Berlin:20261111T070000',
+    'DTEND;TZID=Europe/Berlin:20261111T190000',
     'SUMMARY:Tagdienst',
     'END:VEVENT',
     'BEGIN:VEVENT',
-    'DTSTART;TZID=Europe/Berlin:20261031T080000',
-    'DTEND;TZID=Europe/Berlin:20261031T200000',
+    'DTSTART;TZID=Europe/Berlin:20261115T080000',
+    'DTEND;TZID=Europe/Berlin:20261115T200000',
     'SUMMARY:V-Dienst',
     'END:VEVENT',
     'BEGIN:VEVENT',
-    'DTSTART;VALUE=DATE:20261106',
+    'DTSTART;VALUE=DATE:20261121',
     'SUMMARY:Urlaub',
     'END:VEVENT',
     'BEGIN:VEVENT',
-    'DTSTART:20261108T100000',
-    'DTEND:20261108T110000',
+    'DTSTART:20261123T100000',
+    'DTEND:20261123T110000',
     'SUMMARY:Zahnarzt',
     'END:VEVENT',
     'END:VCALENDAR',
@@ -111,21 +111,21 @@ test('Dienstplan-Import: Vorschau, Auswahl, Übernahme als V-Schicht', async ({ 
   await card.getByTestId('roster-file').setInputFiles({ name: 'dienstplan.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
   const preview = page.getByTestId('roster-preview')
   await expect(preview).toContainText('2 Abweichungen, 1 passend')
-  await expect(preview).toContainText('31.10.2026: Frei → V-Schicht')
-  await expect(preview).toContainText('06.11.2026: Tagschicht → Urlaub')
+  await expect(preview).toContainText('15.11.2026: Frei → V-Schicht')
+  await expect(preview).toContainText('21.11.2026: Tagschicht → Urlaub')
   await expect(preview).toContainText('1 Termin(e) nicht erkannt')
   await page.screenshot({ path: 'docs/screenshots/15-dienstplan-import.png' })
   // Urlaub abwählen, nur V übernehmen
-  await preview.getByText('06.11.2026: Tagschicht → Urlaub').click()
+  await preview.getByText('21.11.2026: Tagschicht → Urlaub').click()
   await preview.getByRole('button', { name: 'Übernehmen (1)' }).click()
   await expect(card).toContainText('1 Änderung übernommen')
   await page.getByRole('link', { name: 'Coach', exact: true }).click()
-  await expect(page.getByTestId('day-2026-10-31')).toContainText('V-Schicht')
+  await expect(page.getByTestId('day-2026-11-15')).toContainText('V-Schicht')
 })
 
 test('Zielwechsel: alte Einträge werden einmalig gelöscht, Hinweis auf Heute', async ({ page }) => {
   await onboard(page)
-  await simulateDate(page, '2026-10-28')
+  await simulateDate(page, '2026-11-12')
   await page.getByRole('link', { name: 'Heute' }).click()
   await page.getByTestId('today-item').first().getByRole('button', { name: 'Erledigt' }).click()
   await expect(page.getByTestId('today-item').first().getByRole('button', { name: 'rückgängig' })).toBeVisible()
@@ -152,7 +152,7 @@ test('Zielwechsel: alte Einträge werden einmalig gelöscht, Hinweis auf Heute',
   )
   await page.goto('/')
   const notice = page.getByTestId('warning-notice')
-  await expect(notice).toContainText('Neues Ziel: Arberland Classic Trail')
+  await expect(notice).toContainText('Neues Ziel: Soul Trail')
   await expect(page.getByTestId('today-item').first().getByRole('button', { name: 'Erledigt' })).toBeVisible()
   await expect(page.getByTestId('today-item').first().getByRole('button', { name: 'rückgängig' })).toHaveCount(0)
   await notice.getByRole('button', { name: 'Verstanden' }).click()

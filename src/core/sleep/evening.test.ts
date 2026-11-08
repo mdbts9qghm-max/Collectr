@@ -24,17 +24,17 @@ describe('Abendroutine', () => {
   })
 
   it('vor dem langen Lauf: Kohlenhydrate, Route; vor der Nachtschicht: ausschlafen', () => {
-    const r = routine('2026-10-30') // Tag 4, morgen langer Lauf (Tag 5)
+    const r = routine('2026-11-14') // Tag 4, morgen langer Lauf (Tag 5)
     expect(r.prepare.join(' ')).toMatch(/Langer Lauf .*kohlenhydratreich/)
     expect(r.prepare.join(' ')).toContain('Route für')
-    const beforeNight = routine('2026-11-01') // Tag 1, morgen Nachtschicht
+    const beforeNight = routine('2026-11-16') // Tag 1, morgen Nachtschicht
     expect(beforeNight.prepare.join(' ')).toContain('Morgen Nachtschicht')
   })
 
-  it('vor dem langen Lauf im Rennzeitplan: Wecker 04:30, Ablauf wie am Renntag proben', () => {
-    const r = routine('2027-06-11') // Tag 3, morgen Start 07:00
-    expect(r.steps.at(-1)!.text).toContain('Wecker auf 04:30')
-    expect(r.prepare.join(' ')).toContain('um 07:00 Uhr')
+  it('vor dem langen Lauf im Rennzeitplan: Wecker 06:00, Ablauf wie am Renntag proben', () => {
+    const r = routine('2027-02-21') // Tag 3, morgen Start 08:30
+    expect(r.steps.at(-1)!.text).toContain('Wecker auf 06:00')
+    expect(r.prepare.join(' ')).toContain('um 08:30 Uhr')
     expect(r.prepare.join(' ')).toContain('wie am Renntag proben')
   })
 
