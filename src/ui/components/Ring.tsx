@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react'
+import { COLOR } from '../theme'
 
-// Kennzahl-Ring im WHOOP-Stil: Fortschritt 0–1, Wert in der Mitte, Beschriftung darunter.
+// Kennzahl-Ring (Apple-Aktivitätsringe als Vorbild): Fortschritt 0–1, Wert in der Mitte, Beschriftung darunter.
+// Die Ampel bleibt grün/gelb/rot (Apple-Farbtöne), Schlaf blau, Training orange.
 export const RING_COLOR = {
-  green: '#22c55e',
-  yellow: '#eab308',
-  red: '#ef4444',
-  sleep: '#3987e5',
-  training: '#34d399',
-  none: '#253041',
+  green: COLOR.green,
+  yellow: COLOR.yellow,
+  red: COLOR.red,
+  sleep: COLOR.blue,
+  training: COLOR.accent,
+  none: COLOR.line,
 } as const
 
 export function Ring({
@@ -32,7 +34,7 @@ export function Ring({
   valueTestId?: string
 }) {
   const size = 96
-  const stroke = 8
+  const stroke = 10
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const p = Math.max(0, Math.min(1, progress))
@@ -40,7 +42,8 @@ export function Ring({
     <>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#253041" strokeWidth={stroke} />
+          {/* Spur in derselben Farbe, abgedunkelt wie bei den Aktivitätsringen */}
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color === RING_COLOR.none ? COLOR.line : color} strokeOpacity={color === RING_COLOR.none ? 1 : 0.22} strokeWidth={stroke} />
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">

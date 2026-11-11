@@ -49,8 +49,14 @@ export function OverrideSheet({ date, onClose }: { date: LocalDate; onClose: () 
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end bg-black/60" role="dialog" aria-modal="true" aria-label="Tag bearbeiten" onClick={onClose}>
-      <div className="mx-auto w-full max-w-xl space-y-4 rounded-t-3xl border border-line bg-panel p-4 pb-8" onClick={(e) => e.stopPropagation()}>
+    <div className="sheet-backdrop fixed inset-0 z-20 flex items-end bg-black/60" role="dialog" aria-modal="true" aria-label="Tag bearbeiten" onClick={onClose}>
+      <div
+        className="sheet mx-auto w-full max-w-xl space-y-4 rounded-t-[22px] bg-panel px-4 pt-2"
+        style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Griff wie bei iOS-Blättern */}
+        <div aria-hidden className="mx-auto h-[5px] w-9 rounded-full bg-panel-3" />
         <div>
           <div className="text-lg font-semibold">
             {weekdayShortDE(date)}, {formatDateDE(date)}
@@ -66,7 +72,7 @@ export function OverrideSheet({ date, onClose }: { date: LocalDate; onClose: () 
               type="button"
               aria-pressed={kind === k.kind}
               onClick={() => setKind(k.kind)}
-              className={`min-h-11 rounded-xl border text-sm ${kind === k.kind ? 'border-accent bg-accent/20 text-accent' : 'border-line bg-panel-2'}`}
+              className={`min-h-11 rounded-xl border text-sm ${kind === k.kind ? 'border-accent bg-accent/20 text-accent' : 'border-transparent bg-panel-2'}`}
             >
               {k.label}
             </button>
@@ -74,7 +80,7 @@ export function OverrideSheet({ date, onClose }: { date: LocalDate; onClose: () 
         </div>
         {kind === 'TAUSCH' && (
           <Field label="Stattdessen">
-            <select className="min-h-11 w-full rounded-xl border border-line bg-panel-2 px-3" value={swapTo} onChange={(e) => setSwapTo(e.target.value as 'T')}>
+            <select className="min-h-11 w-full rounded-xl bg-panel-2 px-3" value={swapTo} onChange={(e) => setSwapTo(e.target.value as 'T')}>
               <option value="F">Frei</option>
               <option value="T">Tagschicht</option>
               <option value="N">Nachtschicht</option>

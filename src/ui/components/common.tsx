@@ -11,7 +11,21 @@ export function Card({ children, className = '', ...rest }: { children: ReactNod
 }
 
 export function H2({ children }: { children: ReactNode }) {
-  return <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">{children}</h2>
+  return <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-muted">{children}</h2>
+}
+
+/**
+ * Gruppierte Liste im iOS-Stil: Zeilen in einer abgerundeten Fläche mit Trennlinien,
+ * optional mit Überschrift und Fußnote außerhalb (wie in der App „Einstellungen“).
+ */
+export function GroupedList({ header, footer, children, className = '' }: { header?: ReactNode; footer?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={className}>
+      {header !== undefined && <h2 className="mb-1.5 px-4 text-[13px] uppercase tracking-wide text-muted">{header}</h2>}
+      <div className="divide-y divide-line overflow-hidden rounded-2xl bg-panel [&>*]:rounded-none">{children}</div>
+      {footer !== undefined && <p className="mt-1.5 px-4 text-[13px] text-muted">{footer}</p>}
+    </section>
+  )
 }
 
 /** Zwischenüberschrift innerhalb einer Gruppe. */
@@ -33,9 +47,9 @@ export function Disclosure({
   return (
     <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className={`group ${card ? 'rounded-2xl bg-panel' : ''} ${className}`} {...rest}>
       <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-3 ${card ? 'px-4 py-3' : 'py-1'} [&::-webkit-details-marker]:hidden`}>
-        <span className={`flex-1 ${card ? 'font-medium' : 'text-sm text-muted'}`}>{title}</span>
-        {summary !== undefined && <span className="max-w-[55%] truncate text-right text-xs text-muted">{summary}</span>}
-        <svg aria-hidden viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-90" fill="currentColor">
+        <span className={`flex-1 ${card ? 'text-[17px]' : 'text-sm text-muted'}`}>{title}</span>
+        {summary !== undefined && <span className="max-w-[55%] truncate text-right text-[15px] text-muted">{summary}</span>}
+        <svg aria-hidden viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-panel-3 transition-transform group-open:rotate-90" fill="currentColor">
           <path d="M7.3 4.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L11.6 10 7.3 5.7a1 1 0 0 1 0-1.4Z" />
         </svg>
       </summary>
@@ -52,7 +66,7 @@ export function SegmentedLinks({ items, label }: { items: { to: string; label: s
         <NavLink
           key={i.to}
           to={i.to}
-          className={({ isActive }) => `flex min-h-10 items-center justify-center rounded-lg text-sm ${isActive ? 'bg-panel-2 font-semibold text-ink' : 'text-muted'}`}
+          className={({ isActive }) => `flex min-h-9 items-center justify-center rounded-lg text-sm ${isActive ? 'bg-panel-3 font-semibold text-ink shadow-sm' : 'text-ink/70'}`}
         >
           {i.label}
         </NavLink>
@@ -71,7 +85,7 @@ export function SegmentedButtons<T extends string | number>({ value, options, on
           type="button"
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`min-h-10 rounded-lg text-sm ${value === o.value ? 'bg-panel-2 font-semibold text-ink' : 'text-muted'}`}
+          className={`min-h-9 rounded-lg text-sm ${value === o.value ? 'bg-panel-3 font-semibold text-ink shadow-sm' : 'text-ink/70'}`}
         >
           {o.label}
         </button>
@@ -84,8 +98,8 @@ export function SegmentedButtons<T extends string | number>({ value, options, on
 export function Stat({ value, label, sub, className = '' }: { value: ReactNode; label: string; sub?: ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</div>
-      <div className="text-2xl font-bold leading-tight">{value}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</div>
+      <div className="text-2xl font-bold leading-tight tracking-tight">{value}</div>
       {sub !== undefined && <div className="text-xs text-muted">{sub}</div>}
     </div>
   )
@@ -93,14 +107,14 @@ export function Stat({ value, label, sub, className = '' }: { value: ReactNode; 
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-accent text-bg font-semibold',
-  secondary: 'bg-panel-2 text-ink border border-line',
+  primary: 'bg-accent text-black font-semibold active:opacity-80',
+  secondary: 'bg-panel-2 text-accent font-medium active:opacity-80',
   ghost: 'text-muted underline-offset-2 hover:underline',
-  danger: 'bg-red/15 text-red border border-red/40',
+  danger: 'bg-red/15 text-red font-medium active:opacity-80',
 }
 
 export function Button({ variant = 'secondary', className = '', ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  return <button className={`min-h-11 rounded-xl px-4 py-2 text-sm disabled:opacity-50 ${VARIANT[variant]} ${className}`} {...rest} />
+  return <button className={`min-h-11 rounded-xl px-4 py-2 text-[15px] disabled:opacity-50 ${VARIANT[variant]} ${className}`} {...rest} />
 }
 
 export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'accent' | 'warn' | 'danger' }) {
@@ -132,7 +146,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`min-h-11 w-full rounded-xl border border-line bg-panel-2 px-3 text-ink ${props.className ?? ''}`} />
+  return <input {...props} className={`min-h-11 w-full rounded-xl bg-panel-2 px-3 text-ink placeholder:text-muted focus:outline-2 focus:outline-accent ${props.className ?? ''}`} />
 }
 
 export function NumberInput({ value, onChange, ...rest }: { value: number | undefined; onChange: (v: number | undefined) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {

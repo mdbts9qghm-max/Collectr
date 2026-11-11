@@ -85,7 +85,7 @@ export function RemindersCard() {
           <span>Erinnerungen auf diesem Gerät</span>
           <input
             type="checkbox"
-            className="h-6 w-6 accent-[#34d399]"
+            className="switch"
             checked={enabled ?? false}
             disabled={busy || enabled === null}
             onChange={(e) => void toggle(e.target.checked)}
@@ -148,7 +148,7 @@ export function CalendarExportCard() {
       {(Object.keys(LABEL) as (keyof typeof LABEL)[]).map((k) => (
         <label key={k} className="flex min-h-11 items-center justify-between">
           <span>{LABEL[k]}</span>
-          <input type="checkbox" className="h-6 w-6 accent-[#34d399]" checked={opts[k]} onChange={(e) => setOpts({ ...opts, [k]: e.target.checked })} aria-label={LABEL[k]} />
+          <input type="checkbox" className="h-6 w-6 accent-accent" checked={opts[k]} onChange={(e) => setOpts({ ...opts, [k]: e.target.checked })} aria-label={LABEL[k]} />
         </label>
       ))}
       <Button className="mt-2 w-full" disabled={!opts.sessions && !opts.shifts && !opts.sleep} onClick={run}>
@@ -217,7 +217,7 @@ export function RosterImportCard() {
             <label key={c.date} className="flex min-h-11 items-center gap-3 rounded-xl border border-line bg-panel-2 px-3 text-sm">
               <input
                 type="checkbox"
-                className="h-5 w-5 accent-[#34d399]"
+                className="h-5 w-5 accent-accent"
                 checked={selected.has(c.date)}
                 onChange={(e) => {
                   const next = new Set(selected)
