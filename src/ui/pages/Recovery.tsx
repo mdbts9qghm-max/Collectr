@@ -10,18 +10,19 @@ import { addDays, formatDateDE, formatTime, weekdayShortDE } from '../../core/ti
 import { Button, Card, Chip, H2, SegmentedButtons, Sub, TRAFFIC_LABEL } from '../components/common'
 import { Ring, RING_COLOR } from '../components/Ring'
 import { Vitals } from '../components/Vitals'
+import { COLOR, TOOLTIP_STYLE } from '../theme'
 
 // Validierte Farben (dataviz, dunkle Fläche): Tagdienst Orange, Nacht Blau (Schlaftag = helleres Blau).
 // Die Datenlinie ist neutral (Text-Ton), die Schichten sind nur Hintergrund.
 const BAND: Record<ShiftBand, { fill: string; opacity: number; label: string }> = {
-  day: { fill: '#d95926', opacity: 0.22, label: 'Tagdienst (T/V)' },
-  night: { fill: '#3987e5', opacity: 0.35, label: 'Nachtschicht' },
-  after_night: { fill: '#3987e5', opacity: 0.15, label: 'Schlaftag' },
+  day: { fill: COLOR.accent, opacity: 0.2, label: 'Tagdienst (T/V)' },
+  night: { fill: COLOR.blue, opacity: 0.35, label: 'Nachtschicht' },
+  after_night: { fill: COLOR.blue, opacity: 0.15, label: 'Schlaftag' },
   none: { fill: 'transparent', opacity: 0, label: 'frei' },
 }
-const INK = '#e6edf3'
-const MUTED = '#9aa7b6'
-const GRID = '#253041'
+const INK = COLOR.ink
+const MUTED = COLOR.muted
+const GRID = COLOR.line
 
 type Metric = { key: keyof RecoveryRow; name: string; unit: string; ref?: { key: keyof RecoveryRow; name: string }; lines?: number[] }
 
@@ -187,12 +188,10 @@ function MetricChart({ rows, m }: { rows: RecoveryRow[]; m: Metric }) {
             </Bar>
             {m.lines?.map((y) => <ReferenceLine key={y} y={y} stroke={MUTED} strokeDasharray="3 3" />)}
             {m.ref && <Line dataKey={m.ref.key} stroke={MUTED} strokeDasharray="4 3" strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />}
-            <Line dataKey={m.key} stroke={INK} strokeWidth={2} dot={{ r: 2.5, fill: INK, stroke: '#121821', strokeWidth: 1 }} connectNulls={false} isAnimationActive={false} />
+            <Line dataKey={m.key} stroke={INK} strokeWidth={2} dot={{ r: 2.5, fill: INK, stroke: COLOR.panel, strokeWidth: 1 }} connectNulls={false} isAnimationActive={false} />
             <Tooltip
               cursor={{ stroke: MUTED }}
-              contentStyle={{ background: '#1a2230', border: '1px solid #253041', borderRadius: 12, fontSize: 12 }}
-              itemStyle={{ color: INK }}
-              labelStyle={{ color: INK }}
+              {...TOOLTIP_STYLE}
               labelFormatter={(l, p) => {
                 const r = p?.[0]?.payload as RecoveryRow | undefined
                 return r ? `${formatDateDE(r.date)} · ${shiftLabel(r.code)}` : String(l)
@@ -291,7 +290,7 @@ function EveningCard() {
         <ol className="relative mb-4 space-y-2 border-l border-line pl-4">
           {routine.steps.map((st) => (
             <li key={st.text} className="relative text-sm">
-              <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-[#3987e5]" />
+              <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-blue" />
               <span className="font-semibold">{formatTime(st.atMin)}</span> <span className="text-muted">·</span> {st.text}
             </li>
           ))}

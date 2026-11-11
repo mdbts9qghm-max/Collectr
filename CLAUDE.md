@@ -34,6 +34,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
 | Alte Einträge (Zielwechsel) | einmalig gelöscht (`resetHistory`, gesteuert über `settings.planId`). Krafttests, Kraftstufen, Profil, Overrides, WHOOP bleiben |
 | Losfahren | Arbeitsbeginn − 15 min Arbeitsweg, ohne Extra-Puffer (Tag 1: 06:30, Tag 2: 18:30, V: 07:30) |
 | App-Name | Collectr, im Hauptverzeichnis dieses Repos |
+| Design (Nutzerwunsch 11.11.2026) | **Apple-Dunkelmodus:** tiefschwarzer Hintergrund (#000), graue Flächen (#1C1C1E/#2C2C2E), Orange #FF9F0A als Akzent (Knöpfe, aktiver Reiter, Trainingsring), Ampel grün/gelb/rot in Apple-Tönen, Schlaf blau. Große Seitentitel, gruppierte Listen (Einstellungen), Blätter von unten, iOS-Schalter. Tokens in `src/index.css`, Diagrammfarben in `src/ui/theme.ts` |
 | Git | am Phasenende automatisch committen und pushen, wenn Tests und Build grün sind |
 | Nachtlauf | ersetzt durch **lange Läufe im Rennzeitplan**: Tag 4, fester Start wie im Rennen (08:30, `fixedStart`), davor 06:00 aufstehen wie am Renntag. Kein Nap am Renntag. Typ `night_run` bleibt im Code |
 | Vorausschau (6.3a) | nur ab Gelb. Bei Grün läuft die Einheit immer wie geplant |
@@ -115,6 +116,7 @@ Bei Unklarheiten, Widersprüchen oder mehreren sinnvollen Möglichkeiten: **den 
   - Tests: 246 Vitest, 10 Playwright
 - [x] **V-Schicht mit lockerer Einheit** (Nutzerwunsch): `trainingWindow` gibt für V ein Fenster nach dem Dienst (`afterWork`), `placeDay` behält die wichtigste Einheit als `toLightVariant`, Schlaf: `sleep.afterTrainingBeforeBedMin`
   - Tests: 247 Vitest, 10 Playwright
+- [x] **Design wie eine Apple-App** (Nutzerwunsch): Farb-Tokens, SF-Systemschrift, `GroupedList`, große Titel im `Layout`, `.switch`/`.sheet` in `index.css`, Ringe mit getönter Spur, App-Symbol orange (`node scripts/icons.mjs`)
 
 ## Phase 2 – Plan (freigegeben)
 

@@ -12,7 +12,7 @@ async function render(file, size, { padding = 0, square = false } = {}) {
   const inner = size - 2 * padding
   const img = square ? svg.replace('rx="96"', 'rx="0"') : svg
   await page.setContent(
-    `<html><body style="margin:0;background:#0b0f14;display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px">` +
+    `<html><body style="margin:0;background:#000000;display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px">` +
       `<div style="width:${inner}px;height:${inner}px">${img.replace('<svg ', `<svg width="${inner}" height="${inner}" `)}</div></body></html>`,
   )
   await page.screenshot({ path: new URL(`../public/${file}`, import.meta.url).pathname, omitBackground: false })

@@ -7,12 +7,13 @@ import { CONFIG } from '../../core/config'
 import { raceChecklist, raceConflict, raceDateLong } from '../../core/race'
 import { addDays, formatDateDE, formatDayMonthDE, isoWeek } from '../../core/time'
 import { Card, Chip, Disclosure, H2, SegmentedButtons, SegmentedLinks } from '../components/common'
+import { COLOR, TOOLTIP_STYLE } from '../theme'
 
 // Validierte Farben (dataviz): Soll = Blau, Ist = Orange; dunkle Stufen für die dunkle Fläche.
-const SOLL = '#3987e5'
-const IST = '#d95926'
-const GRID = '#253041'
-const AXIS = '#9aa7b6'
+const SOLL = COLOR.blue
+const IST = COLOR.accent
+const GRID = COLOR.line
+const AXIS = COLOR.muted
 
 type Mode = 'micro' | 'week'
 
@@ -84,15 +85,15 @@ export function PlanOverview() {
       <ChartCard title={mode === 'micro' ? 'Kraftvolumen (Sätze je Mikrozyklus)' : 'Kraftvolumen (Sätze je Woche)'} rows={rows.map((r) => r.sets)} unit="Sätze" />
 
       <Disclosure card title="Mesozyklen" summary={`${plan.mesocycles.length} Blöcke`} defaultOpen>
-        <ul className="space-y-2 text-sm" data-testid="mesocycles">
+        <ul className="divide-y divide-line text-sm" data-testid="mesocycles">
           {plan.mesocycles.map((m) => {
             const micros = plan.microcycles.filter((x) => x.mesoIndex === m.index)
             const deload = micros.find((x) => x.kind === 'deload')
             const active = today >= m.start && today <= m.end
             return (
-              <li key={m.index} className={`rounded-xl p-3 ${active ? 'ring-2 ring-accent' : ''} bg-panel-2`}>
+              <li key={m.index} className="py-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">
+                  <span className={`font-medium ${active ? 'text-accent' : ''}`}>
                     {m.phase === 'taper' ? PHASE_LABEL.taper : `Meso ${m.index} · ${PHASE_LABEL[m.phase]}`}
                   </span>
                   {active && <Chip tone="accent">aktuell</Chip>}
@@ -140,7 +141,7 @@ function RaceChecklist() {
             <label className="flex min-h-11 items-start gap-3 text-sm">
               <input
                 type="checkbox"
-                className="mt-1 h-5 w-5 shrink-0 accent-[#34d399]"
+                className="mt-1 h-5 w-5 shrink-0 accent-accent"
                 checked={done[i.id] ?? false}
                 onChange={(e) => app.setChecklist({ ...done, [i.id]: e.target.checked })}
               />
@@ -206,14 +207,12 @@ function ChartCard({ title, rows, unit }: { title: string; rows: Row[]; unit: st
               <YAxis tick={{ fill: AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={40} tickFormatter={(v: number) => v.toLocaleString('de-DE')} />
               <Tooltip
                 cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                contentStyle={{ background: '#1a2230', border: '1px solid #253041', borderRadius: 12, fontSize: 12 }}
-                labelStyle={{ color: '#e6edf3' }}
-                itemStyle={{ color: '#e6edf3' }}
+                {...TOOLTIP_STYLE}
                 formatter={(v, name) => [`${v} ${unit}`, name === 'soll' ? 'Soll' : 'Ist']}
                 labelFormatter={(l, p) => `${l} · ${(p?.[0]?.payload as Row | undefined)?.note ?? ''}`}
               />
               <Bar dataKey="soll" name="soll" fill={SOLL} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-              <Line dataKey="ist" name="ist" stroke={IST} strokeWidth={2} dot={{ r: 3, fill: IST, stroke: '#121821', strokeWidth: 2 }} connectNulls={false} isAnimationActive={false} />
+              <Line dataKey="ist" name="ist" stroke={IST} strokeWidth={2} dot={{ r: 3, fill: IST, stroke: COLOR.panel, strokeWidth: 2 }} connectNulls={false} isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

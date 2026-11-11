@@ -7,9 +7,10 @@ import { formatDateDE, formatDayMonthDE } from '../../core/time'
 import { Button, Card, Chip, Disclosure, H2 } from '../components/common'
 import { Tracking } from './Tracking'
 import { StrengthTestForm } from '../components/StrengthTestForm'
+import { COLOR, TOOLTIP_STYLE } from '../theme'
 
-const PULL = '#3987e5'
-const DIPS = '#d95926'
+const PULL = COLOR.blue
+const DIPS = COLOR.accent
 
 export function Strength() {
   const app = useApp()
@@ -47,7 +48,7 @@ export function Strength() {
         </div>
       </Card>
       <Disclosure card title="Stufen und nächste Ziele">
-        <ul className="space-y-3" data-testid="ladders">
+        <ul className="divide-y divide-line" data-testid="ladders">
           {LADDER_IDS.map((id) => {
             const lvl = state.levels[id]
             const def = levelDef(id, lvl)
@@ -55,7 +56,7 @@ export function Strength() {
             const next = last ? null : levelDef(id, lvl + 1)
             const blocked = !last && !canEnterLevel(id, lvl + 1, state.levels)
             return (
-              <li key={id} className="rounded-xl bg-panel-2 p-3">
+              <li key={id} className="py-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted">{LADDERS[id].name}</span>
                   <span className="text-xs text-muted">
@@ -99,12 +100,11 @@ export function Strength() {
             <div className="h-40" data-testid="test-chart">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={tests.map((t) => ({ label: formatDayMonthDE(t.date), pull: t.maxPullups, dips: t.maxDips }))} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="#253041" />
-                  <XAxis dataKey="label" tick={{ fill: '#9aa7b6', fontSize: 10 }} tickLine={false} axisLine={{ stroke: '#253041' }} />
-                  <YAxis allowDecimals={false} tick={{ fill: '#9aa7b6', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <CartesianGrid vertical={false} stroke={COLOR.line} />
+                  <XAxis dataKey="label" tick={{ fill: COLOR.muted, fontSize: 10 }} tickLine={false} axisLine={{ stroke: COLOR.line }} />
+                  <YAxis allowDecimals={false} tick={{ fill: COLOR.muted, fontSize: 10 }} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ background: '#1a2230', border: '1px solid #253041', borderRadius: 12, fontSize: 12 }}
-                    itemStyle={{ color: '#e6edf3' }}
+                    {...TOOLTIP_STYLE}
                     formatter={(v, n) => [`${v} Wdh.`, n === 'pull' ? 'Klimmzüge' : 'Dips']}
                   />
                   <Line dataKey="pull" stroke={PULL} strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
